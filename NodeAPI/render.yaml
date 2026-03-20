@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: institute-management-api
+    env: node
+    plan: starter
+    rootDir: NodeAPI
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 1d
+      - key: CORS_ORIGIN
+        value: https://your-web-domain.com

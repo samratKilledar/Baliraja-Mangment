@@ -1,0 +1,72 @@
+import { AppLanguage } from '../context/LanguageContext';
+
+const STRINGS = {
+  en: {
+    appName: 'Baliraja Career Academy Gangapur',
+    loginTitle: 'Mobile OTP Login',
+    loginSubtitle: 'Training portal access for all roles',
+    languageLabel: 'Language',
+    mobilePlaceholder: 'Mobile Number',
+    sendOtp: 'Send OTP',
+    otpTitle: 'Enter OTP',
+    otpSubtitlePrefix: 'A 6-digit code is sent to +91',
+    readOtp: 'Read OTP from Gmail',
+    verifyContinue: 'Verify & Continue',
+    invalidNumberTitle: 'Invalid Number',
+    invalidNumberMessage: 'Please enter a valid 10-digit mobile number.',
+    wrongOtp: 'Incorrect OTP. Use "Read OTP from Gmail" in demo mode.',
+    signingIn: 'Signing in...',
+    dashboardAnnouncements: 'Announcements',
+    dashboardMenu: 'Quick Menu',
+    dashboardTraining: 'Training Hub',
+    dashboardTrainingSubtitle: 'Recommended upskilling modules',
+    dashboardCurrentView: 'Current View',
+    dashboardShowing: 'Showing',
+    dashboardLive: 'Live Snapshot',
+    dashboardUpdated: 'Updated just now',
+    filterTitle: 'Data Filter',
+    uploadSlideTitle: 'Upload Slide Image',
+    slideTitlePlaceholder: 'Slide title',
+    imageUrlPlaceholder: 'Image URL',
+    cancel: 'Cancel',
+    upload: 'Upload',
+    missingImageTitle: 'Missing Image URL',
+    missingImageMessage: 'Please add an image URL.'
+  },
+  mr: {
+    appName: 'बळीराजा करिअर अकॅडमी गंगापूर',
+    loginTitle: 'मोबाईल OTP लॉगिन',
+    loginSubtitle: 'सर्व भूमिकांसाठी प्रशिक्षण पोर्टल प्रवेश',
+    languageLabel: 'भाषा',
+    mobilePlaceholder: 'मोबाईल नंबर',
+    sendOtp: 'OTP पाठवा',
+    otpTitle: 'OTP टाका',
+    otpSubtitlePrefix: '+91 वर 6 अंकी OTP पाठवला आहे',
+    readOtp: 'Gmail मधून OTP वाचा',
+    verifyContinue: 'तपासा व पुढे जा',
+    invalidNumberTitle: 'अवैध नंबर',
+    invalidNumberMessage: 'कृपया वैध 10-अंकी मोबाईल नंबर टाका.',
+    wrongOtp: 'OTP चुकीचा आहे. डेमो मोडमध्ये "Gmail मधून OTP वाचा" वापरा.',
+    signingIn: 'लॉगिन होत आहे...',
+    dashboardAnnouncements: 'घोषणा',
+    dashboardMenu: 'त्वरित मेनू',
+    dashboardTraining: 'प्रशिक्षण केंद्र',
+    dashboardTrainingSubtitle: 'शिफारस केलेले प्रशिक्षण मॉड्यूल',
+    dashboardCurrentView: 'सध्याचा दृश्य',
+    dashboardShowing: 'दाखवत आहे',
+    dashboardLive: 'लाईव्ह स्थिती',
+    dashboardUpdated: 'आत्ता अद्ययावत',
+    filterTitle: 'डेटा फिल्टर',
+    uploadSlideTitle: 'स्लाइड प्रतिमा अपलोड',
+    slideTitlePlaceholder: 'स्लाइड शीर्षक',
+    imageUrlPlaceholder: 'प्रतिमा URL',
+    cancel: 'रद्द करा',
+    upload: 'अपलोड',
+    missingImageTitle: 'प्रतिमा URL नाही',
+    missingImageMessage: 'कृपया प्रतिमेचा URL टाका.'
+  }
+} as const;
+
+export function tx(language: AppLanguage) {
+  return STRINGS[language];
+}

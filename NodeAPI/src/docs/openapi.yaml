@@ -1,0 +1,58 @@
+openapi: 3.0.3
+info:
+  title: Institute Management System API
+  version: 1.0.0
+servers:
+  - url: https://api.example.com/api/v1
+  - url: http://localhost:4000/api/v1
+paths:
+  /auth/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Auth success
+  /students:
+    get:
+      summary: List students
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Student list }
+    post:
+      summary: Create student
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201': { description: Student created }
+  /fees/summary:
+    get:
+      summary: Fee collection summary
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Summary data }
+  /attendance:
+    post:
+      summary: Mark attendance
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201': { description: Attendance recorded }
+  /performance:
+    post:
+      summary: Add performance record
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201': { description: Performance recorded }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
