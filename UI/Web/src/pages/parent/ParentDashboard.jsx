@@ -1,5 +1,4 @@
 import NoticeStrip from '../../components/NoticeStrip';
-import PerformanceGraph from '../../components/PerformanceGraph';
 
 export default function ParentDashboard() {
   return (
@@ -12,11 +11,6 @@ export default function ParentDashboard() {
         </div>
       </header>
       <NoticeStrip />
-      <div className="panel">
-        <h3>Child Performance (Monthly)</h3>
-        <p className="graph-note">Only your linked child data is shown.</p>
-        <PerformanceGraph viewerRole="parent" allowedStudentIds={["S-101"]} />
-      </div>
     </div>
   );
 }

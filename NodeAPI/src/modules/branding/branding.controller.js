@@ -15,7 +15,8 @@ function resolveUploadPath(url) {
 async function getSplash(req, res, next) {
   try {
     const branding = await Branding.findOne({ key: SPLASH_KEY });
-    res.json({
+    res.set('Cache-Control', 'no-store');
+    res.status(200).json({
       imageUrl: branding?.imageUrl || null,
       videoUrl: branding?.videoUrl || null,
       mediaType: branding?.mediaType || null,

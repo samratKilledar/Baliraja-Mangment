@@ -5,7 +5,6 @@ import api from '../../api/client';
 import VectorIcon from '../../components/VectorIcon';
 import StudentAdmissionForm from '../../components/StudentAdmissionForm';
 import StudentList from '../../components/StudentList';
-import PerformanceGraph from '../../components/PerformanceGraph';
 import NoticeCenter from '../../components/NoticeCenter';
 import AdminManagement from '../../components/AdminManagement';
 import WorkerList from '../../components/WorkerList';
@@ -25,7 +24,6 @@ const baseMenus = [
   { key: 'teacher-form', label: 'Add Teacher', icon: 'users', path: '/super-admin/teacher-form' },
   { key: 'teachers-list', label: 'Teacher List', icon: 'users', path: '/super-admin/teachers-list' },
   { key: 'lectures', label: 'Lectures Logged', icon: 'calendar', path: '/super-admin/lectures' },
-  { key: 'performance', label: 'Performance Graph', icon: 'chart', path: '/super-admin/performance' },
   { key: 'fees', label: 'Finance Monitor', icon: 'money', path: '/super-admin/fees' },
   { key: 'notice', label: 'Notice Publisher', icon: 'bell', path: '/super-admin/notice' },
   { key: 'splash', label: 'App Splash', icon: 'spark', path: '/super-admin/splash' },
@@ -54,7 +52,6 @@ export default function SuperAdminDashboard() {
   const menuItems = useMemo(() => [...baseMenus, ...extraMenus], [extraMenus]);
   const routeModule = useMemo(() => {
     if (location.pathname.startsWith('/super-admin/students-list')) return 'students-list';
-    if (location.pathname.startsWith('/super-admin/performance')) return 'performance';
     if (location.pathname.startsWith('/super-admin/student-form')) return 'student-form';
     if (location.pathname.startsWith('/super-admin/teacher-form')) return 'teacher-form';
     if (location.pathname.startsWith('/super-admin/teachers-list')) return 'teachers-list';
@@ -216,17 +213,6 @@ if (currentModule === 'admins') {
         </article>
       );
     }
-    if (currentModule === 'performance') {
-      return (
-        <article className="panel">
-          <div className="panel-head">
-            <h3>Parent Visit Performance Graph</h3>
-            <VectorIcon name="chart" size={18} />
-          </div>
-          <PerformanceGraph viewerRole="super-admin" />
-        </article>
-      );
-    }
     if (currentModule === 'fees') {
       return (
         <article className="panel">
@@ -360,7 +346,7 @@ if (currentModule === 'admins') {
           <article className="stat-card super-stat">
             <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
             <p>Total Users</p>
-            <h3>{summary.studentCount + summary.teacherCount + summary.workerCount}</h3>
+            <h3>{summary.totalUsers || 0}</h3>
           </article>
           <article className="stat-card super-stat">
             <div className="stat-icon"><VectorIcon name="users" size={18} /></div>

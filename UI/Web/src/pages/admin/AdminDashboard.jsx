@@ -1,10 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import VectorIcon from '../../components/VectorIcon';
 import StudentAdmissionForm from '../../components/StudentAdmissionForm';
 import StudentList from '../../components/StudentList';
-import PerformanceGraph from '../../components/PerformanceGraph';
 import TeacherForm from '../../components/TeacherForm';
 import TeacherList from '../../components/TeacherList';
 import NoticeCenter from '../../components/NoticeCenter';
@@ -14,12 +13,12 @@ import LeaveCenter from '../../components/LeaveCenter';
 import LectureList from '../../components/LectureList';
 import CheckinConfigCard from '../../components/CheckinConfigCard';
 import SplashManager from '../../components/SplashManager';
+import api from '../../api/client';
 
 const navItems = [
   { key: 'overview', label: 'Overview', icon: 'chart', path: '/admin' },
   { key: 'students', label: 'Student Form', icon: 'users', path: '/admin/students' },
   { key: 'students-list', label: 'Student List', icon: 'users', path: '/admin/students-list' },
-  { key: 'performance', label: 'Performance', icon: 'chart', path: '/admin/performance' },
   { key: 'teachers', label: 'Add Teacher', icon: 'spark', path: '/admin/teachers' },
   { key: 'teachers-list', label: 'Teacher List', icon: 'users', path: '/admin/teachers-list' },
   { key: 'notices', label: 'Notices', icon: 'bell', path: '/admin/notices' },
@@ -28,13 +27,6 @@ const navItems = [
   { key: 'complaints', label: 'Complaints', icon: 'alert-circle', path: '/admin/complaints' },
   { key: 'leaves', label: 'Leaves', icon: 'calendar', path: '/admin/leaves' },
   { key: 'splash', label: 'App Splash', icon: 'spark', path: '/admin/splash' }
-];
-
-const stats = [
-  { label: 'Admissions Today', value: '18', icon: 'users' },
-  { label: 'Fee Collections', value: '₹1.2L', icon: 'money' },
-  { label: 'Classes Running', value: '26', icon: 'calendar' },
-  { label: 'Pending Alerts', value: '07', icon: 'bell' }
 ];
 
 const tasks = [
@@ -48,10 +40,32 @@ export default function AdminDashboard() {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [summary, setSummary] = useState({
+    totalUsers: 0,
+    studentCount: 0,
+    teacherCount: 0,
+    workerCount: 0,
+    fees: { totalExpected: 0, totalCollected: 0, totalDue: 0 },
+    revenueLocked: true,
+    revenue: 0,
+    admissions: { month: [], week: [], day: [] }
+  });
+
+  useEffect(() => {
+    loadSummary();
+  }, []);
+
+  async function loadSummary() {
+    try {
+      const { data } = await api.get('/dashboard/super-admin');
+      setSummary(data);
+    } catch (err) {
+      console.error('Admin summary load failed', err);
+    }
+  }
 
   const routeKey = useMemo(() => {
     if (location.pathname.startsWith('/admin/students-list')) return 'students-list';
-    if (location.pathname.startsWith('/admin/performance')) return 'performance';
     if (location.pathname.startsWith('/admin/teachers')) return 'teachers';
     if (location.pathname.startsWith('/admin/notices')) return 'notices';
     if (location.pathname.startsWith('/admin/students')) return 'students';
@@ -84,17 +98,6 @@ export default function AdminDashboard() {
             <VectorIcon name="users" size={18} />
           </div>
           <StudentList />
-        </article>
-      );
-    }
-    if (routeKey === 'performance') {
-      return (
-        <article className="panel">
-          <div className="panel-head">
-            <h3>Parent Visit Performance Graph</h3>
-            <VectorIcon name="chart" size={18} />
-          </div>
-          <PerformanceGraph viewerRole="admin" />
         </article>
       );
     }
@@ -186,13 +189,26 @@ export default function AdminDashboard() {
     return (
       <>
         <section className="stats-grid fade-up delay-1">
-          {stats.map((item) => (
-            <article key={item.label} className="stat-card">
-              <div className="stat-icon"><VectorIcon name={item.icon} size={18} /></div>
-              <p>{item.label}</p>
-              <h3>{item.value}</h3>
-            </article>
-          ))}
+          <article className="stat-card">
+            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+            <p>Total Users</p>
+            <h3>{summary.totalUsers}</h3>
+          </article>
+          <article className="stat-card">
+            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+            <p>Students</p>
+            <h3>{summary.studentCount}</h3>
+          </article>
+          <article className="stat-card">
+            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+            <p>Teachers</p>
+            <h3>{summary.teacherCount}</h3>
+          </article>
+          <article className="stat-card">
+            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+            <p>Workers</p>
+            <h3>{summary.workerCount}</h3>
+          </article>
         </section>
         <section className="dash-grid fade-up delay-2">
           <article className="panel">
@@ -212,7 +228,6 @@ export default function AdminDashboard() {
             <div className="action-grid">
               <button onClick={() => navigate('/admin/students')}>New Admission Form</button>
               <button onClick={() => navigate('/admin/students-list')}>Student List</button>
-              <button onClick={() => navigate('/admin/performance')}>Performance Graph</button>
               <button onClick={() => navigate('/admin/teachers')}>Add Teacher</button>
               <button onClick={() => navigate('/admin/notices')}>Issue Notice</button>
               <button onClick={() => navigate('/admin/attendance')}>Attendance Audit</button>

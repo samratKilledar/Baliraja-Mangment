@@ -1,5 +1,4 @@
 import NoticeStrip from '../../components/NoticeStrip';
-import PerformanceGraph from '../../components/PerformanceGraph';
 
 export default function StudentDashboard() {
   return (
@@ -12,10 +11,6 @@ export default function StudentDashboard() {
         </div>
       </header>
       <NoticeStrip />
-      <div className="panel">
-        <h3>My Performance Graph</h3>
-        <PerformanceGraph viewerRole="student" allowedStudentIds={["S-101"]} />
-      </div>
     </div>
   );
 }

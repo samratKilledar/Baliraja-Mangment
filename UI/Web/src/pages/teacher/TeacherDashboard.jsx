@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import VectorIcon from '../../components/VectorIcon';
 import NoticeStrip from '../../components/NoticeStrip';
-import PerformanceGraph from '../../components/PerformanceGraph';
 import LectureList from '../../components/LectureList';
 
 const subjects = ['Aptitude', 'Logical Reasoning', 'Communication', 'Technical Interview'];
@@ -83,14 +82,6 @@ export default function TeacherDashboard() {
             </tbody>
           </table>
         </div>
-      </section>
-
-      <section className="panel fade-up delay-3">
-        <div className="panel-head">
-          <h3>My Students — Monthly Performance</h3>
-          <VectorIcon name="chart" size={18} />
-        </div>
-        <PerformanceGraph viewerRole="teacher" teacherId="T-10" />
       </section>
 
       <section className="panel fade-up delay-4">

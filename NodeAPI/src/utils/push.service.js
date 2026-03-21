@@ -9,8 +9,14 @@ async function sendPush(tokens, title, body, data = {}) {
   }
 
   const payload = {
+    priority: 'high',
     registration_ids: tokens,
-    notification: { title, body },
+    notification: {
+      title,
+      body,
+      sound: 'default',
+      android_channel_id: 'default-notifications'
+    },
     data
   };
 
@@ -23,7 +29,22 @@ async function sendPush(tokens, title, body, data = {}) {
     body: JSON.stringify(payload)
   });
 
-  const json = await res.json();
+  let json;
+  try {
+    json = await res.json();
+  } catch (err) {
+    console.error('FCM parse error', err);
+    return { error: 'parse_error' };
+  }
+
+  if (!res.ok || json.failure || json.error) {
+    console.error('FCM send error', {
+      status: res.status,
+      statusText: res.statusText,
+      response: json
+    });
+  }
+
   return json;
 }
 

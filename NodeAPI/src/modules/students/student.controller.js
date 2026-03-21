@@ -9,6 +9,12 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 
+const DEVANAGARI_FONT_CANDIDATES = [
+  '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
+  '/System/Library/Fonts/Supplemental/NISC18030.ttf',
+  '/System/Library/Fonts/Supplemental/Arial.ttf'
+];
+
 function shapeStudentDetails(raw = {}) {
   const personal = {
     middleName: raw.middleName,
@@ -87,6 +93,55 @@ function formatAdmissionNo(fullName = 'STUDENT', admissionDate) {
   const dd = String(d.getDate()).padStart(2, '0');
   const rand = String(Math.floor(1000 + Math.random() * 9000));
   return `${first}${yyyy}${mm}${dd}-${rand}`;
+}
+
+function formatDate(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-IN');
+}
+
+function formatDateTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('en-IN');
+}
+
+function formatCurrency(value) {
+  return `Rs. ${Number(value || 0).toLocaleString('en-IN')}`;
+}
+
+function calculateFeeDays(from, to) {
+  if (!from || !to) return '—';
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+  if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime()) || toDate < fromDate) return '—';
+  return String(Math.floor((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+}
+
+function resolveMarathiFont() {
+  return DEVANAGARI_FONT_CANDIDATES.find((fontPath) => fs.existsSync(fontPath)) || null;
+}
+
+function pdfValue(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  return String(value);
+}
+
+function initPdfFont(doc) {
+  const fontPath = resolveMarathiFont();
+  if (!fontPath) return null;
+
+  try {
+    doc.registerFont('pdf-body', fontPath);
+    doc.font('pdf-body');
+    return 'pdf-body';
+  } catch (err) {
+    console.warn(`Unable to load PDF font from ${fontPath}: ${err.message}`);
+    return null;
+  }
 }
 
 async function createStudent(req, res, next) {
@@ -300,23 +355,143 @@ async function exportStudentPdf(req, res, next) {
     if (!student) return res.status(404).json({ message: 'Student not found' });
     const fee = await Fee.findOne({ studentId }).lean();
 
-    const doc = new PDFDocument({ margin: 40, size: 'A4' });
+    const doc = new PDFDocument({ margin: 26, size: 'A4' });
+    const pdfFontName = initPdfFont(doc);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=student-${student.enrollmentNo}.pdf`);
+    res.setHeader('Content-Disposition', `inline; filename=student-${student.enrollmentNo}.pdf`);
     doc.pipe(res);
 
-    // Header bar
-    doc
-      .rect(doc.page.margins.left, doc.y, doc.page.width - doc.page.margins.left - doc.page.margins.right, 70)
-      .fill('#f3f6ff');
-    doc.fillColor('#1f2f75').fontSize(22).text('Baliraja Academy', doc.page.margins.left + 12, doc.y + 12);
-    doc.fillColor('#4b5774').fontSize(13).text('प्रवेश पुष्टीपत्र (Admission Confirmation)', {
-      align: 'left',
-      continued: false
-    });
-    doc.moveDown(1.2);
+    const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const leftX = doc.page.margins.left;
+    const rightX = doc.page.width - doc.page.margins.right;
+    const details = student.details || {};
+    const personal = details.personal || details;
+    const education = details.education || details.educ || details;
+    const physical = details.physical || details;
+    const parent = details.parent || details;
+    const address = details.address || details;
+    const total = fee?.totalAmount || 0;
+    const paid = fee?.paidAmount || 0;
+    const due = fee?.dueAmount || Math.max(total - paid, 0);
+    const feeDays = calculateFeeDays(fee?.feeStartDate || fee?.feeFrom, fee?.feeEndDate || fee?.feeTo);
 
-    // Student photo (top-right) if available
+    function setFont(size = 9, color = '#15213d') {
+      if (pdfFontName) {
+        doc.font(pdfFontName);
+      }
+      doc.fontSize(size).fillColor(color);
+      return doc;
+    }
+
+    function ensureSpace(requiredHeight = 22) {
+      if (doc.y + requiredHeight > doc.page.height - doc.page.margins.bottom - 10) {
+        doc.addPage();
+        if (pdfFontName) doc.font(pdfFontName);
+      }
+    }
+
+    function drawSectionTitle(titleMarathi, titleEnglish) {
+      ensureSpace(20);
+      setFont(10.5, '#1f2f75').text(`${titleMarathi} / ${titleEnglish}`, leftX, doc.y);
+      doc
+        .moveTo(leftX, doc.y + 1)
+        .lineTo(rightX, doc.y + 1)
+        .strokeColor('#d6dce8')
+        .lineWidth(0.8)
+        .stroke();
+      doc.moveDown(0.2);
+    }
+
+    function drawInfoTable(rows) {
+      const cellGap = 4;
+      const basePadding = 5;
+      const twoColWidth = (pageWidth - cellGap) / 2;
+      rows.forEach((cells) => {
+        const normalized = cells.length === 1
+          ? [{ ...cells[0], width: pageWidth }]
+          : cells.map((cell) => ({ ...cell, width: cell.width || twoColWidth }));
+        const heights = normalized.map((cell) => {
+          const textWidth = cell.width - 18;
+          const labelHeight = doc.heightOfString(pdfValue(cell.label), { width: textWidth, align: 'left' });
+          const valueHeight = doc.heightOfString(pdfValue(cell.value), { width: textWidth, align: 'left' });
+          return labelHeight + valueHeight + basePadding * 2 + 4;
+        });
+        const rowHeight = Math.max(...heights, 24);
+        ensureSpace(rowHeight + 2);
+        const y = doc.y;
+        let currentX = leftX;
+
+        normalized.forEach((cell, index) => {
+          const x = currentX;
+          doc
+            .rect(x, y, cell.width, rowHeight)
+            .fillAndStroke('#ffffff', '#d6dce8');
+          setFont(7.2, '#4b5774').text(pdfValue(cell.label), x + 5, y + 4, { width: cell.width - 10 });
+          const labelBottom = doc.y;
+          setFont(8.2, '#15213d').text(pdfValue(cell.value), x + 5, labelBottom + 2, {
+            width: cell.width - 10,
+            align: 'left'
+          });
+          currentX += cell.width + (index < normalized.length - 1 ? cellGap : 0);
+        });
+
+        doc.y = y + rowHeight + 2;
+      });
+    }
+
+    function drawPaymentTable(transactions = []) {
+      drawSectionTitle('शुल्क भरणा तपशील', 'Fee Payment Details');
+      const cols = [58, 72, 62, 88, pageWidth - (58 + 72 + 62 + 88)];
+      const headers = ['दिनांक', 'रक्कम', 'पद्धत', 'संदर्भ', 'टीप'];
+
+      const drawPaymentRow = (cells, header = false) => {
+        const rowPadding = header ? 5 : 4;
+        const heights = cells.map((cell, index) =>
+          doc.heightOfString(pdfValue(cell), { width: cols[index] - 8 })
+        );
+        const rowHeight = Math.max(...heights) + rowPadding * 2;
+        ensureSpace(rowHeight + 2);
+        let x = leftX;
+        const y = doc.y;
+
+        cells.forEach((cell, index) => {
+          doc
+            .rect(x, y, cols[index], rowHeight)
+            .fillAndStroke(header ? '#eef3ff' : '#ffffff', '#d6dce8');
+          setFont(header ? 7.2 : 7.8, header ? '#1f2f75' : '#15213d').text(pdfValue(cell), x + 4, y + rowPadding, {
+            width: cols[index] - 8,
+            align: index === 1 ? 'right' : 'left'
+          });
+          x += cols[index];
+        });
+
+        doc.y = y + rowHeight + 2;
+      };
+
+      drawPaymentRow(headers, true);
+
+      if (!transactions.length) {
+        drawPaymentRow(['—', '—', '—', '—', 'शुल्क भरणा नोंद उपलब्ध नाही'], false);
+        return;
+      }
+
+      transactions.forEach((entry) => {
+        drawPaymentRow([
+          formatDate(entry.paidOn),
+          formatCurrency(entry.amount),
+          entry.mode || '—',
+          entry.transactionRef || '—',
+          entry.note || '—'
+        ]);
+      });
+    }
+
+    doc
+      .rect(leftX, doc.y, pageWidth, 56)
+      .fill('#f3f6ff');
+    setFont(16, '#1f2f75').text('Baliraja Academy', leftX + 10, doc.y + 8);
+    setFont(10.5, '#1f2f75').text('विद्यार्थी माहिती अहवाल / Student Information Report', leftX + 10, doc.y + 28);
+
     const photoCandidate = student.details?.photoPath || student.details?.photo || student.details?.photoUrl;
     if (photoCandidate) {
       const localPath = photoCandidate.startsWith('http')
@@ -325,231 +500,153 @@ async function exportStudentPdf(req, res, next) {
           ? photoCandidate
           : path.join(process.cwd(), photoCandidate);
       if (localPath && fs.existsSync(localPath)) {
-        doc.image(localPath, doc.page.width - doc.page.margins.right - 90, doc.page.margins.top + 6, {
-          fit: [80, 80],
+        doc.image(localPath, doc.page.width - doc.page.margins.right - 54, doc.page.margins.top + 5, {
+          fit: [46, 46],
           valign: 'top',
           align: 'right'
         });
       }
     }
-    doc.fillColor('#4a4a4a').fontSize(11).text(`निर्मित दिनांक / Generated: ${new Date().toLocaleString()}`, { align: 'left' });
-    doc.moveDown();
+    doc.moveDown(1.1);
+    setFont(7.6, '#4a4a4a').text(`तयार दिनांक / Generated On: ${formatDateTime(new Date())}`, { align: 'left' });
+    setFont(7.6, '#4a4a4a').text(`प्रवेश क्रमांक / Enrollment No: ${student.enrollmentNo || '—'}`, { align: 'left' });
+    doc.moveDown(0.15);
     doc
-      .moveTo(doc.page.margins.left, doc.y)
-      .lineTo(doc.page.width - doc.page.margins.right, doc.y)
+      .moveTo(leftX, doc.y)
+      .lineTo(rightX, doc.y)
       .strokeColor('#d6dce8')
-      .lineWidth(1)
+      .lineWidth(0.8)
       .stroke();
-    doc.moveDown(0.5);
+    doc.moveDown(0.2);
 
-    const leftX = doc.page.margins.left;
-    const midX = doc.page.width / 2;
-    const rowGap = 6;
-    const rowHeight = 22;
-    const sectionWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-
-    const tableRow = (y, cells) => {
-      const colWidth = sectionWidth / cells.length;
-      cells.forEach((cell, i) => {
-        const x = leftX + i * colWidth;
-        doc
-          .rect(x, y, colWidth, rowHeight)
-          .strokeColor('#d6dce8')
-          .lineWidth(0.7)
-          .stroke();
-        doc
-          .fillColor('#15213d')
-          .fontSize(10)
-          .text(cell.label, x + 6, y + 4, { width: colWidth - 12, continued: false });
-        doc
-          .fillColor('#4b5774')
-          .fontSize(10)
-          .text(cell.value || '—', x + 6, doc.y + 1, { width: colWidth - 12 });
-      });
-      return y + rowHeight;
-    };
-
-    const sectionTitle = (title) => {
-      doc.moveDown(0.6);
-      doc.fillColor('#1f2f75').fontSize(14).text(title, leftX, doc.y);
-      doc
-        .moveTo(leftX, doc.y + 2)
-        .lineTo(doc.page.width - doc.page.margins.right, doc.y + 2)
-        .strokeColor('#d6dce8')
-        .lineWidth(1)
-        .stroke();
-      doc.moveDown(0.4);
-    };
-
-    // Admission confirmation block (2 columns)
-    sectionTitle('प्रवेश तपशील / Admission Details');
-    let yCursor = doc.y;
-    const admissionRows = [
+    drawSectionTitle('प्रवेश तपशील', 'Admission Details');
+    drawInfoTable([
       [
-        { label: 'विद्यार्थी नाव / Name', value: student.userId?.fullName },
-        { label: 'नोंदणी क्र. / Enrollment No', value: student.enrollmentNo }
+        { label: 'विद्यार्थी नाव / Student Name', value: student.userId?.fullName || '—' },
+        { label: 'प्रवेश दिनांक / Admission Date', value: formatDate(student.admissionDate) }
       ],
       [
-        { label: 'जन्मतारीख / DOB', value: student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : '—' },
-        { label: 'लिंग / Gender', value: student.gender || '—' }
+        { label: 'जन्मतारीख / Date of Birth', value: formatDate(student.dateOfBirth) },
+        { label: 'लिंग / Gender', value: personal.gender || student.gender || '—' }
       ],
       [
-        { label: 'प्रवेश दिनांक / Admission Date', value: student.admissionDate ? new Date(student.admissionDate).toLocaleDateString() : '—' },
+        { label: 'रक्तगट / Blood Group', value: personal.bloodGroup || '—' },
+        { label: 'आधार क्रमांक / Aadhaar No', value: personal.aadhaarNo || '—' }
+      ],
+      [
+        { label: 'ईमेल / Email', value: student.userId?.email || '—' },
+        { label: 'मोबाईल / Mobile No', value: student.userId?.phone || '—' }
+      ],
+      [
+        { label: 'वर्ष / बॅच / Year / Batch', value: student.batchId?.batchName || '—' },
         { label: 'स्थिती / Status', value: student.status || '—' }
-      ],
-      [
-        { label: 'ईमेल / Email', value: student.userId?.email },
-        { label: 'मोबाईल / Phone', value: student.userId?.phone }
-      ],
-      [
-        { label: 'बॅच / Batch', value: student.batchId?.batchName || '—' },
-        { label: 'पत्ता / Address', value: student.address || '—' }
       ]
-    ];
-    admissionRows.forEach((r) => {
-      yCursor = tableRow(yCursor, r);
-    });
+    ]);
 
-    // Parent / Guardian
-    sectionTitle('पालक माहिती / Parent & Guardian');
-    const d = student.details || {};
-    const parent = d.parent || d;
-    const parentRows = [
+    drawSectionTitle('पत्ता माहिती', 'Address Details');
+    drawInfoTable([
       [
-        { label: 'वडील नाव / Father', value: d.fatherName || '—' },
-        { label: 'मोबाईल', value: d.fatherMobile || '—' }
+        { label: 'पत्ता ओळ 1 / Address Line 1', value: address.addressLine1 || student.address || '—' },
+        { label: 'पत्ता ओळ 2 / Address Line 2', value: address.addressLine2 || '—' }
       ],
       [
-        { label: 'आई नाव / Mother', value: d.motherName || '—' },
-        { label: 'मोबाईल', value: d.motherMobile || '—' }
+        { label: 'गाव / शहर / City / Village', value: address.city || '—' },
+        { label: 'जिल्हा / District', value: address.district || '—' }
       ],
       [
-        { label: 'पालक / Guardian', value: parent.guardianName || d.guardianName || '—' },
-        { label: 'नाते / Relation', value: parent.guardianRelation || d.guardianRelation || '—' }
+        { label: 'राज्य / State', value: address.state || '—' },
+        { label: 'पिनकोड / PIN Code', value: address.pinCode || '—' }
       ]
-    ];
-    parentRows.forEach((r) => {
-      yCursor = tableRow(yCursor, r);
-    });
+    ]);
 
-    // Education
-    sectionTitle('शैक्षणिक माहिती / Education');
-    const edu = d.education || d.educ || d;
-    const eduRows = [
+    drawSectionTitle('पालक माहिती', 'Parent / Guardian Details');
+    drawInfoTable([
       [
-        { label: 'मागील शाळा / Previous School', value: edu.previousSchool || '—' },
-        { label: 'सध्याचा वर्ग / Current Class', value: edu.currentClass || '—' }
+        { label: 'वडिलांचे नाव / Father Name', value: parent.fatherName || details.fatherName || '—' },
+        { label: 'वडिलांचा व्यवसाय / Father Job', value: parent.fatherJob || details.fatherJob || '—' }
       ],
       [
-        { label: 'माध्यम / Medium', value: edu.medium || '—' },
-        { label: 'Board', value: edu.board || '—' }
+        { label: 'वडिलांचा मोबाईल / Father Mobile', value: parent.fatherMobile || details.fatherMobile || '—' },
+        { label: 'आईचे नाव / Mother Name', value: parent.motherName || details.motherName || '—' }
       ],
       [
-        { label: 'Passing Year', value: edu.passingYear || '—' },
-        { label: 'टक्केवारी / Percentage', value: edu.percentage || '—' }
+        { label: 'आईचा व्यवसाय / Mother Job', value: parent.motherJob || details.motherJob || '—' },
+        { label: 'आईचा मोबाईल / Mother Mobile', value: parent.motherMobile || details.motherMobile || '—' }
+      ],
+      [
+        { label: 'पालक / Guardian Name', value: parent.guardianName || details.guardianName || '—' },
+        { label: 'नाते / Relation', value: parent.guardianRelation || details.guardianRelation || '—' }
+      ],
+      [
+        { label: 'पालक मोबाईल / Guardian Mobile', value: parent.guardianMobile || details.guardianMobile || '—' },
+        { label: 'आपत्कालीन संपर्क / Emergency Contact', value: student.emergencyContact || '—' }
       ]
-    ];
-    eduRows.forEach((r) => {
-      yCursor = tableRow(yCursor, r);
-    });
+    ]);
 
-    // Fees block with status
-    sectionTitle('शुल्क सारांश / Fee Summary');
-    const total = fee?.totalAmount || 0;
-    const paid = fee?.paidAmount || 0;
-    const due = fee?.dueAmount || Math.max(total - paid, 0);
-    const feeRows = [
+    drawSectionTitle('शैक्षणिक माहिती', 'Education Details');
+    drawInfoTable([
       [
-        { label: 'एकूण शुल्क (₹)', value: total },
-        { label: 'भरलेले (₹)', value: paid }
+        { label: 'मागील शाळा / Previous School', value: education.previousSchool || '—' },
+        { label: 'सध्याचा वर्ग / Current Class', value: education.currentClass || '—' }
       ],
       [
-        { label: 'बाकी (₹)', value: due },
-        { label: 'स्थिती', value: due > 0 ? 'Pending' : 'Paid' }
+        { label: 'माध्यम / Medium', value: education.medium || '—' },
+        { label: 'बोर्ड / Board', value: education.board || '—' }
       ],
       [
-        {
-          label: 'शुल्क कालावधी',
-          value: `${fee?.feeStartDate ? new Date(fee.feeStartDate).toLocaleDateString() : '—'} ते ${fee?.feeEndDate ? new Date(fee.feeEndDate).toLocaleDateString() : '—'}`
-        },
-        { label: 'शेवटचा अपडेट', value: fee?.updatedAt ? new Date(fee.updatedAt).toLocaleString() : '—' }
+        { label: 'उत्तीर्ण वर्ष / Passing Year', value: education.passingYear || '—' },
+        { label: 'टक्केवारी / Percentage', value: education.percentage || '—' }
       ]
-    ];
-    feeRows.forEach((r) => {
-      yCursor = tableRow(yCursor, r);
+    ]);
+
+    drawSectionTitle('शारीरिक व वैद्यकीय माहिती', 'Physical / Medical Details');
+    drawInfoTable([
+      [
+        { label: 'उंची / Height', value: physical.height ? `${physical.height} cm` : '—' },
+        { label: 'वजन / Weight', value: physical.weight ? `${physical.weight} kg` : '—' }
+      ],
+      [
+        { label: 'दृष्टी / Vision', value: physical.vision || '—' },
+        { label: 'अपंगत्व / Disability', value: physical.disability || '—' }
+      ],
+      [
+        { label: 'अॅलर्जी / Allergy / Notes', value: physical.allergy || '—', width: pageWidth }
+      ]
+    ]);
+
+    drawSectionTitle('शुल्क तपशील', 'Fee Details');
+    drawInfoTable([
+      [
+        { label: 'एकूण शुल्क / Total Fees', value: formatCurrency(total) },
+        { label: 'भरलेले शुल्क / Paid Fees', value: formatCurrency(paid) }
+      ],
+      [
+        { label: 'शिल्लक शुल्क / Remaining Fees', value: formatCurrency(due) },
+        { label: 'स्थिती / Payment Status', value: due > 0 ? 'बाकी / Pending' : 'पूर्ण / Paid' }
+      ],
+      [
+        { label: 'शुल्क सुरु दिनांक / Fee From Date', value: formatDate(fee?.feeStartDate || fee?.feeFrom) },
+        { label: 'शुल्क समाप्त दिनांक / Fee To Date', value: formatDate(fee?.feeEndDate || fee?.feeTo) }
+      ],
+      [
+        { label: 'एकूण दिवस / Total Days', value: feeDays },
+        { label: 'देय दिनांक / Due Date', value: formatDate(fee?.dueDate) }
+      ],
+      [
+        { label: 'शेवटचा अपडेट / Last Updated', value: formatDateTime(fee?.updatedAt), width: pageWidth }
+      ]
+    ]);
+
+    drawPaymentTable(fee?.transactions || []);
+
+    ensureSpace(46);
+    doc.moveDown(0.6);
+    setFont(7.2, '#4b5774').text('ही प्रत सॉफ्ट कॉपी स्वरूपात तयार करण्यात आली आहे. / This document is a soft copy generated by the system.', leftX, doc.y, {
+      width: pageWidth
     });
-
-    // Profile section
-    doc.fillColor('#000').fontSize(14).text('Profile', { underline: true });
-    doc.moveDown(0.3).fontSize(12);
-    doc.text(`Name: ${student.userId?.fullName || ''}`);
-    doc.text(`Enrollment No: ${student.enrollmentNo}`);
-    doc.text(`Email: ${student.userId?.email || ''}`);
-    doc.text(`Phone: ${student.userId?.phone || ''}`);
-    doc.text(`Status: ${student.status}`);
-    if (student.batchId) doc.text(`Batch: ${student.batchId.batchName}`);
-    if (student.admissionDate) doc.text(`Admission Date: ${new Date(student.admissionDate).toLocaleDateString()}`);
-    if (student.dateOfBirth) doc.text(`DOB: ${new Date(student.dateOfBirth).toLocaleDateString()}`);
-    if (student.gender) doc.text(`Gender: ${student.gender}`);
-    if (student.address) doc.text(`Address: ${student.address}`);
-    doc.moveDown();
-
-    // Parent / Guardian
-    doc.fontSize(14).text('Parent & Guardian', { underline: true }).moveDown(0.3).fontSize(12);
-    const detailsEn = student.details || {};
-    const parentEn = detailsEn.parent || detailsEn;
-    doc.text(`Father: ${detailsEn.fatherName || '—'} (${detailsEn.fatherMobile || '—'})`);
-    doc.text(`Mother: ${detailsEn.motherName || '—'} (${detailsEn.motherMobile || '—'})`);
-    doc.text(`Guardian: ${parentEn.guardianName || detailsEn.guardianName || '—'} (${parentEn.guardianMobile || detailsEn.guardianMobile || '—'})`);
-    if (parentEn.guardianRelation || detailsEn.guardianRelation) doc.text(`Relation: ${parentEn.guardianRelation || detailsEn.guardianRelation}`);
-    doc.moveDown();
-
-    // Education
-    const eduEn = detailsEn.education || detailsEn.educ || detailsEn;
-    doc.fontSize(14).text('Education', { underline: true }).moveDown(0.3).fontSize(12);
-    doc.text(`Previous School: ${eduEn.previousSchool || '—'}`);
-    doc.text(`Current Class: ${eduEn.currentClass || '—'}`);
-    doc.text(`Board: ${eduEn.board || '—'} | Medium: ${eduEn.medium || '—'}`);
-    doc.text(`Passing Year: ${eduEn.passingYear || '—'} | Percentage: ${eduEn.percentage || '—'}`);
-    doc.moveDown();
-
-    // Physical
-    const physEn = detailsEn.physical || detailsEn;
-    doc.fontSize(14).text('Physical / Medical', { underline: true }).moveDown(0.3).fontSize(12);
-    doc.text(`Height: ${physEn.height || '—'} cm | Weight: ${physEn.weight || '—'} kg`);
-    doc.text(`Vision: ${physEn.vision || '—'} | Disability: ${physEn.disability || '—'}`);
-    doc.text(`Allergy / Notes: ${physEn.allergy || '—'}`);
-    doc.moveDown();
-
-    // Fees
-    doc.fontSize(14).text('Fees', { underline: true }).moveDown(0.3).fontSize(12);
-    if (fee) {
-      doc.text(`Total: ₹${fee.totalAmount || 0}`);
-      doc.text(`Paid: ₹${fee.paidAmount || 0}`);
-      doc.text(`Remaining: ₹${fee.dueAmount || 0}`);
-      if (fee.feeStartDate || fee.feeEndDate) {
-        doc.text(`Period: ${fee.feeStartDate ? new Date(fee.feeStartDate).toLocaleDateString() : '—'} to ${fee.feeEndDate ? new Date(fee.feeEndDate).toLocaleDateString() : '—'}`);
-      }
-      if (fee.dueDate) doc.text(`Due Date: ${new Date(fee.dueDate).toLocaleDateString()}`);
-      doc.moveDown(0.5);
-      doc.text('Payments:', { continued: false });
-      if (fee.transactions?.length) {
-        fee.transactions.forEach((p, idx) => {
-          doc.text(
-            `${idx + 1}. ${new Date(p.paidOn).toLocaleDateString()} - ₹${p.amount} via ${p.mode}${p.transactionRef ? ` (Ref: ${p.transactionRef})` : ''}${p.note ? ` | ${p.note}` : ''}`
-          );
-        });
-      } else {
-        doc.text('No payments recorded.');
-      }
-    } else {
-      doc.text('No fee record.');
-    }
-
-    // signature footer
-    doc.moveDown(3);
-    doc.text('__________________________', { align: 'right' });
-    doc.text('स्वाक्षरी / Signature', { align: 'right' });
+    doc.moveDown(0.9);
+    setFont(8, '#15213d').text('______________________', rightX - 130, doc.y, { width: 130, align: 'center' });
+    setFont(8, '#15213d').text('प्रशासक स्वाक्षरी / Admin Signature', rightX - 130, doc.y + 2, { width: 130, align: 'center' });
 
     doc.end();
   } catch (err) {

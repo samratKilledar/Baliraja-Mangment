@@ -2,6 +2,7 @@ const Student = require('../students/student.model');
 const Teacher = require('../teachers/teacher.model');
 const Worker = require('../workers/worker.model');
 const Fee = require('../fees/fee.model');
+const User = require('../users/user.model');
 
 async function superAdminDashboard(req, res, next) {
   try {
@@ -13,7 +14,8 @@ async function superAdminDashboard(req, res, next) {
     const twoWeeksAgo = new Date(now);
     twoWeeksAgo.setDate(now.getDate() - 13);
 
-    const [studentCount, teacherCount, workerCount, feeSummary, monthAdmissions, weekAdmissions, dayAdmissions] = await Promise.all([
+    const [totalUsers, studentCount, teacherCount, workerCount, feeSummary, monthAdmissions, weekAdmissions, dayAdmissions] = await Promise.all([
+      User.countDocuments(),
       Student.countDocuments(),
       Teacher.countDocuments(),
       Worker.countDocuments(),
@@ -74,9 +76,11 @@ async function superAdminDashboard(req, res, next) {
     }));
 
     const revenuePass = req.query.revenuePass || req.headers['x-revenue-pass'];
-    const revenueAllowed = process.env.REVENUE_PASS ? revenuePass === process.env.REVENUE_PASS : true;
+    const canViewRevenue = req.user?.role === 'super_admin';
+    const revenueAllowed = canViewRevenue && (process.env.REVENUE_PASS ? revenuePass === process.env.REVENUE_PASS : true);
 
     res.json({
+      totalUsers,
       studentCount,
       teacherCount,
       workerCount,

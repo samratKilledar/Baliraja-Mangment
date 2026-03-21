@@ -71,8 +71,20 @@ async function updateFeeRecord(req, res, next) {
     if (!fee) return res.status(404).json({ message: 'Fee record not found' });
 
     const isSuperAdmin = req.user?.role === ROLES.SUPER_ADMIN;
-    if (!isSuperAdmin) return res.status(403).json({ message: 'Only super admins can edit fee records' });
+    const isAdmin = req.user?.role === ROLES.ADMIN;
+    if (!isSuperAdmin && !isAdmin) {
+      return res.status(403).json({ message: 'Only admins and super admins can edit fee records' });
+    }
     if (!payload.reason) return res.status(400).json({ message: 'Reason is required for fee updates' });
+
+    if (!isSuperAdmin) {
+      const attemptedRestrictedFields = ['totalAmount', 'paidAmount', 'transactions', 'dueDate'].filter(
+        (field) => payload[field] !== undefined
+      );
+      if (attemptedRestrictedFields.length) {
+        return res.status(403).json({ message: 'Admins can only update Fee Start Date and Fee End Date' });
+      }
+    }
 
     const txPaid = (fee.transactions || []).reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
     const currentPaid = txPaid > 0 ? txPaid : (fee.paidAmount || 0);
@@ -92,11 +104,11 @@ async function updateFeeRecord(req, res, next) {
       }
       fee.totalAmount = payload.totalAmount;
     }
-    if (payload.paidAmount !== undefined) fee.paidAmount = payload.paidAmount;
-    if (payload.dueDate !== undefined) fee.dueDate = payload.dueDate;
+    if (payload.paidAmount !== undefined && isSuperAdmin) fee.paidAmount = payload.paidAmount;
+    if (payload.dueDate !== undefined && isSuperAdmin) fee.dueDate = payload.dueDate;
     if (payload.feeStartDate !== undefined) fee.feeStartDate = payload.feeStartDate;
     if (payload.feeEndDate !== undefined) fee.feeEndDate = payload.feeEndDate;
-    if (payload.transactions?.length) fee.transactions = payload.transactions;
+    if (payload.transactions?.length && isSuperAdmin) fee.transactions = payload.transactions;
 
     fee.dueAmount = Math.max(0, fee.totalAmount - fee.paidAmount);
     fee.paymentStatus = fee.dueAmount === 0 ? 'paid' : fee.paidAmount > 0 ? 'partial' : 'pending';

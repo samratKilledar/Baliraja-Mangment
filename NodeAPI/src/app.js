@@ -22,9 +22,17 @@ const brandingRoutes = require('./modules/branding/branding.routes');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
+app.disable('etag');
+
+function resolveCorsOrigin() {
+  const configured = process.env.CORS_ORIGIN?.trim();
+  if (!configured || configured === '*') return '*';
+  return configured.split(',').map((origin) => origin.trim()).filter(Boolean);
+}
 
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') || '*' }));
+app.use(cors({ origin: resolveCorsOrigin() }));
+app.options('*', cors({ origin: resolveCorsOrigin() }));
 app.use(express.json({ limit: '2mb' }));
 app.use(morgan('dev'));
 app.use('/uploads', express.static('uploads'));

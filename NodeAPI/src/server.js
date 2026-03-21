@@ -7,7 +7,7 @@ const { seedSuperAdmin } = require('./config/seedSuperAdmin');
 const PORT = process.env.PORT || 4000;
 
 function assertEnv() {
-  const required = ['JWT_SECRET', 'MONGODB_URI'];
+  const required = ['JWT_SECRET', 'MONGODB_URI', 'FCM_SERVER_KEY'];
   const missing = required.filter((k) => !process.env[k]);
   if (missing.length) {
     console.error(`Missing env vars: ${missing.join(', ')}`);

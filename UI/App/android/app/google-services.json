@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "306335054545",
+    "project_id": "baliraja-3d44f",
+    "storage_bucket": "baliraja-3d44f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:306335054545:android:5b3d45b5ab4dd0b3a723f0",
+        "android_client_info": {
+          "package_name": "com.imsmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSGbSyLgE8wCEdySAPz_M9JgIVn-Vw6Xs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

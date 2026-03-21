@@ -24,15 +24,6 @@ function StudentsScreen() {
   );
 }
 
-function PerformanceScreen() {
-  return (
-    <Placeholder
-      title="Performance Graph"
-      description="Performance analytics will be added here. Please use the web dashboard meanwhile."
-    />
-  );
-}
-
 function NoticesScreen() {
   return (
     <ScrollView contentContainerStyle={styles.noticeWrap}>
@@ -48,7 +39,6 @@ export default function AdminTabNavigator() {
     <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Analytics" component={AdminHome} />
       <Tab.Screen name="Students" component={StudentsScreen} />
-      <Tab.Screen name="Performance" component={PerformanceScreen} />
       <Tab.Screen name="Notices" component={NoticesScreen} />
     </Tab.Navigator>
   );

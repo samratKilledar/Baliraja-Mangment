@@ -6,6 +6,7 @@ const {
   checkOut,
   requestLeave,
   myAttendance,
+  dailyAttendanceOverview,
   flaggedAbsentees,
   publicCheckIn,
   publicCheckOut,
@@ -55,6 +56,7 @@ router.delete('/leaves/:leaveId', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), del
 router.put('/leave/:leaveId/status', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), updateLeaveStatus);
 router.get('/checkin-config', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), getCheckinConfig);
 router.post('/checkin-config', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), setCheckinConfig);
+router.get('/daily', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), dailyAttendanceOverview);
 router.get('/student/:studentId', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT), attendanceByStudent);
 router.get('/my', myAttendance);
 router.get('/flagged/missing', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), flaggedAbsentees);

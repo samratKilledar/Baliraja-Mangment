@@ -6,6 +6,6 @@ const { ROLES } = require('../../utils/constants');
 const router = express.Router();
 
 router.use(authenticate);
-router.get('/super-admin', authorize(ROLES.SUPER_ADMIN), superAdminDashboard);
+router.get('/super-admin', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), superAdminDashboard);
 
 module.exports = router;

@@ -2,6 +2,7 @@ const Attendance = require('./attendance.model');
 const User = require('../users/user.model');
 const Student = require('../students/student.model');
 const CheckinConfig = require('./checkinConfig.model');
+const Fee = require('../fees/fee.model');
 
 function normalizeDate(dateStr) {
   const d = dateStr ? new Date(dateStr) : new Date();
@@ -76,15 +77,50 @@ function withinTimeWindow(targetHHMM, windowMinutes = 30) {
   const [hh, mm] = targetHHMM.split(':').map((n) => Number(n));
   if (Number.isNaN(hh) || Number.isNaN(mm)) return true;
   const now = new Date();
-  const center = new Date();
-  center.setHours(hh, mm, 0, 0);
-  const diff = Math.abs(now.getTime() - center.getTime()) / 60000;
-  return diff <= windowMinutes;
+  const start = new Date();
+  start.setHours(hh, mm, 0, 0);
+  const end = new Date(start);
+  end.setMinutes(end.getMinutes() + windowMinutes);
+  return now.getTime() >= start.getTime() && now.getTime() <= end.getTime();
+}
+
+function isSameOrAfterDay(left, right) {
+  return left.getTime() >= right.getTime();
+}
+
+function isSameOrBeforeDay(left, right) {
+  return left.getTime() <= right.getTime();
+}
+
+async function ensureStudentActiveForAttendance(studentId, date) {
+  if (!studentId) return { ok: true };
+
+  const student = await Student.findById(studentId).select('admissionDate status');
+  if (!student) return { ok: false, status: 404, message: 'Student profile not found' };
+
+  if (student.status && student.status !== 'active') {
+    return { ok: false, status: 403, message: 'You are not yet active' };
+  }
+
+  const fee = await Fee.findOne({ studentId }).sort({ createdAt: -1 }).select('feeStartDate feeEndDate');
+  const activeFrom = fee?.feeStartDate ? normalizeDate(fee.feeStartDate) : (student.admissionDate ? normalizeDate(student.admissionDate) : null);
+  const activeTo = fee?.feeEndDate ? normalizeDate(fee.feeEndDate) : null;
+
+  if (activeFrom && !isSameOrAfterDay(date, activeFrom)) {
+    return { ok: false, status: 403, message: 'You are not yet active' };
+  }
+
+  if (activeTo && !isSameOrBeforeDay(date, activeTo)) {
+    return { ok: false, status: 403, message: 'Your active period is over' };
+  }
+
+  return { ok: true, student, fee };
 }
 
 async function markAttendance(req, res, next) {
   try {
     const payload = { ...req.body, markedBy: req.user.sub };
+    payload.date = normalizeDate(payload.date);
     const match = payload.studentId
       ? { studentId: payload.studentId, date: payload.date }
       : { userId: payload.userId, date: payload.date };
@@ -96,6 +132,54 @@ async function markAttendance(req, res, next) {
     );
 
     res.status(201).json(record);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function dailyAttendanceOverview(req, res, next) {
+  try {
+    const date = normalizeDate(req.query.date);
+    const students = await Student.find({})
+      .populate('userId', 'fullName phone email')
+      .populate('batchId', 'batchName')
+      .sort({ admissionDate: -1, createdAt: -1 });
+
+    const attendanceRows = await Attendance.find({
+      studentId: { $in: students.map((student) => student._id) },
+      $or: [
+        { date },
+        { status: 'leave', leaveStatus: 'approved', leaveFrom: { $lte: date }, leaveTo: { $gte: date } }
+      ]
+    }).lean();
+
+    const attendanceMap = {};
+    attendanceRows.forEach((row) => {
+      const key = row.studentId?.toString();
+      if (!key) return;
+      const existing = attendanceMap[key];
+      if (!existing) {
+        attendanceMap[key] = row;
+        return;
+      }
+      const existingScore = existing.status === 'leave' ? 1 : 2;
+      const nextScore = row.status === 'leave' ? 1 : 2;
+      if (nextScore >= existingScore) {
+        attendanceMap[key] = row;
+      }
+    });
+
+    res.json(
+      students.map((student) => ({
+        studentId: student._id,
+        enrollmentNo: student.enrollmentNo || '',
+        studentName: student.userId?.fullName || 'Student',
+        mobileNo: student.userId?.phone || '',
+        batchName: student.batchId?.batchName || '',
+        date,
+        attendance: attendanceMap[student._id.toString()] || null
+      }))
+    );
   } catch (err) {
     next(err);
   }
@@ -114,6 +198,11 @@ async function checkIn(req, res, next) {
 
     if (!studentId && req.user.role === 'student') {
       return res.status(404).json({ message: 'Student profile not found' });
+    }
+
+    const activeState = await ensureStudentActiveForAttendance(studentId, date);
+    if (!activeState.ok) {
+      return res.status(activeState.status || 403).json({ message: activeState.message });
     }
 
     const leaveBlock = studentId
@@ -172,6 +261,11 @@ async function checkOut(req, res, next) {
 
     if (!studentId && req.user.role === 'student') {
       return res.status(404).json({ message: 'Student profile not found' });
+    }
+
+    const activeState = await ensureStudentActiveForAttendance(studentId, date);
+    if (!activeState.ok) {
+      return res.status(activeState.status || 403).json({ message: activeState.message });
     }
 
     const leaveBlock = studentId
@@ -412,6 +506,13 @@ async function publicCheckIn(req, res, next) {
     const date = normalizeDate();
     const now = new Date();
 
+    if (student) {
+      const activeState = await ensureStudentActiveForAttendance(student._id, date);
+      if (!activeState.ok) {
+        return res.status(activeState.status || 403).json({ message: activeState.message });
+      }
+    }
+
     const existing = await Attendance.findOne(student ? { studentId: student._id, date } : { userId: teacher.user._id, date });
     if (existing?.checkInAt) return res.status(400).json({ message: 'Already checked in today' });
 
@@ -453,6 +554,14 @@ async function publicCheckOut(req, res, next) {
     if (!student && !teacher) return res.status(404).json({ message: 'Profile not found' });
     const date = normalizeDate();
     const now = new Date();
+
+    if (student) {
+      const activeState = await ensureStudentActiveForAttendance(student._id, date);
+      if (!activeState.ok) {
+        return res.status(activeState.status || 403).json({ message: activeState.message });
+      }
+    }
+
     const existing = await Attendance.findOne(student ? { studentId: student._id, date } : { userId: teacher.user._id, date });
     if (!existing?.checkInAt) return res.status(404).json({ message: 'No check-in found for today' });
     if (existing.checkOutAt) return res.status(400).json({ message: 'Already checked out today' });
@@ -541,6 +650,7 @@ module.exports = {
   checkOut,
   requestLeave,
   myAttendance,
+  dailyAttendanceOverview,
   flaggedAbsentees,
   listLeaves,
   updateLeaveStatus,

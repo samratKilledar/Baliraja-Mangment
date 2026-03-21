@@ -24,15 +24,6 @@ function StudentListScreen() {
   );
 }
 
-function PerformanceScreen() {
-  return (
-    <PlaceholderScreen
-      title="Performance Graph"
-      description="Performance graph view will be added here. Please refer to the web dashboard for detailed analytics."
-    />
-  );
-}
-
 function NoticesScreen() {
   return (
     <ScrollView contentContainerStyle={styles.noticeWrap}>
@@ -48,7 +39,6 @@ export default function SuperAdminTabNavigator() {
     <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Analytics" component={SuperAdminHome} />
       <Tab.Screen name="Students" component={StudentListScreen} />
-      <Tab.Screen name="Performance" component={PerformanceScreen} />
       <Tab.Screen name="Notices" component={NoticesScreen} />
     </Tab.Navigator>
   );
