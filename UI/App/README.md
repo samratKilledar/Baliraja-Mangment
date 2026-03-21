@@ -1,5 +1,27 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
+# Security Setup
+
+## Firebase Android config
+
+Keep the real `android/app/google-services.json` local and out of git.
+
+```bash
+cp android/app/google-services.json.example android/app/google-services.json
+```
+
+Then replace the placeholder values with the Firebase config downloaded from the correct project.
+
+To fully secure the Google API key for project `baliraja-3d44f`:
+
+1. Rotate the exposed key.
+2. Restrict the replacement key to Android apps.
+3. Add package name `com.imsmobile`.
+4. Add the SHA-1 and SHA-256 certificate fingerprints for every signing key you use.
+5. Limit API access to only the Google or Firebase APIs the app actually needs.
+
+If Firebase is not in active use on Android, leave `google-services.json` absent until it is needed.
+
 # Getting Started
 
 >**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
