@@ -4,6 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import StudentAdmissionForm from './StudentAdmissionForm';
 import VectorIcon from './VectorIcon';
 
+const DEFAULT_API_URL = import.meta.env.DEV
+  ? 'http://localhost:4000/api/v1'
+  : 'https://baliraja-mangment.onrender.com/api/v1';
+
 export default function StudentList() {
   const { user } = useAuth() || {};
   const [students, setStudents] = useState([]);
@@ -178,7 +182,7 @@ function startEdit(s) {
 
   async function downloadPdf(id) {
     const token = localStorage.getItem('ims_token') || localStorage.getItem('token');
-    const url = `${import.meta.env.VITE_API_URL || 'http://localhost:4000/api/v1'}/students/${id}/pdf`;
+    const url = `${(import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/+$/, '')}/students/${id}/pdf`;
     try {
       const res = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : undefined } });
       if (res.status === 401) {
