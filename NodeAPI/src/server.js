@@ -17,11 +17,18 @@ function assertEnv() {
 
 async function start() {
   assertEnv();
-  await connectDB(process.env.MONGODB_URI);
-  await seedSuperAdmin();
-  app.listen(PORT, () => {
+
+  const server = app.listen(PORT, () => {
     console.log(`API running on port ${PORT}`);
   });
+
+  try {
+    await connectDB(process.env.MONGODB_URI);
+    await seedSuperAdmin();
+  } catch (error) {
+    console.error('Startup failed:', error.message);
+    server.close(() => process.exit(1));
+  }
 }
 
 start();
