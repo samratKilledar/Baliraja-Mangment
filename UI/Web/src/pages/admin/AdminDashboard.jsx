@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import VectorIcon from '../../components/VectorIcon';
@@ -36,33 +36,57 @@ const tasks = [
   'Review pending parent grievances'
 ];
 
+const EMPTY_SUMMARY = {
+  totalUsers: 0,
+  studentCount: 0,
+  teacherCount: 0,
+  workerCount: 0,
+  fees: { totalExpected: 0, totalCollected: 0, totalDue: 0 },
+  revenueLocked: true,
+  revenue: 0,
+  admissions: { month: [], week: [], day: [] }
+};
+
+function normalizeSummary(data = {}) {
+  return {
+    ...EMPTY_SUMMARY,
+    ...data,
+    totalUsers: Number(data?.totalUsers) || 0,
+    studentCount: Number(data?.studentCount) || 0,
+    teacherCount: Number(data?.teacherCount) || 0,
+    workerCount: Number(data?.workerCount) || 0,
+    fees: {
+      ...EMPTY_SUMMARY.fees,
+      ...(data?.fees || {}),
+      totalExpected: Number(data?.fees?.totalExpected) || 0,
+      totalCollected: Number(data?.fees?.totalCollected) || 0,
+      totalDue: Number(data?.fees?.totalDue) || 0
+    },
+    admissions: {
+      ...EMPTY_SUMMARY.admissions,
+      ...(data?.admissions || {}),
+      month: Array.isArray(data?.admissions?.month) ? data.admissions.month : [],
+      week: Array.isArray(data?.admissions?.week) ? data.admissions.week : [],
+      day: Array.isArray(data?.admissions?.day) ? data.admissions.day : []
+    }
+  };
+}
+
 export default function AdminDashboard() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [summary, setSummary] = useState({
-    totalUsers: 0,
-    studentCount: 0,
-    teacherCount: 0,
-    workerCount: 0,
-    fees: { totalExpected: 0, totalCollected: 0, totalDue: 0 },
-    revenueLocked: true,
-    revenue: 0,
-    admissions: { month: [], week: [], day: [] }
-  });
+  const [summary, setSummary] = useState(EMPTY_SUMMARY);
 
-  useEffect(() => {
-    loadSummary();
-  }, []);
-
-  async function loadSummary() {
+  const loadSummary = useCallback(async () => {
     try {
       const { data } = await api.get('/dashboard/super-admin');
-      setSummary(data);
+      setSummary(normalizeSummary(data));
     } catch (err) {
       console.error('Admin summary load failed', err);
+      setSummary(EMPTY_SUMMARY);
     }
-  }
+  }, []);
 
   const routeKey = useMemo(() => {
     if (location.pathname.startsWith('/admin/students-list')) return 'students-list';
@@ -77,6 +101,12 @@ export default function AdminDashboard() {
     if (location.pathname.startsWith('/admin/splash')) return 'splash';
     return 'overview';
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (routeKey !== 'overview') return;
+    loadSummary();
+  }, [loadSummary, routeKey, user]);
 
   const content = useMemo(() => {
     if (routeKey === 'students') {
@@ -192,22 +222,22 @@ export default function AdminDashboard() {
           <article className="stat-card">
             <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
             <p>Total Users</p>
-            <h3>{summary.totalUsers}</h3>
+            <h3>{summary.totalUsers || 0}</h3>
           </article>
           <article className="stat-card">
             <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
             <p>Students</p>
-            <h3>{summary.studentCount}</h3>
+            <h3>{summary.studentCount || 0}</h3>
           </article>
           <article className="stat-card">
             <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
             <p>Teachers</p>
-            <h3>{summary.teacherCount}</h3>
+            <h3>{summary.teacherCount || 0}</h3>
           </article>
           <article className="stat-card">
             <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
             <p>Workers</p>
-            <h3>{summary.workerCount}</h3>
+            <h3>{summary.workerCount || 0}</h3>
           </article>
         </section>
         <section className="dash-grid fade-up delay-2">

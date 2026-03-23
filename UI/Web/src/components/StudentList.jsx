@@ -153,6 +153,14 @@ useEffect(() => {
     }
   }
 
+  function isSelectedAction(studentId, type) {
+    if (type === 'edit') return editing === studentId;
+    if (type === 'complaints' || type === 'leaves') {
+      return detailPanel.studentId === studentId && detailPanel.type === type;
+    }
+    return activeAction.studentId === studentId && activeAction.type === type;
+  }
+
   // no auto-open; sub-views open only on explicit click
 
   const filteredStudents = students;
@@ -521,37 +529,52 @@ function startEdit(s) {
                     </tr>
                     <tr>
                       <td colSpan={columnCount} style={{ paddingTop: 0 }}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: 10,
-                            marginTop: 8,
-                            padding: 10,
-                            borderRadius: 10,
-                            boxShadow: '0 8px 18px rgba(0,0,0,0.07)',
-                            border: '1px solid #e6e9f3',
-                            background: '#fff'
-                          }}
-                        >
-                          <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>startEdit(student)}>Edit Info</button>
+                        <div className="student-action-strip">
+                          <button
+                            className={`ghost-btn action-chip ${isSelectedAction(student._id, 'edit') ? 'active' : ''}`}
+                            style={{ padding: '6px 10px', fontSize: 13 }}
+                            onClick={()=>startEdit(student)}
+                          >
+                            Edit Info
+                          </button>
                           {(user?.role === 'super_admin' || user?.role === 'admin') && (
-                            <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>openFeeEditor(student._id)}>Edit Fee</button>
+                            <button
+                              className={`ghost-btn action-chip ${isSelectedAction(student._id, 'fee') ? 'active' : ''}`}
+                              style={{ padding: '6px 10px', fontSize: 13 }}
+                              onClick={()=>openFeeEditor(student._id)}
+                            >
+                              Edit Fee
+                            </button>
                           )}
-                          <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>openPayNow(student._id)}>Submit Fees</button>
-                          <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>{ setMasterEditId(student._id); setActiveAction({ type: 'master', studentId: student._id }); }}>Open Master</button>
+                          <button
+                            className={`ghost-btn action-chip ${isSelectedAction(student._id, 'pay') ? 'active' : ''}`}
+                            style={{ padding: '6px 10px', fontSize: 13 }}
+                            onClick={()=>openPayNow(student._id)}
+                          >
+                            Submit Fees
+                          </button>
+                          <button
+                            className={`ghost-btn action-chip ${isSelectedAction(student._id, 'master') ? 'active' : ''}`}
+                            style={{ padding: '6px 10px', fontSize: 13 }}
+                            onClick={()=>{
+                              setMasterEditId(student._id);
+                              setActiveAction({ type: 'master', studentId: student._id });
+                            }}
+                          >
+                            Open Master
+                          </button>
                           <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>downloadPdf(student._id)}>PDF</button>
                           {(user?.role === 'super_admin' || user?.role === 'admin') && (
                             <>
                               <button
-                                className="ghost-btn"
+                                className={`ghost-btn action-chip ${isSelectedAction(student._id, 'complaints') ? 'active' : ''}`}
                                 style={{ padding: '6px 10px', fontSize: 13 }}
                                 onClick={()=>toggleDetail(student._id,'complaints')}
                               >
                                 Complaints
                               </button>
                               <button
-                                className="ghost-btn"
+                                className={`ghost-btn action-chip ${isSelectedAction(student._id, 'leaves') ? 'active' : ''}`}
                                 style={{ padding: '6px 10px', fontSize: 13 }}
                                 onClick={()=>toggleDetail(student._id,'leaves')}
                               >
@@ -559,7 +582,7 @@ function startEdit(s) {
                               </button>
                             </>
                           )}
-                          <button className="danger-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={async ()=>{
+                          <button className="danger-btn student-delete-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={async ()=>{
                             if (!window.confirm('Delete this student and related fee records?')) return;
                             try {
                               await api.delete(`/students/${student._id}`);
@@ -569,17 +592,13 @@ function startEdit(s) {
                             }
                           }}>Delete</button>
                         </div>
-                        <div style={{
-                          marginTop: 12,
-                          borderTop: '2px dashed #c9d3e6',
-                          borderRadius: 10
-                        }} />
+                        <div className="student-expand-divider" />
                       </td>
                     </tr>
                     {editing === student._id && (
                       <tr>
                         <td colSpan={columnCount}>
-                          <div className="inline-edit">
+                          <div className="inline-edit student-expand-card">
                             <label>Name <input value={editForm.fullName} onChange={(e)=>setEditForm({...editForm, fullName:e.target.value})} /></label>
                             <label>Phone <input inputMode="numeric" pattern="[0-9]*" value={editForm.phone} onChange={(e)=>setEditForm({...editForm, phone:sanitizeNumeric(e.target.value)})} /></label>
                             <label>Status
@@ -600,7 +619,7 @@ function startEdit(s) {
                     {detailPanel.studentId === student._id && detailPanel.type === 'complaints' && (
                       <tr>
                         <td colSpan={columnCount}>
-                          <div className="inline-edit" style={{ marginTop: 4 }}>
+                          <div className="inline-edit student-expand-card" style={{ marginTop: 4 }}>
                             <h5>Complaints</h5>
                             {complaints.filter((c)=>c.studentId?._id === student._id).map((c)=>(
                               <div key={c._id} className="pill-row column" style={{
@@ -621,7 +640,7 @@ function startEdit(s) {
                     {detailPanel.studentId === student._id && detailPanel.type === 'leaves' && (
                       <tr>
                         <td colSpan={columnCount}>
-                          <div className="inline-edit" style={{ marginTop: 4 }}>
+                          <div className="inline-edit student-expand-card" style={{ marginTop: 4 }}>
                             <h5>Leave Requests</h5>
                             {leaves.filter((l)=>l.studentId?._id === student._id).map((l)=>(
                               <div key={l._id} className="pill-row column" style={{
@@ -643,7 +662,7 @@ function startEdit(s) {
                     {activeAction.type === 'master' && activeAction.studentId === student._id && (
                       <tr>
                         <td colSpan={columnCount}>
-                          <div className="card" style={{ marginTop: 6 }}>
+                          <div className="card student-expand-card" style={{ marginTop: 6 }}>
                             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                               <h4>Edit in Master Form</h4>
                               <button className="ghost-btn" onClick={()=>{ setMasterEditId(null); setActiveAction({ type: null, studentId: null }); }}>Close</button>
@@ -656,7 +675,7 @@ function startEdit(s) {
                     {activeAction.type === 'fee' && activeAction.studentId === student._id && feeEdit && (
                       <tr>
                         <td colSpan={columnCount}>
-                          <div className="card form-card" style={{ marginTop: 6 }}>
+                          <div className="card form-card student-expand-card" style={{ marginTop: 6 }}>
                             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                               <h4>Edit Fee</h4>
                               <button className="ghost-btn" onClick={()=>{ setFeeEdit(null); setActiveAction({ type: null, studentId: null }); }}>Close</button>
@@ -1023,8 +1042,59 @@ const css = `
 .inline-edit { margin-top: 10px; padding: 10px; border: 1px dashed #dfe4f4; border-radius: 10px; display: grid; gap: 8px; }
 .inline-edit input, .inline-edit select { width: 100%; padding: 8px; border: 1px solid #dfe4f4; border-radius: 8px; }
 .inline-edit-actions { display: flex; gap: 8px; }
-.action-chip { border-color: var(--border); }
+.student-action-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+  margin-left: 12px;
+  margin-right: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  box-shadow: 0 12px 26px rgba(17, 24, 39, 0.08);
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+.action-chip {
+  border-color: var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 14px rgba(17, 24, 39, 0.06);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.action-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(17, 24, 39, 0.1);
+}
 .action-chip.active { background: rgba(37, 99, 235, 0.12); border-color: var(--primary); color: var(--primary); }
+.student-delete-btn {
+  border-radius: 10px;
+  background: var(--error);
+  border: 1px solid var(--error);
+  color: #fff;
+  box-shadow: 0 10px 18px rgba(220, 38, 38, 0.18);
+}
+.student-delete-btn:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+.student-expand-divider {
+  width: calc(100% - 24px);
+  margin-left: 12px;
+  margin-right: 12px;
+  margin-top: 14px;
+  border-top: 3px solid rgba(37, 99, 235, 0.22);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+  border-radius: 10px;
+}
+.student-expand-card {
+  margin-left: 12px;
+  margin-right: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  background: var(--card);
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.08);
+  overflow: hidden;
+}
 .primary-btn.active { box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
 .toolbar {
   display: flex;

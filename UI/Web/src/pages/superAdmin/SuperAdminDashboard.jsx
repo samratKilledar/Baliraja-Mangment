@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/client';
@@ -35,14 +35,50 @@ const baseMenus = [
 
 ];
 
+const EMPTY_SUMMARY = {
+  totalUsers: 0,
+  studentCount: 0,
+  teacherCount: 0,
+  workerCount: 0,
+  fees: { totalExpected: 0, totalCollected: 0, totalDue: 0 },
+  revenueLocked: true,
+  revenue: 0,
+  admissions: { month: [], week: [], day: [] }
+};
+
+function normalizeSummary(data = {}) {
+  return {
+    ...EMPTY_SUMMARY,
+    ...data,
+    totalUsers: Number(data?.totalUsers) || 0,
+    studentCount: Number(data?.studentCount) || 0,
+    teacherCount: Number(data?.teacherCount) || 0,
+    workerCount: Number(data?.workerCount) || 0,
+    fees: {
+      ...EMPTY_SUMMARY.fees,
+      ...(data?.fees || {}),
+      totalExpected: Number(data?.fees?.totalExpected) || 0,
+      totalCollected: Number(data?.fees?.totalCollected) || 0,
+      totalDue: Number(data?.fees?.totalDue) || 0
+    },
+    admissions: {
+      ...EMPTY_SUMMARY.admissions,
+      ...(data?.admissions || {}),
+      month: Array.isArray(data?.admissions?.month) ? data.admissions.month : [],
+      week: Array.isArray(data?.admissions?.week) ? data.admissions.week : [],
+      day: Array.isArray(data?.admissions?.day) ? data.admissions.day : []
+    }
+  };
+}
+
 export default function SuperAdminDashboard() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeModule, setActiveModule] = useState('analytics');
   const [menuName, setMenuName] = useState('');
   const [extraMenus, setExtraMenus] = useState([]);
-  const [summary, setSummary] = useState({ totalUsers: 0, studentCount: 0, teacherCount: 0, workerCount: 0, fees: { totalExpected: 0, totalCollected: 0, totalDue: 0 }, revenueLocked: true, revenue: 0, admissions: { month: [], week: [], day: [] } });
+  const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [revenuePass, setRevenuePass] = useState('');
   const [feesList, setFeesList] = useState([]);
@@ -88,23 +124,26 @@ export default function SuperAdminDashboard() {
     setActiveModule(key);
   }
 
-  async function loadSummary(pass) {
+  const loadSummary = useCallback(async (pass) => {
     setLoadingSummary(true);
     try {
-      const { data } = await import('../../api/client').then((m) => m.default.get('/dashboard/super-admin', {
+      const { data } = await api.get('/dashboard/super-admin', {
         headers: pass ? { 'x-revenue-pass': pass } : undefined
-      }));
-      setSummary(data);
+      });
+      setSummary(normalizeSummary(data));
     } catch (err) {
       console.error('Summary load failed', err);
+      setSummary(EMPTY_SUMMARY);
     } finally {
       setLoadingSummary(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
+    if (!user) return;
+    if (!['analytics', 'fees'].includes(routeModule)) return;
     loadSummary();
-  }, []);
+  }, [loadSummary, routeModule, user]);
 
   useEffect(() => {
     if (routeModule === 'fees') {
@@ -224,9 +263,9 @@ if (currentModule === 'admins') {
             <VectorIcon name="money" size={18} />
           </div>
           <div className="snapshot-box">
-            <div><small>Pending Money</small><strong>₹{summary.fees.totalExpected?.toLocaleString('en-IN') || 0}</strong></div>
-            <div><small>Collected Money</small><strong>₹{summary.fees.totalCollected?.toLocaleString('en-IN') || 0}</strong></div>
-            <div><small>Remaining Fees</small><strong>₹{summary.fees.totalDue?.toLocaleString('en-IN') || 0}</strong></div>
+            <div><small>Pending Money</small><strong>₹{(summary.fees?.totalExpected || 0).toLocaleString('en-IN')}</strong></div>
+            <div><small>Collected Money</small><strong>₹{(summary.fees?.totalCollected || 0).toLocaleString('en-IN')}</strong></div>
+            <div><small>Remaining Fees</small><strong>₹{(summary.fees?.totalDue || 0).toLocaleString('en-IN')}</strong></div>
           </div>
           <div style={{ marginTop: 12 }}>
             {feesLoading && <p className="graph-note">Loading fee records...</p>}
@@ -387,9 +426,9 @@ if (currentModule === 'admins') {
               <VectorIcon name="money" size={18} />
             </div>
             <div className="snapshot-box">
-              <div><small>Pending Money</small><strong>₹{summary.fees.totalExpected?.toLocaleString('en-IN') || 0}</strong></div>
-              <div><small>Collected Money</small><strong>₹{summary.fees.totalCollected?.toLocaleString('en-IN') || 0}</strong></div>
-              <div><small>Remaining Fees</small><strong>₹{summary.fees.totalDue?.toLocaleString('en-IN') || 0}</strong></div>
+              <div><small>Pending Money</small><strong>₹{(summary.fees?.totalExpected || 0).toLocaleString('en-IN')}</strong></div>
+              <div><small>Collected Money</small><strong>₹{(summary.fees?.totalCollected || 0).toLocaleString('en-IN')}</strong></div>
+              <div><small>Remaining Fees</small><strong>₹{(summary.fees?.totalDue || 0).toLocaleString('en-IN')}</strong></div>
             </div>
             <div style={{ marginTop: 10 }}>
               <input

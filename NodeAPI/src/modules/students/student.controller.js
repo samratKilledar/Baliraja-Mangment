@@ -432,9 +432,9 @@ async function exportStudentPdf(req, res, next) {
       }
     }
 
-    function drawSectionTitle(titleMarathi, titleEnglish) {
+    function drawSectionTitle(titleEnglish) {
       ensureSpace(20);
-      setFont(10.5, '#1f2f75').text(`${titleMarathi} / ${titleEnglish}`, leftX, doc.y);
+      setFont(10.5, '#1f2f75').text(titleEnglish, leftX, doc.y);
       doc
         .moveTo(leftX, doc.y + 1)
         .lineTo(rightX, doc.y + 1)
@@ -482,9 +482,9 @@ async function exportStudentPdf(req, res, next) {
     }
 
     function drawPaymentTable(transactions = []) {
-      drawSectionTitle('शुल्क भरणा तपशील', 'Fee Payment Details');
+      drawSectionTitle('Fee Payment Details');
       const cols = [58, 72, 62, 88, pageWidth - (58 + 72 + 62 + 88)];
-      const headers = ['दिनांक', 'रक्कम', 'पद्धत', 'संदर्भ', 'टीप'];
+      const headers = ['Date', 'Amount', 'Mode', 'Reference', 'Note'];
 
       const drawPaymentRow = (cells, header = false) => {
         const rowPadding = header ? 5 : 4;
@@ -513,7 +513,7 @@ async function exportStudentPdf(req, res, next) {
       drawPaymentRow(headers, true);
 
       if (!transactions.length) {
-        drawPaymentRow(['—', '—', '—', '—', 'शुल्क भरणा नोंद उपलब्ध नाही'], false);
+        drawPaymentRow(['—', '—', '—', '—', 'No payment records available'], false);
         return;
       }
 
@@ -532,7 +532,7 @@ async function exportStudentPdf(req, res, next) {
       .rect(leftX, doc.y, pageWidth, 56)
       .fill('#f3f6ff');
     setFont(16, '#1f2f75').text('Baliraja Academy', leftX + 10, doc.y + 8);
-    setFont(10.5, '#1f2f75').text('विद्यार्थी माहिती अहवाल / Student Information Report', leftX + 10, doc.y + 28);
+    setFont(10.5, '#1f2f75').text('Student Information Report', leftX + 10, doc.y + 28);
 
     const photoCandidate = student.details?.photoPath || student.details?.photo || student.details?.photoUrl;
     if (photoCandidate) {
@@ -550,8 +550,8 @@ async function exportStudentPdf(req, res, next) {
       }
     }
     doc.moveDown(1.1);
-    setFont(7.6, '#4a4a4a').text(`तयार दिनांक / Generated On: ${formatDateTime(new Date())}`, { align: 'left' });
-    setFont(7.6, '#4a4a4a').text(`प्रवेश क्रमांक / Enrollment No: ${student.enrollmentNo || '—'}`, { align: 'left' });
+    setFont(7.6, '#4a4a4a').text(`Generated On: ${formatDateTime(new Date())}`, { align: 'left' });
+    setFont(7.6, '#4a4a4a').text(`Enrollment No: ${student.enrollmentNo || '—'}`, { align: 'left' });
     doc.moveDown(0.15);
     doc
       .moveTo(leftX, doc.y)
@@ -561,121 +561,121 @@ async function exportStudentPdf(req, res, next) {
       .stroke();
     doc.moveDown(0.2);
 
-    drawSectionTitle('प्रवेश तपशील', 'Admission Details');
+    drawSectionTitle('Admission Details');
     drawInfoTable([
       [
-        { label: 'विद्यार्थी नाव / Student Name', value: student.userId?.fullName || '—' },
-        { label: 'प्रवेश दिनांक / Admission Date', value: formatDate(student.admissionDate) }
+        { label: 'Student Name', value: student.userId?.fullName || '—' },
+        { label: 'Admission Date', value: formatDate(student.admissionDate) }
       ],
       [
-        { label: 'जन्मतारीख / Date of Birth', value: formatDate(student.dateOfBirth) },
-        { label: 'लिंग / Gender', value: personal.gender || student.gender || '—' }
+        { label: 'Date of Birth', value: formatDate(student.dateOfBirth) },
+        { label: 'Gender', value: personal.gender || student.gender || '—' }
       ],
       [
-        { label: 'रक्तगट / Blood Group', value: personal.bloodGroup || '—' },
-        { label: 'आधार क्रमांक / Aadhaar No', value: personal.aadhaarNo || '—' }
+        { label: 'Blood Group', value: personal.bloodGroup || '—' },
+        { label: 'Aadhaar No', value: personal.aadhaarNo || '—' }
       ],
       [
-        { label: 'ईमेल / Email', value: student.userId?.email || '—' },
-        { label: 'मोबाईल / Mobile No', value: student.userId?.phone || '—' }
+        { label: 'Email', value: student.userId?.email || '—' },
+        { label: 'Mobile No', value: student.userId?.phone || '—' }
       ],
       [
-        { label: 'वर्ष / बॅच / Year / Batch', value: student.batchId?.batchName || '—' },
-        { label: 'स्थिती / Status', value: student.status || '—' }
+        { label: 'Year / Batch', value: student.batchId?.batchName || '—' },
+        { label: 'Status', value: student.status || '—' }
       ]
     ]);
 
-    drawSectionTitle('पत्ता माहिती', 'Address Details');
+    drawSectionTitle('Address Details');
     drawInfoTable([
       [
-        { label: 'पत्ता ओळ 1 / Address Line 1', value: address.addressLine1 || student.address || '—' },
-        { label: 'पत्ता ओळ 2 / Address Line 2', value: address.addressLine2 || '—' }
+        { label: 'Address Line 1', value: address.addressLine1 || student.address || '—' },
+        { label: 'Address Line 2', value: address.addressLine2 || '—' }
       ],
       [
-        { label: 'गाव / शहर / City / Village', value: address.city || '—' },
-        { label: 'जिल्हा / District', value: address.district || '—' }
+        { label: 'City / Village', value: address.city || '—' },
+        { label: 'District', value: address.district || '—' }
       ],
       [
-        { label: 'राज्य / State', value: address.state || '—' },
-        { label: 'पिनकोड / PIN Code', value: address.pinCode || '—' }
+        { label: 'State', value: address.state || '—' },
+        { label: 'PIN Code', value: address.pinCode || '—' }
       ]
     ]);
 
-    drawSectionTitle('पालक माहिती', 'Parent / Guardian Details');
+    drawSectionTitle('Parent / Guardian Details');
     drawInfoTable([
       [
-        { label: 'वडिलांचे नाव / Father Name', value: parent.fatherName || details.fatherName || '—' },
-        { label: 'वडिलांचा व्यवसाय / Father Job', value: parent.fatherJob || details.fatherJob || '—' }
+        { label: 'Father Name', value: parent.fatherName || details.fatherName || '—' },
+        { label: 'Father Job', value: parent.fatherJob || details.fatherJob || '—' }
       ],
       [
-        { label: 'वडिलांचा मोबाईल / Father Mobile', value: parent.fatherMobile || details.fatherMobile || '—' },
-        { label: 'आईचे नाव / Mother Name', value: parent.motherName || details.motherName || '—' }
+        { label: 'Father Mobile', value: parent.fatherMobile || details.fatherMobile || '—' },
+        { label: 'Mother Name', value: parent.motherName || details.motherName || '—' }
       ],
       [
-        { label: 'आईचा व्यवसाय / Mother Job', value: parent.motherJob || details.motherJob || '—' },
-        { label: 'आईचा मोबाईल / Mother Mobile', value: parent.motherMobile || details.motherMobile || '—' }
+        { label: 'Mother Job', value: parent.motherJob || details.motherJob || '—' },
+        { label: 'Mother Mobile', value: parent.motherMobile || details.motherMobile || '—' }
       ],
       [
-        { label: 'पालक / Guardian Name', value: parent.guardianName || details.guardianName || '—' },
-        { label: 'नाते / Relation', value: parent.guardianRelation || details.guardianRelation || '—' }
+        { label: 'Guardian Name', value: parent.guardianName || details.guardianName || '—' },
+        { label: 'Relation', value: parent.guardianRelation || details.guardianRelation || '—' }
       ],
       [
-        { label: 'पालक मोबाईल / Guardian Mobile', value: parent.guardianMobile || details.guardianMobile || '—' },
-        { label: 'आपत्कालीन संपर्क / Emergency Contact', value: student.emergencyContact || '—' }
+        { label: 'Guardian Mobile', value: parent.guardianMobile || details.guardianMobile || '—' },
+        { label: 'Emergency Contact', value: student.emergencyContact || '—' }
       ]
     ]);
 
-    drawSectionTitle('शैक्षणिक माहिती', 'Education Details');
+    drawSectionTitle('Education Details');
     drawInfoTable([
       [
-        { label: 'मागील शाळा / Previous School', value: education.previousSchool || '—' },
-        { label: 'सध्याचा वर्ग / Current Class', value: education.currentClass || '—' }
+        { label: 'Previous School', value: education.previousSchool || '—' },
+        { label: 'Current Class', value: education.currentClass || '—' }
       ],
       [
-        { label: 'माध्यम / Medium', value: education.medium || '—' },
-        { label: 'बोर्ड / Board', value: education.board || '—' }
+        { label: 'Medium', value: education.medium || '—' },
+        { label: 'Board', value: education.board || '—' }
       ],
       [
-        { label: 'उत्तीर्ण वर्ष / Passing Year', value: education.passingYear || '—' },
-        { label: 'टक्केवारी / Percentage', value: education.percentage || '—' }
+        { label: 'Passing Year', value: education.passingYear || '—' },
+        { label: 'Percentage', value: education.percentage || '—' }
       ]
     ]);
 
-    drawSectionTitle('शारीरिक व वैद्यकीय माहिती', 'Physical / Medical Details');
+    drawSectionTitle('Physical / Medical Details');
     drawInfoTable([
       [
-        { label: 'उंची / Height', value: physical.height ? `${physical.height} cm` : '—' },
-        { label: 'वजन / Weight', value: physical.weight ? `${physical.weight} kg` : '—' }
+        { label: 'Height', value: physical.height ? `${physical.height} cm` : '—' },
+        { label: 'Weight', value: physical.weight ? `${physical.weight} kg` : '—' }
       ],
       [
-        { label: 'दृष्टी / Vision', value: physical.vision || '—' },
-        { label: 'अपंगत्व / Disability', value: physical.disability || '—' }
+        { label: 'Vision', value: physical.vision || '—' },
+        { label: 'Disability', value: physical.disability || '—' }
       ],
       [
-        { label: 'अॅलर्जी / Allergy / Notes', value: physical.allergy || '—', width: pageWidth }
+        { label: 'Allergy / Notes', value: physical.allergy || '—', width: pageWidth }
       ]
     ]);
 
-    drawSectionTitle('शुल्क तपशील', 'Fee Details');
+    drawSectionTitle('Fee Details');
     drawInfoTable([
       [
-        { label: 'एकूण शुल्क / Total Fees', value: formatCurrency(total) },
-        { label: 'भरलेले शुल्क / Paid Fees', value: formatCurrency(paid) }
+        { label: 'Total Fees', value: formatCurrency(total) },
+        { label: 'Paid Fees', value: formatCurrency(paid) }
       ],
       [
-        { label: 'शिल्लक शुल्क / Remaining Fees', value: formatCurrency(due) },
-        { label: 'स्थिती / Payment Status', value: due > 0 ? 'बाकी / Pending' : 'पूर्ण / Paid' }
+        { label: 'Remaining Fees', value: formatCurrency(due) },
+        { label: 'Payment Status', value: due > 0 ? 'Pending' : 'Paid' }
       ],
       [
-        { label: 'शुल्क सुरु दिनांक / Fee From Date', value: formatDate(fee?.feeStartDate || fee?.feeFrom) },
-        { label: 'शुल्क समाप्त दिनांक / Fee To Date', value: formatDate(fee?.feeEndDate || fee?.feeTo) }
+        { label: 'Fee From Date', value: formatDate(fee?.feeStartDate || fee?.feeFrom) },
+        { label: 'Fee To Date', value: formatDate(fee?.feeEndDate || fee?.feeTo) }
       ],
       [
-        { label: 'एकूण दिवस / Total Days', value: feeDays },
-        { label: 'देय दिनांक / Due Date', value: formatDate(fee?.dueDate) }
+        { label: 'Total Days', value: feeDays },
+        { label: 'Due Date', value: formatDate(fee?.dueDate) }
       ],
       [
-        { label: 'शेवटचा अपडेट / Last Updated', value: formatDateTime(fee?.updatedAt), width: pageWidth }
+        { label: 'Last Updated', value: formatDateTime(fee?.updatedAt), width: pageWidth }
       ]
     ]);
 
@@ -683,12 +683,12 @@ async function exportStudentPdf(req, res, next) {
 
     ensureSpace(46);
     doc.moveDown(0.6);
-    setFont(7.2, '#4b5774').text('ही प्रत सॉफ्ट कॉपी स्वरूपात तयार करण्यात आली आहे. / This document is a soft copy generated by the system.', leftX, doc.y, {
+    setFont(7.2, '#4b5774').text('This document is a soft copy generated by the system.', leftX, doc.y, {
       width: pageWidth
     });
     doc.moveDown(0.9);
     setFont(8, '#15213d').text('______________________', rightX - 130, doc.y, { width: 130, align: 'center' });
-    setFont(8, '#15213d').text('प्रशासक स्वाक्षरी / Admin Signature', rightX - 130, doc.y + 2, { width: 130, align: 'center' });
+    setFont(8, '#15213d').text('Admin Signature', rightX - 130, doc.y + 2, { width: 130, align: 'center' });
 
     doc.end();
   } catch (err) {
