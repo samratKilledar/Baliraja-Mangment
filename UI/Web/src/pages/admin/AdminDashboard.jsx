@@ -237,7 +237,7 @@ export default function AdminDashboard() {
         </section>
       </>
     );
-  }, [navigate, routeKey]);
+  }, [navigate, routeKey, summary]);
 
   return (
     <div className="dashboard-shell">

@@ -42,7 +42,7 @@ export default function SuperAdminDashboard() {
   const [activeModule, setActiveModule] = useState('analytics');
   const [menuName, setMenuName] = useState('');
   const [extraMenus, setExtraMenus] = useState([]);
-  const [summary, setSummary] = useState({ studentCount: 0, teacherCount: 0, workerCount: 0, fees: { totalExpected: 0, totalCollected: 0, totalDue: 0 }, revenueLocked: true, revenue: 0, admissions: { month: [], week: [], day: [] } });
+  const [summary, setSummary] = useState({ totalUsers: 0, studentCount: 0, teacherCount: 0, workerCount: 0, fees: { totalExpected: 0, totalCollected: 0, totalDue: 0 }, revenueLocked: true, revenue: 0, admissions: { month: [], week: [], day: [] } });
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [revenuePass, setRevenuePass] = useState('');
   const [feesList, setFeesList] = useState([]);
@@ -463,7 +463,7 @@ if (currentModule === 'admins') {
         </section>
       </>
     );
-  }, [activeModule, menuItems, routeModule]);
+  }, [activeModule, feesError, feesList, feesLoading, feesMeta.page, feesMeta.totalPages, loadingSummary, menuItems, revenuePass, routeModule, summary]);
 
   return (
     <div className="dashboard-shell">
