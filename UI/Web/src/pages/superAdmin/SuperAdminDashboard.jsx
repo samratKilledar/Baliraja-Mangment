@@ -224,9 +224,9 @@ if (currentModule === 'admins') {
             <VectorIcon name="money" size={18} />
           </div>
           <div className="snapshot-box">
-            <div><small>Expected</small><strong>₹{summary.fees.totalExpected?.toLocaleString('en-IN') || 0}</strong></div>
-            <div><small>Collected</small><strong>₹{summary.fees.totalCollected?.toLocaleString('en-IN') || 0}</strong></div>
-            <div><small>Due</small><strong>₹{summary.fees.totalDue?.toLocaleString('en-IN') || 0}</strong></div>
+            <div><small>Pending Money</small><strong>₹{summary.fees.totalExpected?.toLocaleString('en-IN') || 0}</strong></div>
+            <div><small>Collected Money</small><strong>₹{summary.fees.totalCollected?.toLocaleString('en-IN') || 0}</strong></div>
+            <div><small>Remaining Fees</small><strong>₹{summary.fees.totalDue?.toLocaleString('en-IN') || 0}</strong></div>
           </div>
           <div style={{ marginTop: 12 }}>
             {feesLoading && <p className="graph-note">Loading fee records...</p>}
@@ -367,17 +367,17 @@ if (currentModule === 'admins') {
           <article className="stat-card super-stat">
             <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
             <p>Students</p>
-            <h3>{summary.studentCount}</h3>
+            <h3>{summary.studentCount || 0}</h3>
           </article>
           <article className="stat-card super-stat">
             <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
             <p>Teachers</p>
-            <h3>{summary.teacherCount}</h3>
+            <h3>{summary.teacherCount || 0}</h3>
           </article>
           <article className="stat-card super-stat">
             <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
             <p>Workers</p>
-            <h3>{summary.workerCount}</h3>
+            <h3>{summary.workerCount || 0}</h3>
           </article>
         </section>
         <section className="dash-grid fade-up delay-2">
@@ -387,9 +387,9 @@ if (currentModule === 'admins') {
               <VectorIcon name="money" size={18} />
             </div>
             <div className="snapshot-box">
-              <div><small>Expected</small><strong>₹{summary.fees.totalExpected?.toLocaleString('en-IN') || 0}</strong></div>
-              <div><small>Collected</small><strong>₹{summary.fees.totalCollected?.toLocaleString('en-IN') || 0}</strong></div>
-              <div><small>Due</small><strong>₹{summary.fees.totalDue?.toLocaleString('en-IN') || 0}</strong></div>
+              <div><small>Pending Money</small><strong>₹{summary.fees.totalExpected?.toLocaleString('en-IN') || 0}</strong></div>
+              <div><small>Collected Money</small><strong>₹{summary.fees.totalCollected?.toLocaleString('en-IN') || 0}</strong></div>
+              <div><small>Remaining Fees</small><strong>₹{summary.fees.totalDue?.toLocaleString('en-IN') || 0}</strong></div>
             </div>
             <div style={{ marginTop: 10 }}>
               <input

@@ -22,7 +22,8 @@ export default function TeacherForm() {
   const [error, setError] = useState('');
 
   function setField(key, value) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    const nextValue = key === 'mobileNo' ? String(value || '').replace(/\D+/g, '') : value;
+    setForm((prev) => ({ ...prev, [key]: nextValue }));
   }
 
   async function onSubmit(e) {
@@ -41,9 +42,7 @@ export default function TeacherForm() {
         contractStart: form.contractStart || undefined,
         contractEnd: form.contractEnd || undefined,
         totalContractAmount: form.totalContractAmount ? Number(form.totalContractAmount) : undefined,
-        monthlySalary: form.monthlySalary ? Number(form.monthlySalary) : undefined,
-        contractStart: form.contractStart || undefined,
-        contractEnd: form.contractEnd || undefined
+        monthlySalary: form.monthlySalary ? Number(form.monthlySalary) : undefined
       };
 
       await api.post('/users', payload);
@@ -67,7 +66,7 @@ export default function TeacherForm() {
         <h4>Teacher Details</h4>
         <div className="form-grid">
           <label><span>Full Name</span><input value={form.fullName} onChange={(e) => setField('fullName', e.target.value)} /></label>
-          <label><span>Mobile No</span><input value={form.mobileNo} onChange={(e) => setField('mobileNo', e.target.value)} /></label>
+          <label><span>Mobile No</span><input inputMode="numeric" pattern="[0-9]*" value={form.mobileNo} onChange={(e) => setField('mobileNo', e.target.value)} /></label>
           <label><span>Email</span><input value={form.email} onChange={(e) => setField('email', e.target.value)} /></label>
           <label><span>Subject Name</span><input value={form.subjectName} onChange={(e) => setField('subjectName', e.target.value)} /></label>
           <label><span>Qualification</span><input value={form.qualification} onChange={(e) => setField('qualification', e.target.value)} /></label>

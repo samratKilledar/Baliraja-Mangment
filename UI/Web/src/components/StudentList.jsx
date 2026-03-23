@@ -420,23 +420,23 @@ function startEdit(s) {
           value={search}
           onChange={(e)=>setSearch(e.target.value)}
         />
-        {hasPagination && (
-          <div className="top-pagination" aria-label="Student list pages">
-            {Array.from({ length: pageMeta.totalPages }, (_, index) => index + 1).map((pageNumber) => (
-              <button
-                key={pageNumber}
-                type="button"
-                className={`page-chip ${pageNumber === page ? 'active' : ''}`}
-                onClick={() => setPage(pageNumber)}
-                disabled={loading}
-              >
-                {pageNumber}
-              </button>
-            ))}
-          </div>
-        )}
         {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
       </div>
+      {hasPagination && (
+        <div className="top-pagination" aria-label="Student list pages">
+          {Array.from({ length: pageMeta.totalPages }, (_, index) => index + 1).map((pageNumber) => (
+            <button
+              key={pageNumber}
+              type="button"
+              className={`page-chip ${pageNumber === page ? 'active' : ''}`}
+              onClick={() => setPage(pageNumber)}
+              disabled={loading}
+            >
+              {pageNumber}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="list-index-bar">
         <span>Total Students: {pageMeta.total || 0}</span>
         <span>Index: {shouldShowIndex ? 'Visible' : 'Hidden for 10 or fewer records'}</span>
@@ -539,11 +539,6 @@ function startEdit(s) {
                             <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>openFeeEditor(student._id)}>Edit Fee</button>
                           )}
                           <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>openPayNow(student._id)}>Submit Fees</button>
-                          {(user?.role === 'super_admin' || user?.role === 'admin') && (
-                            <button className="danger-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>deleteFeeRecord(student._id)} disabled={actionBusy === `fee-delete-${pendingFees[student._id]?._id}`}>
-                              {actionBusy === `fee-delete-${pendingFees[student._id]?._id}` ? 'Deleting Fee...' : 'Delete Fee'}
-                            </button>
-                          )}
                           <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>{ setMasterEditId(student._id); setActiveAction({ type: 'master', studentId: student._id }); }}>Open Master</button>
                           <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>downloadPdf(student._id)}>PDF</button>
                           {(user?.role === 'super_admin' || user?.role === 'admin') && (
@@ -1017,20 +1012,20 @@ const css = `
   color: #fff; display: grid; place-items: center;
   font-weight: 800; letter-spacing: 0.5px;
 }
-.card-title { font-weight: 800; color: #1f2f75; }
-.card-sub { color: #5f6c93; font-size: 12px; display: flex; gap: 6px; align-items: center; }
-.card-row { display: flex; justify-content: space-between; gap: 10px; color: #4a5674; font-size: 13px; }
-.card-row strong { color: #1f2f75; }
+.card-title { font-weight: 800; color: var(--text-primary); }
+.card-sub { color: var(--text-secondary); font-size: 12px; display: flex; gap: 6px; align-items: center; }
+.card-row { display: flex; justify-content: space-between; gap: 10px; color: var(--text-secondary); font-size: 13px; }
+.card-row strong { color: var(--text-primary); }
 .card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .status-chip { padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; }
-.status-chip.active { background: #e3f8ef; color: #0b8a4a; border:1px solid #bfe7d2; }
-.status-chip.inactive { background: #fff1f1; color: #c0392b; border:1px solid #f5c5c5; }
+.status-chip.active { background: rgba(22, 163, 74, 0.12); color: var(--success); border:1px solid rgba(22, 163, 74, 0.2); }
+.status-chip.inactive { background: rgba(220, 38, 38, 0.1); color: var(--error); border:1px solid rgba(220, 38, 38, 0.18); }
 .inline-edit { margin-top: 10px; padding: 10px; border: 1px dashed #dfe4f4; border-radius: 10px; display: grid; gap: 8px; }
 .inline-edit input, .inline-edit select { width: 100%; padding: 8px; border: 1px solid #dfe4f4; border-radius: 8px; }
 .inline-edit-actions { display: flex; gap: 8px; }
-.action-chip { border-color: #cfd8f6; }
-.action-chip.active { background: #e8edff; border-color: #6a7be7; color: #1f2f75; }
-.primary-btn.active { box-shadow: 0 0 0 2px #d8ddff; }
+.action-chip { border-color: var(--border); }
+.action-chip.active { background: rgba(37, 99, 235, 0.12); border-color: var(--primary); color: var(--primary); }
+.primary-btn.active { box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
 .toolbar {
   display: flex;
   align-items: center;
@@ -1042,11 +1037,11 @@ const css = `
   flex: 1;
   min-width: 220px;
   padding: 10px 12px;
-  border: 1px solid #8fa3d1;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #f4f7ff;
+  background: var(--card);
   font-size: 14px;
-  color: #15213d;
+  color: var(--text-primary);
   font-weight: 600;
 }
 .list-index-bar {
@@ -1056,9 +1051,9 @@ const css = `
   margin: -6px 0 8px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: #d8e1fb;
-  border: 1px solid #90a5d7;
-  color: #11224f;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
   font-weight: 700;
 }
 .top-pagination {
@@ -1071,18 +1066,18 @@ const css = `
 .page-chip {
   min-width: 34px;
   height: 34px;
-  border: 1px solid #d7def3;
+  border: 1px solid var(--border);
   border-radius: 999px;
-  background: #f7f9ff;
-  color: #2344b2;
+  background: rgba(37, 99, 235, 0.05);
+  color: var(--primary);
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
   transition: all 0.18s ease;
 }
 .page-chip.active {
-  background: linear-gradient(135deg, #2344b2, #4b68d8);
-  border-color: #2344b2;
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  border-color: var(--primary);
   color: #fff;
   box-shadow: 0 10px 18px rgba(35,68,178,0.2);
 }
@@ -1091,23 +1086,23 @@ const css = `
   cursor: not-allowed;
 }
 .form-card h4 { margin-bottom: 8px; }
-.form-card p { margin-bottom: 12px; color: #4a5674; }
+.form-card p { margin-bottom: 12px; color: var(--text-secondary); }
 .grid.spacious { gap: 12px; }
-.form-card label { font-weight: 600; color: #1f2f75; display: flex; flex-direction: column; gap: 6px; }
-.form-card input, .form-card select { width: 100%; padding: 10px; border: 1px solid #dfe4f4; border-radius: 10px; }
+.form-card label { font-weight: 600; color: var(--text-primary); display: flex; flex-direction: column; gap: 6px; }
+.form-card input, .form-card select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 10px; }
 .pill-list { display: grid; gap: 8px; margin-top: 8px; }
-.pill-row { border: 1px solid #9bb0df; border-radius: 10px; padding: 10px; background: #e8eeff; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
+.pill-row { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: rgba(37, 99, 235, 0.05); display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
 .pill-row.column { grid-template-columns: 1fr; }
-.pill-line { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: #1f2f75; }
-.pill-line span { color: #6c7595; }
+.pill-line { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-primary); }
+.pill-line span { color: var(--text-secondary); }
 .calendar-grid { margin-top:12px; display:grid; grid-template-columns: repeat(auto-fit,minmax(90px,1fr)); gap:8px; }
 .cal-cell { border:1px solid #e5e9f7; border-radius:10px; padding:8px; background:#fff; }
 .cal-cell.full { background:#e8f8f0; border-color:#c8eedc; }
 .cal-cell.in { background:#fff7e6; border-color:#f3d9a5; }
 .cal-cell.miss { background:#ffecec; border-color:#f1b6b6; }
-.cal-date { font-weight:800; color:#1f2f75; }
-.cal-time { font-size:12px; color:#6c7595; margin-top:4px; line-height:16px; }
-.cal-loc a { font-size:12px; color:#2f6be0; }
+.cal-date { font-weight:800; color:var(--text-primary); }
+.cal-time { font-size:12px; color:var(--text-secondary); margin-top:4px; line-height:16px; }
+.cal-loc a { font-size:12px; color:var(--info); }
 
 @media (max-width: 768px) {
   .student-card { padding: 12px; }
@@ -1133,13 +1128,13 @@ const css = `
 
 .fee-box span{
   display:block;
-  color:#6c7595;
+  color:var(--text-secondary);
   font-size:11px;
 }
 
 .fee-box strong{
   font-size:15px;
-  color:#1f2f75;
+  color:var(--text-primary);
 }
 
 .fee-box.paid{
@@ -1154,7 +1149,7 @@ const css = `
   font-size:13px;
   font-weight:700;
   margin-bottom:8px;
-  color:#1f2f75;
+  color:var(--text-primary);
 }
 
 .payment-cards{
@@ -1178,12 +1173,12 @@ const css = `
 }
 
 .payment-row span{
-  color:#6c7595;
+  color:var(--text-secondary);
 }
 
 .empty-note{  
   font-size:12px;
-  color:#6c7595;
+  color:var(--text-secondary);
 }
 `;
 

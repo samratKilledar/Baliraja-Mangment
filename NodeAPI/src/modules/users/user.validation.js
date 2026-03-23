@@ -1,6 +1,11 @@
 const { z } = require('zod');
 const { ROLES } = require('../../utils/constants');
 
+const optionalNumber = z.preprocess((value) => {
+  if (value === '' || value === null || value === undefined) return undefined;
+  return value;
+}, z.number().optional());
+
 const createUserSchema = z.object({
   fullName: z.string().min(2),
   email: z.string().email(),
@@ -18,7 +23,7 @@ const createUserSchema = z.object({
   guardianName: z.string().optional(),
   guardianPhone: z.string().optional(),
   details: z.record(z.any()).optional(),
-  feeAmount: z.number().optional(),
+  feeAmount: optionalNumber,
   feeDueDate: z.string().optional(),
   feeStartDate: z.string().optional(),
   feeEndDate: z.string().optional(),
@@ -29,14 +34,14 @@ const createUserSchema = z.object({
 
   // Teacher specific
   specialization: z.array(z.string()).optional(),
-  experienceYears: z.number().optional(),
-  monthlySalary: z.number().optional(),
+  experienceYears: optionalNumber,
+  monthlySalary: optionalNumber,
 
   // Worker specific
   roleTitle: z.string().optional(),
   contractStart: z.string().optional(),
   contractEnd: z.string().optional(),
-  totalContractAmount: z.number().optional()
+  totalContractAmount: optionalNumber
 });
 
 const listUserSchema = z.object({

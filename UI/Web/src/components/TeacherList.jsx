@@ -4,10 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import VectorIcon from './VectorIcon';
 
 export default function TeacherList() {
-  const PAGE_SIZE = 10;
   const { user } = useAuth();
   const [teachers, setTeachers] = useState([]);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState({
     fullName: '',
@@ -25,16 +25,10 @@ export default function TeacherList() {
   const [lectures, setLectures] = useState({});
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [extendForm, setExtendForm] = useState({ months: '', date: '', note: '' });
-  const [page, setPage] = useState(1);
 
   useEffect(() => {
     load();
   }, []);
-
-  useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(teachers.length / PAGE_SIZE));
-    if (page > maxPage) setPage(maxPage);
-  }, [teachers, page]);
 
   async function load() {
     try {
@@ -46,8 +40,20 @@ export default function TeacherList() {
     }
   }
 
-  const totalPages = Math.max(1, Math.ceil(teachers.length / PAGE_SIZE));
-  const visibleTeachers = teachers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const visibleTeachers = teachers.filter((teacher) => {
+    const term = search.trim().toLowerCase();
+    if (!term) return true;
+    const haystack = [
+      teacher.userId?.fullName,
+      teacher.userId?.phone,
+      teacher.userId?.email,
+      ...(teacher.specialization || [])
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(term);
+  });
 
   function startEdit(t) {
     setActiveAction({ type: null, teacherId: null });
@@ -147,6 +153,14 @@ export default function TeacherList() {
 
   return (
     <div className="teacher-list-modern">
+      <div className="teacher-list-toolbar">
+        <input
+          className="teacher-search"
+          placeholder="Search by teacher name, phone, email or subject"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
       {error && <p className="error">{error}</p>}
 
       <div className="card" style={{ padding: 0 }}>
@@ -154,7 +168,7 @@ export default function TeacherList() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>#</th>
+                <th className="teacher-index-col">#</th>
                 <th>Teacher</th>
                 <th>Contact</th>
                 <th>Contract & Payments</th>
@@ -180,7 +194,7 @@ export default function TeacherList() {
                 return (
                   <Fragment key={t._id}>
                     <tr style={{ background: rowBg }}>
-                      <td>{(page - 1) * PAGE_SIZE + idx + 1}</td>
+                      <td className="teacher-index-col">{idx + 1}</td>
                       <td>
                         <div style={{ fontWeight: 700 }}>{t.userId?.fullName || 'Teacher'}</div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>
@@ -479,21 +493,14 @@ export default function TeacherList() {
                   </Fragment>
                 );
               })}
+              {!visibleTeachers.length && (
+                <tr>
+                  <td colSpan={7} style={{ padding: 16 }}>No teachers found for this search.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-        {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-          <button
-            key={pageNumber}
-            className={pageNumber === page ? 'primary-btn' : 'ghost-btn'}
-            style={{ minWidth: 40 }}
-            onClick={() => setPage(pageNumber)}
-          >
-            {pageNumber}
-          </button>
-        ))}
       </div>
     </div>
   );
@@ -508,6 +515,28 @@ const css = `
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   font-size: 14px;
 }
+.teacher-list-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.teacher-search {
+  width: 100%;
+  min-width: 220px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.teacher-index-col {
+  width: 52px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
 .status-chip {
   padding: 5px 12px;
   border-radius: 999px;
@@ -515,17 +544,17 @@ const css = `
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  background: #e3f8ef;
-  color: #0b8a4a;
-  border: 1px solid #bfe7d2;
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--success);
+  border: 1px solid rgba(22, 163, 74, 0.2);
 }
 .action-chip {
-  border-color: #cfd8f6;
+  border-color: var(--border);
 }
 .action-chip.active {
-  background: #e8edff;
-  border-color: #6a7be7;
-  color: #1f2f75;
+  background: rgba(37, 99, 235, 0.12);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 .inline-edit-actions {
   display: flex;
@@ -533,10 +562,10 @@ const css = `
   margin-top: 10px;
 }
 .pill-row {
-  border: 1px solid #e6e9f3;
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px;
-  background: #fbfcff;
+  background: rgba(37, 99, 235, 0.04);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 6px;
@@ -547,11 +576,11 @@ const css = `
   justify-content: space-between;
   gap: 10px;
   font-size: 13px;
-  color: #1f2f75;
+  color: var(--text-primary);
 }
-.pill-line span { color: #6c7595; }
+.pill-line span { color: var(--text-secondary); }
 .pill-list { display: grid; gap: 8px; }
-.empty-note { font-size: 12px; color: #6c7595; }
+.empty-note { font-size: 12px; color: var(--text-secondary); }
 @media (max-width: 768px) {
   .data-table th, .data-table td { font-size: 12px; }
 }

@@ -66,10 +66,10 @@ export default function AdminDashboard() {
 
   const routeKey = useMemo(() => {
     if (location.pathname.startsWith('/admin/students-list')) return 'students-list';
+    if (location.pathname.startsWith('/admin/teachers-list')) return 'teachers-list';
     if (location.pathname.startsWith('/admin/teachers')) return 'teachers';
     if (location.pathname.startsWith('/admin/notices')) return 'notices';
     if (location.pathname.startsWith('/admin/students')) return 'students';
-    if (location.pathname.startsWith('/admin/teachers-list')) return 'teachers-list';
     if (location.pathname.startsWith('/admin/lectures')) return 'lectures';
     if (location.pathname.startsWith('/admin/attendance')) return 'attendance';
     if (location.pathname.startsWith('/admin/complaints')) return 'complaints';
