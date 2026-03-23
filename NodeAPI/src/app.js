@@ -28,6 +28,7 @@ function resolveCorsOrigin() {
   const configured = process.env.CORS_ORIGIN?.trim();
   if (!configured) {
     return [
+      'https://baliraja-mangment.vercel.app',
       'https://baliraja-mangment-gz7i2s2er-sams-projects-721b8b93.vercel.app',
     ];
   }

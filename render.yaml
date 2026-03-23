@@ -31,4 +31,4 @@ services:
       - key: REVENUE_PASS
         sync: false
       - key: CORS_ORIGIN
-        value: https://your-vercel-domain.vercel.app
+        value: https://baliraja-mangment.vercel.app,https://baliraja-mangment-gz7i2s2er-sams-projects-721b8b93.vercel.app
