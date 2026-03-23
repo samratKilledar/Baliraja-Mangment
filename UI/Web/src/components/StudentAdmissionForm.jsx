@@ -10,6 +10,7 @@ const initialForm = {
   middleName: '',
   lastName: '',
   dob: '',
+  age: '',
   gender: '',
   status: 'active',
   bloodGroup: '',
@@ -48,6 +49,23 @@ const initialForm = {
   batchId: ''
 };
 
+function sanitizeNumeric(value) {
+  return String(value || '').replace(/\D+/g, '');
+}
+
+function calculateAge(value) {
+  if (!value) return '';
+  const dob = new Date(value);
+  if (Number.isNaN(dob.getTime())) return '';
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthGap = today.getMonth() - dob.getMonth();
+  if (monthGap < 0 || (monthGap === 0 && today.getDate() < dob.getDate())) {
+    age -= 1;
+  }
+  return age >= 0 ? String(age) : '';
+}
+
 export default function StudentAdmissionForm({ editId = null, onSaved }) {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
@@ -59,6 +77,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
   const [geoStatus, setGeoStatus] = useState('');
   const [geoLoading, setGeoLoading] = useState(false);
   const [batches, setBatches] = useState([]);
+  const [feeReason, setFeeReason] = useState('');
   const { user } = useAuth() || {};
 
   useEffect(() => {
@@ -103,10 +122,11 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         middleName: d.personal?.middleName || d.middleName || '',
         lastName: d.personal?.lastName || d.lastName || st.userId?.fullName?.split(' ').slice(1).join(' ') || '',
         dob: st.dateOfBirth ? st.dateOfBirth.substring(0, 10) : '',
+        age: st.age ? String(st.age) : calculateAge(st.dateOfBirth),
         gender: d.personal?.gender || st.gender || '',
         bloodGroup: d.personal?.bloodGroup || '',
         aadhaarNo: d.personal?.aadhaarNo || '',
-        mobileNo: st.userId?.phone || '',
+        mobileNo: sanitizeNumeric(st.userId?.phone || ''),
         email: st.userId?.email || '',
         status: st.status || 'active',
         previousSchool: d.education?.previousSchool || '',
@@ -122,13 +142,13 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         allergy: d.physical?.allergy || '',
         fatherName: d.parent?.fatherName || '',
         fatherJob: d.parent?.fatherJob || '',
-        fatherMobile: d.parent?.fatherMobile || '',
+        fatherMobile: sanitizeNumeric(d.parent?.fatherMobile || ''),
         motherName: d.parent?.motherName || '',
         motherJob: d.parent?.motherJob || '',
-        motherMobile: d.parent?.motherMobile || '',
+        motherMobile: sanitizeNumeric(d.parent?.motherMobile || ''),
         guardianName: d.parent?.guardianName || '',
         guardianRelation: d.parent?.guardianRelation || '',
-        guardianMobile: d.parent?.guardianMobile || '',
+        guardianMobile: sanitizeNumeric(d.parent?.guardianMobile || ''),
         addressLine1: d.address?.addressLine1 || st.address || '',
         addressLine2: d.address?.addressLine2 || '',
         city: d.address?.city || '',
@@ -152,7 +172,16 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
   }
 
   function setField(key, value) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    const nextValue = ['mobileNo', 'fatherMobile', 'motherMobile', 'guardianMobile', 'pinCode'].includes(key)
+      ? sanitizeNumeric(value)
+      : value;
+    setForm((prev) => {
+      const next = { ...prev, [key]: nextValue };
+      if (key === 'dob') {
+        next.age = calculateAge(nextValue);
+      }
+      return next;
+    });
   }
 
   function detectAddressFromLocation() {
@@ -212,10 +241,11 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         dateOfBirth: form.dob,
         gender: form.gender,
         status: form.status,
+        age: form.age ? Number(form.age) : undefined,
         address: [form.addressLine1, form.addressLine2, form.city, form.state, form.pinCode].filter(Boolean).join(', '),
         emergencyContact: form.guardianMobile || form.fatherMobile || form.motherMobile,
         details: form,
-      feeAmount: user?.role === 'super_admin' && form.feeAmount ? Number(form.feeAmount) : undefined,
+      feeAmount: ['super_admin', 'admin'].includes(user?.role) && form.feeAmount ? Number(form.feeAmount) : undefined,
       feeDueDate: form.feeTo || undefined,
       feeFrom: form.feeFrom || undefined,
       feeTo: form.feeTo || undefined,
@@ -228,10 +258,11 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         await api.put(`/students/${editId}`, payload);
         if (fee) {
           await api.put(`/fees/${fee._id}`, {
-            totalAmount: user?.role === 'super_admin' && form.feeAmount ? Number(form.feeAmount) : undefined,
+            totalAmount: ['super_admin', 'admin'].includes(user?.role) && form.feeAmount ? Number(form.feeAmount) : undefined,
             feeStartDate: form.feeFrom || fee.feeStartDate,
             feeEndDate: form.feeTo || fee.feeEndDate,
-            dueDate: form.feeTo || fee.dueDate
+            dueDate: form.feeTo || fee.dueDate,
+            reason: feeReason.trim() || 'Updated from student master form'
           });
         }
       } else {
@@ -242,6 +273,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
       setForm(initialForm);
       setFee(null);
       setPayments([]);
+      setFeeReason('');
       onSaved && onSaved();
     } catch (err) {
       const msg = err?.response?.data?.message || 'Unable to save student';
@@ -288,10 +320,18 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
             </select>
           </label>
           <label><span>Date of Birth</span><input type="date" value={form.dob} onChange={(e) => setField('dob', e.target.value)} /></label>
-          <label><span>Gender</span><input value={form.gender} onChange={(e) => setField('gender', e.target.value)} /></label>
+          <label><span>Age</span><input value={form.age} readOnly disabled /></label>
+          <label><span>Gender</span>
+            <select value={form.gender} onChange={(e) => setField('gender', e.target.value)}>
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
           <label><span>Blood Group</span><input value={form.bloodGroup} onChange={(e) => setField('bloodGroup', e.target.value)} /></label>
           <label><span>Aadhaar No</span><input value={form.aadhaarNo} onChange={(e) => setField('aadhaarNo', e.target.value)} /></label>
-          <label><span>Mobile No</span><input value={form.mobileNo} onChange={(e) => setField('mobileNo', e.target.value)} /></label>
+          <label><span>Mobile No</span><input inputMode="numeric" pattern="[0-9]*" value={form.mobileNo} onChange={(e) => setField('mobileNo', e.target.value)} /></label>
           <label><span>Email</span><input value={form.email} onChange={(e) => setField('email', e.target.value)} /></label>
         </div>
       </section>
@@ -324,13 +364,13 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         <div className="form-grid">
           <label><span>Father Name</span><input value={form.fatherName} onChange={(e) => setField('fatherName', e.target.value)} /></label>
           <label><span>Father Job</span><input value={form.fatherJob} onChange={(e) => setField('fatherJob', e.target.value)} /></label>
-          <label><span>Father Mobile</span><input value={form.fatherMobile} onChange={(e) => setField('fatherMobile', e.target.value)} /></label>
+          <label><span>Father Mobile</span><input inputMode="numeric" pattern="[0-9]*" value={form.fatherMobile} onChange={(e) => setField('fatherMobile', e.target.value)} /></label>
           <label><span>Mother Name</span><input value={form.motherName} onChange={(e) => setField('motherName', e.target.value)} /></label>
           <label><span>Mother Job</span><input value={form.motherJob} onChange={(e) => setField('motherJob', e.target.value)} /></label>
-          <label><span>Mother Mobile</span><input value={form.motherMobile} onChange={(e) => setField('motherMobile', e.target.value)} /></label>
+          <label><span>Mother Mobile</span><input inputMode="numeric" pattern="[0-9]*" value={form.motherMobile} onChange={(e) => setField('motherMobile', e.target.value)} /></label>
           <label><span>Guardian Name</span><input value={form.guardianName} onChange={(e) => setField('guardianName', e.target.value)} /></label>
           <label><span>Relation</span><input value={form.guardianRelation} onChange={(e) => setField('guardianRelation', e.target.value)} /></label>
-          <label><span>Guardian Mobile</span><input value={form.guardianMobile} onChange={(e) => setField('guardianMobile', e.target.value)} /></label>
+          <label><span>Guardian Mobile</span><input inputMode="numeric" pattern="[0-9]*" value={form.guardianMobile} onChange={(e) => setField('guardianMobile', e.target.value)} /></label>
         </div>
       </section>
 
@@ -342,7 +382,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
           <label><span>City / Village</span><input value={form.city} onChange={(e) => setField('city', e.target.value)} /></label>
           <label><span>District</span><input value={form.district} onChange={(e) => setField('district', e.target.value)} /></label>
           <label><span>State</span><input value={form.state} onChange={(e) => setField('state', e.target.value)} /></label>
-          <label><span>PIN Code</span><input value={form.pinCode} onChange={(e) => setField('pinCode', e.target.value)} /></label>
+          <label><span>PIN Code</span><input inputMode="numeric" pattern="[0-9]*" value={form.pinCode} onChange={(e) => setField('pinCode', e.target.value)} /></label>
           <div className="full" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button type="button" className="ghost-btn" onClick={detectAddressFromLocation} disabled={geoLoading}>
               {geoLoading ? 'Detecting location…' : 'Use Current Location'}
@@ -355,9 +395,12 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
       <section className="form-section">
         <h4><VectorIcon name="money" size={16} /> Fees</h4>
         <div className="form-grid">
-          <label><span>Final Fees Amount</span><input type="number" value={form.feeAmount} onChange={(e) => setField('feeAmount', e.target.value)} disabled={user?.role !== 'super_admin'} /></label>
+          <label><span>Final Fees Amount</span><input type="number" value={form.feeAmount} onChange={(e) => setField('feeAmount', e.target.value)} disabled={!['super_admin', 'admin'].includes(user?.role)} /></label>
           <label><span>Fee From Date</span><input type="date" value={form.feeFrom} onChange={(e) => setField('feeFrom', e.target.value)} /></label>
           <label><span>Fee To Date</span><input type="date" value={form.feeTo} onChange={(e) => setField('feeTo', e.target.value)} /></label>
+          {fee && ['super_admin', 'admin'].includes(user?.role) ? (
+            <label><span>Fee Update Reason</span><input value={feeReason} onChange={(e) => setFeeReason(e.target.value)} placeholder="Reason for fee update" /></label>
+          ) : null}
           {fee && (
             <>
               <label><span>Paid</span><input disabled value={fee.paidAmount || 0} /></label>

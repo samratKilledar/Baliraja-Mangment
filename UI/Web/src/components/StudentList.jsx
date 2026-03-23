@@ -170,7 +170,7 @@ function startEdit(s) {
 
   setEditForm({
     fullName: s.userId?.fullName || '',
-    phone: s.userId?.phone || '',
+    phone: sanitizeNumeric(s.userId?.phone || ''),
     status: s.status || 'active'
   });
 }
@@ -180,7 +180,7 @@ function startEdit(s) {
     try {
       await api.put(`/students/${id}`, {
         fullName: editForm.fullName,
-        phone: editForm.phone,
+        phone: sanitizeNumeric(editForm.phone),
         status: editForm.status
       });
       setEditing(null);
@@ -437,6 +437,10 @@ function startEdit(s) {
         )}
         {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
       </div>
+      <div className="list-index-bar">
+        <span>Total Students: {pageMeta.total || 0}</span>
+        <span>Index: {shouldShowIndex ? 'Visible' : 'Hidden for 10 or fewer records'}</span>
+      </div>
       <div className="card" style={{ padding: 0 }}>
         <div className="data-table-wrap">
           <table className="data-table">
@@ -462,17 +466,18 @@ function startEdit(s) {
                 const due = pendingFees[student._id]?.dueAmount ?? 0;
                 const highlightBg =
                   due > 0 && (pendingFees[student._id]?.paidAmount || feeInfo?.paid)
-                    ? '#fff7e6'
+                    ? '#f4cf7a'
                     : due > 0
-                      ? '#ffecec'
-                      : '#f3fff3';
+                      ? '#f2a3a3'
+                      : '#98d8aa';
                 return (
                   <Fragment key={student._id}>
-                    <tr style={{ background: highlightBg }}>
+                    <tr style={{ background: highlightBg, color: '#18243d' }}>
                       {shouldShowIndex ? <td>{(page - 1) * PAGE_SIZE + idx + 1}</td> : null}
                       <td>
                         <div style={{ fontWeight: 700 }}>{student.userId?.fullName || 'N/A'}</div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>ID: {student.enrollmentNo}</div>
+                        <div style={{ color: '#22335f', fontSize: 12 }}>Password: {student.userId?.passwordVisible || '123456'}</div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>Added by: {student.createdBy?.fullName || '—'}</div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>Admission: {student.admissionDate ? new Date(student.admissionDate).toLocaleDateString() : '—'}</div>
                       </td>
@@ -483,6 +488,8 @@ function startEdit(s) {
                       </td>
                       <td>
                         <div style={{ fontWeight: 600 }}>{student.batchId?.batchName || '—'}</div>
+                        <div style={{ color: '#22335f', fontSize: 12 }}>Age: {student.age ?? calculateAge(student.dateOfBirth) ?? '—'}</div>
+                        <div style={{ color: '#22335f', fontSize: 12 }}>Gender: {student.gender || student.details?.personal?.gender || '—'}</div>
                         {student.batchId?.startDate ? (
                           <div style={{ color: '#4b5774', fontSize: 12 }}>
                             Year {new Date(student.batchId.startDate).getFullYear()}
@@ -579,7 +586,7 @@ function startEdit(s) {
                         <td colSpan={columnCount}>
                           <div className="inline-edit">
                             <label>Name <input value={editForm.fullName} onChange={(e)=>setEditForm({...editForm, fullName:e.target.value})} /></label>
-                            <label>Phone <input value={editForm.phone} onChange={(e)=>setEditForm({...editForm, phone:e.target.value})} /></label>
+                            <label>Phone <input inputMode="numeric" pattern="[0-9]*" value={editForm.phone} onChange={(e)=>setEditForm({...editForm, phone:sanitizeNumeric(e.target.value)})} /></label>
                             <label>Status
                               <select value={editForm.status} onChange={(e)=>setEditForm({...editForm, status:e.target.value})}>
                                 <option value="active">active</option>
@@ -905,6 +912,23 @@ function formatStudentAddress(student) {
   return fallback || '—';
 }
 
+function sanitizeNumeric(value) {
+  return String(value || '').replace(/\D+/g, '');
+}
+
+function calculateAge(dateOfBirth) {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthGap = today.getMonth() - dob.getMonth();
+  if (monthGap < 0 || (monthGap === 0 && today.getDate() < dob.getDate())) {
+    age -= 1;
+  }
+  return age >= 0 ? age : null;
+}
+
 // calendar helper
 function renderAttendanceCalendar(data) {
   const now = new Date();
@@ -957,6 +981,7 @@ const css = `
   gap: 12px;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   font-size: 14px;
+  color: #15213d;
 }
 .card-grid {
   display: grid;
@@ -1017,10 +1042,24 @@ const css = `
   flex: 1;
   min-width: 220px;
   padding: 10px 12px;
-  border: 1px solid #dfe4f4;
+  border: 1px solid #8fa3d1;
   border-radius: 10px;
-  background: #fff;
+  background: #f4f7ff;
   font-size: 14px;
+  color: #15213d;
+  font-weight: 600;
+}
+.list-index-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: -6px 0 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #d8e1fb;
+  border: 1px solid #90a5d7;
+  color: #11224f;
+  font-weight: 700;
 }
 .top-pagination {
   display: flex;
@@ -1057,7 +1096,7 @@ const css = `
 .form-card label { font-weight: 600; color: #1f2f75; display: flex; flex-direction: column; gap: 6px; }
 .form-card input, .form-card select { width: 100%; padding: 10px; border: 1px solid #dfe4f4; border-radius: 10px; }
 .pill-list { display: grid; gap: 8px; margin-top: 8px; }
-.pill-row { border: 1px solid #e6e9f3; border-radius: 10px; padding: 10px; background: #fbfcff; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
+.pill-row { border: 1px solid #9bb0df; border-radius: 10px; padding: 10px; background: #e8eeff; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; }
 .pill-row.column { grid-template-columns: 1fr; }
 .pill-line { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: #1f2f75; }
 .pill-line span { color: #6c7595; }
@@ -1087,7 +1126,7 @@ const css = `
   flex:1;
   padding:10px;
   border-radius:10px;
-  background:#f6f8ff;
+  background:#dfe7ff;
   text-align:center;
   font-size:12px;
 }
@@ -1104,11 +1143,11 @@ const css = `
 }
 
 .fee-box.paid{
-  background:#e8f8f0;
+  background:#bfe8cb;
 }
 
 .fee-box.due{
-  background:#ffecec;
+  background:#f2b1b1;
 }
 
 .section-title{
@@ -1125,10 +1164,10 @@ const css = `
 }
 
 .payment-card{
-  border:1px solid #e6e9f3;
+  border:1px solid #9bb0df;
   border-radius:10px;
   padding:10px;
-  background:#fbfcff;
+  background:#eaf0ff;
   font-size:12px;
 }
 

@@ -73,6 +73,19 @@ function getDefaultPasswordForRole(role) {
   return '';
 }
 
+function calculateAgeFromDateOfBirth(dateOfBirth) {
+  if (!dateOfBirth) return undefined;
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return undefined;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthGap = today.getMonth() - dob.getMonth();
+  if (monthGap < 0 || (monthGap === 0 && today.getDate() < dob.getDate())) {
+    age -= 1;
+  }
+  return Math.max(age, 0);
+}
+
 async function generateEnrollmentNo(fullName = 'Student') {
   const namePart = fullName.replace(/\s+/g, '').slice(0, 5).toUpperCase() || 'STU';
   const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -155,12 +168,14 @@ async function createUser(req, res, next) {
 
     // Attach role specific profile if provided
     if (payload.role === ROLES.STUDENT) {
+      const age = calculateAgeFromDateOfBirth(payload.dateOfBirth);
       const student = await Student.create({
         userId: user._id,
         enrollmentNo,
         batchId: payload.batchId || null,
         status: 'active',
         dateOfBirth: payload.dateOfBirth,
+        age,
         gender: payload.gender,
         address: payload.address,
         emergencyContact: payload.emergencyContact,

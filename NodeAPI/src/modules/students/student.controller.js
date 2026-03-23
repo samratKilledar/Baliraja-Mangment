@@ -5,6 +5,7 @@ const DeviceToken = require('../notifications/deviceToken.model');
 const User = require('../users/user.model');
 const Fee = require('../fees/fee.model');
 const Attendance = require('../attendance/attendance.model');
+const { decryptPassword } = require('../../utils/passwordVault');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
@@ -59,6 +60,29 @@ function shapeStudentDetails(raw = {}) {
     pinCode: raw.pinCode
   };
   return { personal, education, physical, parent, address };
+}
+
+function calculateAgeFromDateOfBirth(dateOfBirth) {
+  if (!dateOfBirth) return undefined;
+  const dob = new Date(dateOfBirth);
+  if (Number.isNaN(dob.getTime())) return undefined;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthGap = today.getMonth() - dob.getMonth();
+  if (monthGap < 0 || (monthGap === 0 && today.getDate() < dob.getDate())) {
+    age -= 1;
+  }
+  return Math.max(age, 0);
+}
+
+function serializeStudent(studentDoc) {
+  const student = studentDoc?.toObject ? studentDoc.toObject() : { ...studentDoc };
+  if (student?.userId?.passwordCipher) {
+    student.userId.passwordVisible = decryptPassword(student.userId.passwordCipher);
+    delete student.userId.passwordCipher;
+    delete student.userId.passwordHash;
+  }
+  return student;
 }
 
 function fetchJson(url) {
@@ -162,6 +186,7 @@ async function createStudent(req, res, next) {
 
     const student = await Student.create({
       ...req.body,
+      age: calculateAgeFromDateOfBirth(req.body.dateOfBirth),
       enrollmentNo,
       createdBy: req.user?.sub,
       createdByEmail: req.user?.email
@@ -199,7 +224,7 @@ async function listStudents(req, res, next) {
     }
 
     let students = await Student.find(filter)
-      .populate('userId', 'fullName email phone')
+      .populate('userId', 'fullName email phone passwordCipher')
       .populate('createdBy', 'fullName email')
       .populate('currentCourseIds', 'name category')
       .populate('batchId', 'batchName')
@@ -217,7 +242,7 @@ async function listStudents(req, res, next) {
     const pagedStudents = students.slice(skip, skip + limit);
 
     res.json({
-      items: pagedStudents,
+      items: pagedStudents.map(serializeStudent),
       meta: buildPaginationMeta({ total, page, limit })
     });
   } catch (err) {
@@ -229,12 +254,12 @@ async function getStudent(req, res, next) {
   try {
     const { studentId } = req.params;
     const student = await Student.findById(studentId)
-      .populate('userId', 'fullName email phone')
+      .populate('userId', 'fullName email phone passwordCipher')
       .populate('createdBy', 'fullName email')
       .populate('batchId', 'batchName')
       .lean();
     if (!student) return res.status(404).json({ message: 'Student not found' });
-    res.json(student);
+    res.json(serializeStudent(student));
   } catch (err) {
     next(err);
   }
@@ -322,6 +347,9 @@ async function updateStudent(req, res, next) {
     updatable.forEach((key) => {
       if (payload[key] !== undefined) student[key] = payload[key];
     });
+    if (payload.dateOfBirth !== undefined) {
+      student.age = calculateAgeFromDateOfBirth(payload.dateOfBirth);
+    }
 
     if (payload.details && typeof payload.details === 'object') {
       student.details = { ...student.details, ...shapeStudentDetails(payload.details) };
@@ -329,10 +357,10 @@ async function updateStudent(req, res, next) {
 
     await student.save();
     const refreshed = await Student.findById(studentId)
-      .populate('userId', 'fullName email phone')
+      .populate('userId', 'fullName email phone passwordCipher')
       .populate('batchId', 'batchName');
 
-    res.json(refreshed);
+    res.json(serializeStudent(refreshed));
   } catch (err) {
     next(err);
   }

@@ -79,11 +79,11 @@ async function updateFeeRecord(req, res, next) {
     if (!payload.reason) return res.status(400).json({ message: 'Reason is required for fee updates' });
 
     if (!isSuperAdmin) {
-      const attemptedRestrictedFields = ['totalAmount', 'paidAmount', 'transactions', 'dueDate'].filter(
+      const attemptedRestrictedFields = ['paidAmount', 'transactions'].filter(
         (field) => payload[field] !== undefined
       );
       if (attemptedRestrictedFields.length) {
-        return res.status(403).json({ message: 'Admins can only update Fee Start Date and Fee End Date' });
+        return res.status(403).json({ message: 'Admins can update fee amount and dates, but not paid amount or payment history' });
       }
     }
 
@@ -99,14 +99,14 @@ async function updateFeeRecord(req, res, next) {
       dueDate: fee.dueDate
     };
 
-    if (payload.totalAmount !== undefined && isSuperAdmin) {
+    if (payload.totalAmount !== undefined && (isSuperAdmin || isAdmin)) {
       if (payload.totalAmount < currentPaid) {
         return res.status(400).json({ message: 'Total fee cannot be less than already paid amount' });
       }
       fee.totalAmount = payload.totalAmount;
     }
     if (payload.paidAmount !== undefined && isSuperAdmin) fee.paidAmount = payload.paidAmount;
-    if (payload.dueDate !== undefined && isSuperAdmin) fee.dueDate = payload.dueDate;
+    if (payload.dueDate !== undefined && (isSuperAdmin || isAdmin)) fee.dueDate = payload.dueDate;
     if (payload.feeStartDate !== undefined) fee.feeStartDate = payload.feeStartDate;
     if (payload.feeEndDate !== undefined) fee.feeEndDate = payload.feeEndDate;
     if (payload.transactions?.length && isSuperAdmin) fee.transactions = payload.transactions;
