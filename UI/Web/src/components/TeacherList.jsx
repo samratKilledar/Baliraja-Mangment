@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import VectorIcon from './VectorIcon';
 
 export default function TeacherList() {
+  const PAGE_SIZE = 10;
   const { user } = useAuth();
   const [teachers, setTeachers] = useState([]);
   const [error, setError] = useState('');
@@ -24,10 +25,16 @@ export default function TeacherList() {
   const [lectures, setLectures] = useState({});
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [extendForm, setExtendForm] = useState({ months: '', date: '', note: '' });
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(teachers.length / PAGE_SIZE));
+    if (page > maxPage) setPage(maxPage);
+  }, [teachers, page]);
 
   async function load() {
     try {
@@ -38,6 +45,9 @@ export default function TeacherList() {
       setError(err?.response?.data?.message || 'Unable to fetch teachers');
     }
   }
+
+  const totalPages = Math.max(1, Math.ceil(teachers.length / PAGE_SIZE));
+  const visibleTeachers = teachers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function startEdit(t) {
     setActiveAction({ type: null, teacherId: null });
@@ -154,7 +164,7 @@ export default function TeacherList() {
               </tr>
             </thead>
             <tbody>
-              {teachers.map((t, idx) => {
+              {visibleTeachers.map((t, idx) => {
                 const remaining =
                   t.remainingAmount ??
                   (t.totalContractAmount !== undefined ? t.totalContractAmount - (t.paidAmount || 0) : null);
@@ -170,7 +180,7 @@ export default function TeacherList() {
                 return (
                   <Fragment key={t._id}>
                     <tr style={{ background: rowBg }}>
-                      <td>{idx + 1}</td>
+                      <td>{(page - 1) * PAGE_SIZE + idx + 1}</td>
                       <td>
                         <div style={{ fontWeight: 700 }}>{t.userId?.fullName || 'Teacher'}</div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>
@@ -472,6 +482,18 @@ export default function TeacherList() {
             </tbody>
           </table>
         </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+          <button
+            key={pageNumber}
+            className={pageNumber === page ? 'primary-btn' : 'ghost-btn'}
+            style={{ minWidth: 40 }}
+            onClick={() => setPage(pageNumber)}
+          >
+            {pageNumber}
+          </button>
+        ))}
       </div>
     </div>
   );

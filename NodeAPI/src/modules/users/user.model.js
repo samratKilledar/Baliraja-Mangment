@@ -28,6 +28,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    passwordCipher: {
+      type: String,
+      default: ''
+    },
 
     role: {
       type: String,

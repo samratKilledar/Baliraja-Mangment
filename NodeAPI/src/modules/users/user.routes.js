@@ -5,6 +5,7 @@ const {
   listUsers,
   deleteUser,
   updateMyPassword,
+  resetUserPassword,
   publicUserByPhone
 } = require('./user.controller');
 const { authenticate, authorize } = require('../../middleware/auth');
@@ -21,6 +22,7 @@ router.use(authenticate);
 router.post('/', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), createUser);
 router.get('/', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), listUsers);
 router.put('/me/password', updateMyPassword);
+router.put('/:userId/password', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), resetUserPassword);
 // GET logged-in user
 router.get('/me', getMe);
 router.delete('/:userId', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), deleteUser);

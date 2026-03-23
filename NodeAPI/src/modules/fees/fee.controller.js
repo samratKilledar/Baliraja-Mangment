@@ -1,6 +1,7 @@
 const Fee = require('./fee.model');
 const Student = require('../students/student.model');
 const { ROLES } = require('../../utils/constants');
+const { normalizePagination, buildPaginationMeta } = require('../../utils/pagination');
 
 async function recalcFee(fee) {
   if (!fee) return fee;
@@ -156,12 +157,38 @@ async function feeSummary(req, res, next) {
 
 async function listFees(req, res, next) {
   try {
-    const fees = await Fee.find()
+    const { page, limit, skip } = normalizePagination(req.query, 10, 100);
+    const [total, fees] = await Promise.all([
+      Fee.countDocuments(),
+      Fee.find()
       .populate('studentId', 'enrollmentNo userId batchId')
       .populate({ path: 'studentId', populate: [{ path: 'userId', select: 'fullName phone email' }, { path: 'batchId', select: 'batchName' }] })
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+    ]);
     const normalized = await Promise.all(fees.map((f)=>recalcFee(f)));
-    res.json(normalized.map((f)=>f.toObject()));
+    res.json({
+      items: normalized.map((f)=>f.toObject()),
+      meta: buildPaginationMeta({ total, page, limit })
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function deleteFeeRecord(req, res, next) {
+  try {
+    const { feeId } = req.params;
+    const fee = await Fee.findById(feeId);
+    if (!fee) return res.status(404).json({ message: 'Fee record not found' });
+
+    if (![ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(req.user?.role)) {
+      return res.status(403).json({ message: 'Only admins and super admins can delete fee records' });
+    }
+
+    await Fee.findByIdAndDelete(feeId);
+    res.json({ message: 'Fee record deleted' });
   } catch (err) {
     next(err);
   }
@@ -265,5 +292,6 @@ module.exports = {
   getFeeByStudent,
   myFee,
   collectionByRange,
-  listFees
+  listFees,
+  deleteFeeRecord
 };

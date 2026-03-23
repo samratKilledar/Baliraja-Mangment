@@ -40,7 +40,9 @@ const createUserSchema = z.object({
 });
 
 const listUserSchema = z.object({
-  role: z.nativeEnum(ROLES).optional()
+  role: z.nativeEnum(ROLES).optional(),
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().max(100).optional()
 });
 
 const passwordUpdateSchema = z.object({
@@ -48,8 +50,13 @@ const passwordUpdateSchema = z.object({
   newPassword: z.string().min(6)
 });
 
+const resetUserPasswordSchema = z.object({
+  newPassword: z.string().min(6)
+});
+
 module.exports = {
   createUserSchema,
   listUserSchema,
-  passwordUpdateSchema
+  passwordUpdateSchema,
+  resetUserPasswordSchema
 };

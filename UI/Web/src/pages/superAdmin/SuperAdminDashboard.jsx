@@ -48,6 +48,8 @@ export default function SuperAdminDashboard() {
   const [feesList, setFeesList] = useState([]);
   const [feesLoading, setFeesLoading] = useState(false);
   const [feesError, setFeesError] = useState('');
+  const [feesPage, setFeesPage] = useState(1);
+  const [feesMeta, setFeesMeta] = useState({ page: 1, totalPages: 1 });
 
   const menuItems = useMemo(() => [...baseMenus, ...extraMenus], [extraMenus]);
   const routeModule = useMemo(() => {
@@ -106,15 +108,16 @@ export default function SuperAdminDashboard() {
 
   useEffect(() => {
     if (routeModule === 'fees') {
-      loadFees();
+      loadFees(feesPage);
     }
-  }, [routeModule]);
+  }, [routeModule, feesPage]);
 
-  async function loadFees() {
+  async function loadFees(nextPage = 1) {
     setFeesLoading(true);
     try {
-      const { data } = await api.get('/fees/list');
-      setFeesList(data || []);
+      const { data } = await api.get('/fees/list', { params: { page: nextPage, limit: 10 } });
+      setFeesList(data?.items || []);
+      setFeesMeta(data?.meta || { page: nextPage, totalPages: 1 });
       setFeesError('');
     } catch (err) {
       setFeesList([]);
@@ -276,6 +279,19 @@ if (currentModule === 'admins') {
                   </div>
                 );
               })}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+              {Array.from({ length: feesMeta.totalPages || 1 }, (_, index) => index + 1).map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  className={feesMeta.page === pageNumber ? 'primary-btn' : 'ghost-btn'}
+                  style={{ minWidth: 40 }}
+                  onClick={() => setFeesPage(pageNumber)}
+                  disabled={feesLoading}
+                >
+                  {pageNumber}
+                </button>
+              ))}
             </div>
           </div>
         </article>

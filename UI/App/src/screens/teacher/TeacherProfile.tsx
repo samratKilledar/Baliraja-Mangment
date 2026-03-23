@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import DashboardScreen from '../../components/DashboardScreen';
 import { useAuth } from '../../context/AuthContext';
+import PasswordChangeCard from '../../components/PasswordChangeCard';
 
 export default function TeacherProfile() {
   const { user } = useAuth();
@@ -22,6 +23,10 @@ export default function TeacherProfile() {
         <Text style={styles.subtext}>Email: {user?.email || '—'}</Text>
         <Text style={styles.subtext}>Role: {user?.role}</Text>
       </View>
+      <PasswordChangeCard
+        title="Update Password"
+        subtitle="This updates your app login password and syncs it back to the web panel."
+      />
     </DashboardScreen>
   );
 }

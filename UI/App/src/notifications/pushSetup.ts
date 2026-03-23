@@ -1,5 +1,6 @@
 import PushNotification, { PushNotification as PN } from 'react-native-push-notification';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { registerDeviceToken } from '../api/deviceToken';
 
 let configured = false;
@@ -15,6 +16,13 @@ function roleToApp(role?: string): 'admin' | 'student' | 'parent' | 'teacher' {
 export function setupPushNotifications(role?: string) {
   if (configured && lastRole === role) return;
   lastRole = role || null;
+
+  const senderId = process.env.FCM_SENDER_ID?.trim();
+  if (Platform.OS === 'android' && !senderId) {
+    console.warn('Skipping Android push setup because Firebase is not configured.');
+    configured = true;
+    return;
+  }
 
   PushNotification.configure({
     // (optional) Called when Token is generated (iOS and Android)
@@ -32,7 +40,7 @@ export function setupPushNotifications(role?: string) {
       console.warn('Push registration error', err?.message || err);
     },
     // Android FCM sender ID (optional if google-services.json handles it)
-    senderID: process.env.FCM_SENDER_ID,
+    senderID: senderId,
     popInitialNotification: false,
     requestPermissions: true
   });

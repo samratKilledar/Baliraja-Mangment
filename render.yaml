@@ -22,6 +22,10 @@ services:
         value: superadmin@baliraja.com
       - key: SUPER_ADMIN_PASSWORD
         sync: false
+      - key: DEFAULT_ADMIN_PASSWORD
+        sync: false
+      - key: DEFAULT_STUDENT_PASSWORD
+        sync: false
       - key: SUPER_ADMIN_PHONE
         value: 9999999999
       - key: SUPER_ADMIN_FORCE_RESET

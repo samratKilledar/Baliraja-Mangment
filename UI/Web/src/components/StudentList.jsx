@@ -9,9 +9,11 @@ const DEFAULT_API_URL = import.meta.env.DEV
   : 'https://baliraja-mangment.onrender.com/api/v1';
 
 export default function StudentList() {
+  const PAGE_SIZE = 10;
   const { user } = useAuth() || {};
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [actionBusy, setActionBusy] = useState('');
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -38,6 +40,11 @@ export default function StudentList() {
   const [leaves, setLeaves] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [detailPanel, setDetailPanel] = useState({ type: null, studentId: null });
+  const [page, setPage] = useState(1);
+  const [pageMeta, setPageMeta] = useState({ page: 1, totalPages: 1, total: 0 });
+  const shouldShowIndex = pageMeta.total > PAGE_SIZE;
+  const hasPagination = pageMeta.totalPages > 1;
+  const columnCount = shouldShowIndex ? 6 : 5;
 
   // keep all sub-views closed on initial load
   useEffect(() => {
@@ -50,19 +57,20 @@ export default function StudentList() {
   }, []);
 
 useEffect(() => {
-  load();
+  load(undefined, page);
 
   if (user?.role === 'super_admin' || user?.role === 'admin') {
     loadComplaints();
     loadLeaves();
   }
-}, [user]);
+}, [user, page]);
 
 useEffect(() => {
   const term = search.trim();
   const handler = setTimeout(() => {
     if (!term) {
       setError('');
+      setPage(1);
       return;
     }
     searchStudents(term);
@@ -71,19 +79,20 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [search]);
 
-  async function load(term) {
+  async function load(term, nextPage = 1) {
     setLoading(true);
     try {
       const [{ data: studentData }, { data: feeData }] = await Promise.all([
-        api.get('/students', { params: term ? { q: term, limit: 50 } : { limit: 50 } }),
-        api.get('/fees/list')
+        api.get('/students', { params: term ? { q: term, page: nextPage, limit: PAGE_SIZE } : { page: nextPage, limit: PAGE_SIZE } }),
+        api.get('/fees/list', { params: { page: 1, limit: 1000 } })
       ]);
-      setStudents(studentData || []);
+      setStudents(studentData?.items || []);
+      setPageMeta(studentData?.meta || { page: nextPage, totalPages: 1, total: 0 });
       const map = {};
       const meta = {};
       let totalCollected = 0;
       let totalPending = 0;
-      feeData.forEach((f) => {
+      (feeData?.items || []).forEach((f) => {
         if (f.studentId?._id) {
           map[f.studentId._id] = f;
           meta[f.studentId._id] = {
@@ -109,7 +118,8 @@ useEffect(() => {
   }
 
   async function searchStudents(term) {
-    await load(term);
+    setPage(1);
+    await load(term, 1);
   }
 
   async function loadLeaves() {
@@ -166,6 +176,7 @@ function startEdit(s) {
 }
 
   async function saveEdit(id) {
+    setActionBusy(`student-save-${id}`);
     try {
       await api.put(`/students/${id}`, {
         fullName: editForm.fullName,
@@ -174,9 +185,11 @@ function startEdit(s) {
       });
       setEditing(null);
       setActiveAction({ type: null, studentId: null });
-      await load();
+      await load(search.trim(), page);
     } catch (err) {
       setError(err?.response?.data?.message || 'Unable to update student');
+    } finally {
+      setActionBusy('');
     }
   }
 
@@ -263,11 +276,12 @@ function startEdit(s) {
       setError('Reason is required for fee updates');
       return;
     }
+    setActionBusy(`fee-save-${feeEdit._id}`);
     try {
       await api.put(`/fees/${feeEdit._id}`, {
         totalAmount: user?.role === 'super_admin' ? feeEdit.totalAmount : undefined,
-        paidAmount: feeEdit.paidAmount,
-        dueDate: feeEdit.dueDate,
+        paidAmount: user?.role === 'super_admin' ? feeEdit.paidAmount : undefined,
+        dueDate: user?.role === 'super_admin' ? feeEdit.dueDate : undefined,
         feeStartDate: feeEdit.feeStartDate,
         feeEndDate: feeEdit.feeEndDate,
         reason: feeReason.trim()
@@ -277,9 +291,11 @@ function startEdit(s) {
       setFeeReason('');
       setDetailPanel({ type:null, studentId:null });
       setActiveAction({ type: null, studentId: null });
-      await load();
+      await load(search.trim(), page);
     } catch (err) {
       setError(err?.response?.data?.message || 'Unable to update fee');
+    } finally {
+      setActionBusy('');
     }
   }
 
@@ -319,6 +335,7 @@ function startEdit(s) {
       setError('Please select payment date');
       return;
     }
+    setActionBusy(`payment-save-${paymentForm.feeId}`);
     try {
       await api.post(`/fees/${paymentForm.feeId}/payments`, {
         amount: Number(paymentForm.amount),
@@ -334,9 +351,35 @@ function startEdit(s) {
       }
       setPaymentForm({ ...paymentForm, amount: '', transactionRef: '', note: '', paidOn: '' });
       setError('');
-      await load(); // refresh list due/paid values
+      await load(search.trim(), page); // refresh list due/paid values
     } catch (err) {
       setError(err?.response?.data?.message || 'Unable to add payment');
+    } finally {
+      setActionBusy('');
+    }
+  }
+
+  async function deleteFeeRecord(studentId) {
+    const fee = pendingFees[studentId];
+    if (!fee?._id) {
+      setError('No fee record found for this student');
+      return;
+    }
+    if (!window.confirm('Delete this fee record?')) return;
+
+    setActionBusy(`fee-delete-${fee._id}`);
+    try {
+      await api.delete(`/fees/${fee._id}`);
+      if (feeEdit?._id === fee._id) {
+        setFeeEdit(null);
+        setActiveAction({ type: null, studentId: null });
+      }
+      await load(search.trim(), page);
+      setError('');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Unable to delete fee');
+    } finally {
+      setActionBusy('');
     }
   }
 
@@ -377,6 +420,21 @@ function startEdit(s) {
           value={search}
           onChange={(e)=>setSearch(e.target.value)}
         />
+        {hasPagination && (
+          <div className="top-pagination" aria-label="Student list pages">
+            {Array.from({ length: pageMeta.totalPages }, (_, index) => index + 1).map((pageNumber) => (
+              <button
+                key={pageNumber}
+                type="button"
+                className={`page-chip ${pageNumber === page ? 'active' : ''}`}
+                onClick={() => setPage(pageNumber)}
+                disabled={loading}
+              >
+                {pageNumber}
+              </button>
+            ))}
+          </div>
+        )}
         {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
       </div>
       <div className="card" style={{ padding: 0 }}>
@@ -384,7 +442,7 @@ function startEdit(s) {
           <table className="data-table">
             <thead>
               <tr>
-                <th>#</th>
+                {shouldShowIndex ? <th>#</th> : null}
                 <th>Student</th>
                 <th>Contact</th>
                 <th>Batch</th>
@@ -394,10 +452,10 @@ function startEdit(s) {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={6} style={{ padding: 16 }}>Loading students...</td></tr>
+                <tr><td colSpan={columnCount} style={{ padding: 16 }}>Loading students...</td></tr>
               )}
               {!loading && filteredStudents.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: 16 }}>No data available. Try another search term.</td></tr>
+                <tr><td colSpan={columnCount} style={{ padding: 16 }}>No data available. Try another search term.</td></tr>
               )}
               {!loading && filteredStudents.map((student, idx) => {
                 const feeInfo = feeMeta[student._id];
@@ -411,7 +469,7 @@ function startEdit(s) {
                 return (
                   <Fragment key={student._id}>
                     <tr style={{ background: highlightBg }}>
-                      <td>{idx + 1}</td>
+                      {shouldShowIndex ? <td>{(page - 1) * PAGE_SIZE + idx + 1}</td> : null}
                       <td>
                         <div style={{ fontWeight: 700 }}>{student.userId?.fullName || 'N/A'}</div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>ID: {student.enrollmentNo}</div>
@@ -455,7 +513,7 @@ function startEdit(s) {
                       </td>
                     </tr>
                     <tr>
-                      <td colSpan={6} style={{ paddingTop: 0 }}>
+                      <td colSpan={columnCount} style={{ paddingTop: 0 }}>
                         <div
                           style={{
                             display: 'flex',
@@ -470,10 +528,15 @@ function startEdit(s) {
                           }}
                         >
                           <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>startEdit(student)}>Edit Info</button>
-                          {user?.role === 'super_admin' && (
+                          {(user?.role === 'super_admin' || user?.role === 'admin') && (
                             <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>openFeeEditor(student._id)}>Edit Fee</button>
                           )}
                           <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>openPayNow(student._id)}>Submit Fees</button>
+                          {(user?.role === 'super_admin' || user?.role === 'admin') && (
+                            <button className="danger-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>deleteFeeRecord(student._id)} disabled={actionBusy === `fee-delete-${pendingFees[student._id]?._id}`}>
+                              {actionBusy === `fee-delete-${pendingFees[student._id]?._id}` ? 'Deleting Fee...' : 'Delete Fee'}
+                            </button>
+                          )}
                           <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>{ setMasterEditId(student._id); setActiveAction({ type: 'master', studentId: student._id }); }}>Open Master</button>
                           <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>downloadPdf(student._id)}>PDF</button>
                           {(user?.role === 'super_admin' || user?.role === 'admin') && (
@@ -498,7 +561,7 @@ function startEdit(s) {
                             if (!window.confirm('Delete this student and related fee records?')) return;
                             try {
                               await api.delete(`/students/${student._id}`);
-                              await load();
+                              await load(search.trim(), page);
                             } catch (err) {
                               setError(err?.response?.data?.message || 'Unable to delete');
                             }
@@ -513,7 +576,7 @@ function startEdit(s) {
                     </tr>
                     {editing === student._id && (
                       <tr>
-                        <td colSpan={6}>
+                        <td colSpan={columnCount}>
                           <div className="inline-edit">
                             <label>Name <input value={editForm.fullName} onChange={(e)=>setEditForm({...editForm, fullName:e.target.value})} /></label>
                             <label>Phone <input value={editForm.phone} onChange={(e)=>setEditForm({...editForm, phone:e.target.value})} /></label>
@@ -534,7 +597,7 @@ function startEdit(s) {
                     )}
                     {detailPanel.studentId === student._id && detailPanel.type === 'complaints' && (
                       <tr>
-                        <td colSpan={6}>
+                        <td colSpan={columnCount}>
                           <div className="inline-edit" style={{ marginTop: 4 }}>
                             <h5>Complaints</h5>
                             {complaints.filter((c)=>c.studentId?._id === student._id).map((c)=>(
@@ -555,7 +618,7 @@ function startEdit(s) {
                     )}
                     {detailPanel.studentId === student._id && detailPanel.type === 'leaves' && (
                       <tr>
-                        <td colSpan={6}>
+                        <td colSpan={columnCount}>
                           <div className="inline-edit" style={{ marginTop: 4 }}>
                             <h5>Leave Requests</h5>
                             {leaves.filter((l)=>l.studentId?._id === student._id).map((l)=>(
@@ -577,20 +640,20 @@ function startEdit(s) {
                     )}
                     {activeAction.type === 'master' && activeAction.studentId === student._id && (
                       <tr>
-                        <td colSpan={6}>
+                        <td colSpan={columnCount}>
                           <div className="card" style={{ marginTop: 6 }}>
                             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                               <h4>Edit in Master Form</h4>
                               <button className="ghost-btn" onClick={()=>{ setMasterEditId(null); setActiveAction({ type: null, studentId: null }); }}>Close</button>
                             </div>
-                            <StudentAdmissionForm editId={student._id} onSaved={()=>{ setMasterEditId(null); setActiveAction({ type: null, studentId: null }); load(); }} />
+                            <StudentAdmissionForm editId={student._id} onSaved={()=>{ setMasterEditId(null); setActiveAction({ type: null, studentId: null }); load(search.trim(), page); }} />
                           </div>
                         </td>
                       </tr>
                     )}
                     {activeAction.type === 'fee' && activeAction.studentId === student._id && feeEdit && (
                       <tr>
-                        <td colSpan={6}>
+                        <td colSpan={columnCount}>
                           <div className="card form-card" style={{ marginTop: 6 }}>
                             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                               <h4>Edit Fee</h4>
@@ -603,11 +666,11 @@ function startEdit(s) {
                               </label>
                               <label>
                                 Paid Amount
-                                <input type="number" value={feeEdit.paidAmount} onChange={(e)=>setFeeEdit({...feeEdit, paidAmount:Number(e.target.value)})} />
+                                <input type="number" value={feeEdit.paidAmount} disabled={user?.role !== 'super_admin'} onChange={(e)=>setFeeEdit({...feeEdit, paidAmount:Number(e.target.value)})} />
                               </label>
                               <label>
                                 Due Date
-                                <input type="date" value={feeEdit.dueDate?.substring?.(0,10) || ''} onChange={(e)=>setFeeEdit({...feeEdit, dueDate:e.target.value})} />
+                                <input type="date" value={feeEdit.dueDate?.substring?.(0,10) || ''} disabled={user?.role !== 'super_admin'} onChange={(e)=>setFeeEdit({...feeEdit, dueDate:e.target.value})} />
                               </label>
                               <label>
                                 Fee Start
@@ -623,8 +686,12 @@ function startEdit(s) {
                               </label>
                             </div>
                             <div style={{ display:'flex', gap:10, alignItems:'center', marginTop: 10 }}>
-                              <button className="primary-btn" onClick={saveFeeEdit}>Save Fee</button>
-                              <button className="ghost-btn" onClick={()=>addPayment()}>Add Payment</button>
+                              <button className="primary-btn" onClick={saveFeeEdit} disabled={actionBusy === `fee-save-${feeEdit._id}`}>
+                                {actionBusy === `fee-save-${feeEdit._id}` ? 'Saving...' : 'Save Fee'}
+                              </button>
+                              <button className="ghost-btn" onClick={()=>addPayment()} disabled={actionBusy === `payment-save-${paymentForm.feeId}`}>
+                                {actionBusy === `payment-save-${paymentForm.feeId}` ? 'Adding Payment...' : 'Add Payment'}
+                              </button>
                               <span style={{ color:'#c0392b' }}>Due: ₹{feeEdit.dueAmount}</span>
                             </div>
                             <div className="fee-summary">
@@ -705,7 +772,7 @@ function startEdit(s) {
                     )}
                     {activeAction.type === 'pay' && activeAction.studentId === student._id && payNow && (
                       <tr>
-                        <td colSpan={6}>
+                        <td colSpan={columnCount}>
                           <div className="card form-card" style={{ marginTop: 6 }}>
                             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                               <h4>Submit Fees</h4>
@@ -727,7 +794,9 @@ function startEdit(s) {
                               <label>Note<input value={paymentForm.note} onChange={(e)=>setPaymentForm({...paymentForm, note:e.target.value})} /></label>
                             </div>
                             <div style={{ marginTop: 12, display:'flex', gap:10, alignItems:'center' }}>
-                              <button className="primary-btn" onClick={addPayment}>Submit Payment</button>
+                              <button className="primary-btn" onClick={addPayment} disabled={actionBusy === `payment-save-${paymentForm.feeId}`}>
+                                {actionBusy === `payment-save-${paymentForm.feeId}` ? 'Submitting...' : 'Submit Payment'}
+                              </button>
                               <span>Remaining: ₹{payNow.dueAmount}</span>
                             </div>
                             {payNow.transactions?.length ? (
@@ -755,7 +824,6 @@ function startEdit(s) {
           </table>
         </div>
       </div>
-
       {attendanceModal.open && !feeEdit && !payNow && (
         <div className="card" style={{ marginTop: 16 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
@@ -942,15 +1010,46 @@ const css = `
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   margin: 8px 0 12px;
 }
 .toolbar .search {
   flex: 1;
+  min-width: 220px;
   padding: 10px 12px;
   border: 1px solid #dfe4f4;
   border-radius: 10px;
   background: #fff;
   font-size: 14px;
+}
+.top-pagination {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.page-chip {
+  min-width: 34px;
+  height: 34px;
+  border: 1px solid #d7def3;
+  border-radius: 999px;
+  background: #f7f9ff;
+  color: #2344b2;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.page-chip.active {
+  background: linear-gradient(135deg, #2344b2, #4b68d8);
+  border-color: #2344b2;
+  color: #fff;
+  box-shadow: 0 10px 18px rgba(35,68,178,0.2);
+}
+.page-chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 .form-card h4 { margin-bottom: 8px; }
 .form-card p { margin-bottom: 12px; color: #4a5674; }

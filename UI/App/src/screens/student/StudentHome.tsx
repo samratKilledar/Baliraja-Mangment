@@ -11,6 +11,7 @@ import COLORS from '../../config/colors';
 import { useAuth } from '../../context/AuthContext';
 import client from '../../api/client';
 import { ANNOUNCEMENTS, subscribePortalStore } from '../../store/studentPortalStore';
+import PasswordChangeCard from '../../components/PasswordChangeCard';
 
 const filters = ['attendance', 'performance', 'fees'];
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -643,6 +644,10 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
               <InfoRow icon="🗓️" label="Admission" value={profileAdmission} />
               <InfoRow icon="🏷️" label="Batch" value={profileBatch} />
             </View>
+            <PasswordChangeCard
+              title="Update Password"
+              subtitle="Your new password will also be visible in the web admin panel."
+            />
           </View>
         ) : null}
 

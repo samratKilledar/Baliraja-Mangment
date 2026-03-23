@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import DashboardScreen from '../../components/DashboardScreen';
+import PasswordChangeCard from '../../components/PasswordChangeCard';
 
 const filters = ['attendance', 'performance', 'fee status'];
 
@@ -23,6 +24,11 @@ export default function ParentHome() {
       filter={filter}
       filters={filters}
       onFilterChange={setFilter}
-    />
+    >
+      <PasswordChangeCard
+        title="Update Password"
+        subtitle="Change the password used for parent app login."
+      />
+    </DashboardScreen>
   );
 }

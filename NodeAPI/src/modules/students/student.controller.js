@@ -8,6 +8,7 @@ const Attendance = require('../attendance/attendance.model');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const { normalizePagination, buildPaginationMeta } = require('../../utils/pagination');
 
 const DEVANAGARI_FONT_CANDIDATES = [
   '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
@@ -185,6 +186,7 @@ async function createStudent(req, res, next) {
 async function listStudents(req, res, next) {
   try {
     const { q, batchId, status } = req.query;
+    const { page, limit, skip } = normalizePagination(req.query, 10, 100);
     const filter = {};
 
     if (batchId) filter.batchId = batchId;
@@ -200,7 +202,8 @@ async function listStudents(req, res, next) {
       .populate('userId', 'fullName email phone')
       .populate('createdBy', 'fullName email')
       .populate('currentCourseIds', 'name category')
-      .populate('batchId', 'batchName');
+      .populate('batchId', 'batchName')
+      .sort({ createdAt: -1 });
 
     if (q) {
       const ql = q.toLowerCase();
@@ -210,7 +213,13 @@ async function listStudents(req, res, next) {
       });
     }
 
-    res.json(students);
+    const total = students.length;
+    const pagedStudents = students.slice(skip, skip + limit);
+
+    res.json({
+      items: pagedStudents,
+      meta: buildPaginationMeta({ total, page, limit })
+    });
   } catch (err) {
     next(err);
   }

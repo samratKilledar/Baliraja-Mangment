@@ -5,10 +5,13 @@ const Teacher = require('../teachers/teacher.model');
 const Worker = require('../workers/worker.model');
 const Fee = require('../fees/fee.model');
 const { ROLES } = require('../../utils/constants');
+const { encryptPassword, decryptPassword } = require('../../utils/passwordVault');
+const { normalizePagination, buildPaginationMeta } = require('../../utils/pagination');
 const {
   createUserSchema,
   listUserSchema,
-  passwordUpdateSchema
+  passwordUpdateSchema,
+  resetUserPasswordSchema
 } = require('./user.validation');
 
 function shapeStudentDetails(raw = {}) {
@@ -60,6 +63,16 @@ function generatePassword() {
   return Math.random().toString(36).slice(-10);
 }
 
+function getDefaultPasswordForRole(role) {
+  if (role === ROLES.ADMIN) {
+    return process.env.DEFAULT_ADMIN_PASSWORD || '123456';
+  }
+  if (role === ROLES.STUDENT) {
+    return process.env.DEFAULT_STUDENT_PASSWORD || '123456';
+  }
+  return '';
+}
+
 async function generateEnrollmentNo(fullName = 'Student') {
   const namePart = fullName.replace(/\s+/g, '').slice(0, 5).toUpperCase() || 'STU';
   const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -83,6 +96,24 @@ function roleGuard(requestorRole, targetRole) {
 
   // default: super admin only
   return requestorRole === ROLES.SUPER_ADMIN;
+}
+
+function canManageUser(requestor, targetUser) {
+  if (!requestor || !targetUser) return false;
+  if (requestor.role === ROLES.SUPER_ADMIN) return true;
+  if (requestor.role === ROLES.ADMIN) {
+    return [ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT, ROLES.WORKER].includes(targetUser.role);
+  }
+  return requestor.sub === targetUser._id?.toString();
+}
+
+function serializeUser(userDoc) {
+  const user = userDoc.toObject ? userDoc.toObject() : userDoc;
+  const { passwordHash, passwordCipher, ...rest } = user;
+  return {
+    ...rest,
+    passwordVisible: passwordCipher ? decryptPassword(passwordCipher) : ''
+  };
 }
 
 async function createUser(req, res, next) {
@@ -110,7 +141,7 @@ async function createUser(req, res, next) {
       return res.status(409).json({ message: 'Enrollment number already exists' });
     }
 
-    const plainPassword = payload.password || generatePassword();
+    const plainPassword = payload.password || getDefaultPasswordForRole(payload.role) || generatePassword();
     const passwordHash = await bcrypt.hash(plainPassword, 10);
 
     const user = await User.create({
@@ -118,7 +149,8 @@ async function createUser(req, res, next) {
       email: payload.email,
       phone: payload.phone,
       role: payload.role,
-      passwordHash
+      passwordHash,
+      passwordCipher: encryptPassword(plainPassword)
     });
 
     // Attach role specific profile if provided
@@ -203,7 +235,8 @@ async function createUser(req, res, next) {
 
 async function listUsers(req, res, next) {
   try {
-    const { role } = listUserSchema.parse(req.query);
+    const { role, page: rawPage, limit: rawLimit } = listUserSchema.parse(req.query);
+    const { page, limit, skip } = normalizePagination({ page: rawPage, limit: rawLimit }, 10, 100);
 
     const filter = {};
     if (role) filter.role = role;
@@ -213,8 +246,14 @@ async function listUsers(req, res, next) {
       filter.role = role || { $in: [ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT, ROLES.ADMIN] };
     }
 
-    const users = await User.find(filter).select('-passwordHash').sort({ createdAt: -1 });
-    res.json(users);
+    const [total, users] = await Promise.all([
+      User.countDocuments(filter),
+      User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit)
+    ]);
+    res.json({
+      items: users.map(serializeUser),
+      meta: buildPaginationMeta({ total, page, limit })
+    });
   } catch (error) {
     next(error);
   }
@@ -251,7 +290,7 @@ async function deleteUser(req, res, next) {
 
 async function getMe(req, res, next) {
   try {
-    const user = await User.findById(req.user.sub).select('-passwordHash');
+    const user = await User.findById(req.user.sub);
 
     if (!user) {
       return res.status(404).json({
@@ -259,7 +298,7 @@ async function getMe(req, res, next) {
       });
     }
 
-    res.json(user);
+    res.json(serializeUser(user));
   } catch (error) {
     next(error);
   }
@@ -276,9 +315,34 @@ async function updateMyPassword(req, res, next) {
     if (!valid) return res.status(401).json({ message: 'Current password incorrect' });
 
     user.passwordHash = await bcrypt.hash(payload.newPassword, 10);
+    user.passwordCipher = encryptPassword(payload.newPassword);
     await user.save();
 
     res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function resetUserPassword(req, res, next) {
+  try {
+    const { userId } = req.params;
+    const payload = resetUserPasswordSchema.parse(req.body);
+    const user = await User.findById(userId);
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!canManageUser(req.user, user)) {
+      return res.status(403).json({ message: 'Forbidden: cannot update this password' });
+    }
+
+    user.passwordHash = await bcrypt.hash(payload.newPassword, 10);
+    user.passwordCipher = encryptPassword(payload.newPassword);
+    await user.save();
+
+    res.json({
+      message: 'Password updated successfully',
+      user: serializeUser(user)
+    });
   } catch (error) {
     next(error);
   }
@@ -301,5 +365,6 @@ module.exports = {
   listUsers,
   deleteUser,
   updateMyPassword,
+  resetUserPassword,
   publicUserByPhone
 };

@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../users/user.model');
 const { registerSchema, loginSchema } = require('./auth.validation');
 const { ROLES } = require('../../utils/constants');
+const { encryptPassword } = require('../../utils/passwordVault');
 
 function signToken(user) {
   return jwt.sign(
@@ -22,7 +23,7 @@ async function register(req, res, next) {
     }
 
     const passwordHash = await bcrypt.hash(payload.password, 10);
-    const user = await User.create({ ...payload, passwordHash });
+    const user = await User.create({ ...payload, passwordHash, passwordCipher: encryptPassword(payload.password) });
 
     const token = signToken(user);
     return res.status(201).json({
@@ -88,7 +89,8 @@ async function bootstrapSuperAdmin(req, res, next) {
       email,
       phone,
       role: ROLES.SUPER_ADMIN,
-      passwordHash
+      passwordHash,
+      passwordCipher: encryptPassword(password)
     });
 
     const token = signToken(user);

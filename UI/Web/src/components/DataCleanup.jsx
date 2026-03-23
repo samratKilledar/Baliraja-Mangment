@@ -69,8 +69,9 @@ export default function DataCleanup() {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.get(resource.listPath);
-      setRows(Array.isArray(data) ? data : []);
+      const { data } = await api.get(resource.listPath, { params: { page: 1, limit: 100 } });
+      const nextRows = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+      setRows(nextRows);
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to load data';
       setError(msg);
