@@ -26,13 +26,23 @@ app.disable('etag');
 
 function resolveCorsOrigin() {
   const configured = process.env.CORS_ORIGIN?.trim();
-  if (!configured || configured === '*') return '*';
+  if (!configured) {
+    return [
+      'https://baliraja-mangment-gz7i2s2er-sams-projects-721b8b93.vercel.app',
+    ];
+  }
+  if (configured === '*') return '*';
   return configured.split(',').map((origin) => origin.trim()).filter(Boolean);
 }
 
+const corsOptions = {
+  origin: resolveCorsOrigin(),
+  credentials: true,
+};
+
 app.use(helmet());
-app.use(cors({ origin: resolveCorsOrigin() }));
-app.options('*', cors({ origin: resolveCorsOrigin() }));
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '2mb' }));
 app.use(morgan('dev'));
 app.use('/uploads', express.static('uploads'));
