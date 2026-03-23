@@ -37,6 +37,15 @@ app.use(express.json({ limit: '2mb' }));
 app.use(morgan('dev'));
 app.use('/uploads', express.static('uploads'));
 
+app.get('/', (req, res) =>
+  res.json({
+    status: 'ok',
+    service: 'ims-api',
+    health: '/health',
+    apiBase: '/api/v1',
+  })
+);
+
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'ims-api' }));
 
 app.use('/api/v1/auth', authRoutes);

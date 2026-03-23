@@ -115,6 +115,7 @@ Optional Render environment variables:
 After deploy, your API should respond at:
 
 ```text
+https://your-render-service.onrender.com/
 https://your-render-service.onrender.com/health
 https://your-render-service.onrender.com/api/v1
 ```
