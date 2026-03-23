@@ -11,7 +11,12 @@ const fs = require('fs');
 const path = require('path');
 const { normalizePagination, buildPaginationMeta } = require('../../utils/pagination');
 
+const PROJECT_FONT_CANDIDATES = [
+  path.join(__dirname, '../../assets/fonts/ArialUnicode.ttf')
+];
+
 const DEVANAGARI_FONT_CANDIDATES = [
+  ...PROJECT_FONT_CANDIDATES,
   '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
   '/System/Library/Fonts/Supplemental/NISC18030.ttf',
   '/System/Library/Fonts/Supplemental/Arial.ttf'
