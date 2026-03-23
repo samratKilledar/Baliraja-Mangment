@@ -26,14 +26,36 @@ app.disable('etag');
 
 function resolveCorsOrigin() {
   const configured = process.env.CORS_ORIGIN?.trim();
-  if (!configured) {
-    return [
-      'https://baliraja-mangment.vercel.app',
-      'https://baliraja-mangment-gz7i2s2er-sams-projects-721b8b93.vercel.app',
-    ];
-  }
   if (configured === '*') return '*';
-  return configured.split(',').map((origin) => origin.trim()).filter(Boolean);
+
+  const configuredOrigins = configured
+    ? configured.split(',').map((origin) => origin.trim()).filter(Boolean)
+    : ['https://baliraja-mangment.vercel.app'];
+
+  const allowedOriginPatterns = [
+    /^https:\/\/baliraja-mangment(?:-[a-z0-9-]+)?\.vercel\.app$/i,
+    /^http:\/\/localhost(?::\d+)?$/i,
+    /^http:\/\/127\.0\.0\.1(?::\d+)?$/i,
+  ];
+
+  return (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (configuredOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOriginPatterns.some((pattern) => pattern.test(origin))) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  };
 }
 
 const corsOptions = {
