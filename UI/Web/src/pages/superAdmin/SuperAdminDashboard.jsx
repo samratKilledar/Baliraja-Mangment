@@ -17,12 +17,16 @@ import LeaveCenter from '../../components/LeaveCenter';
 import DataCleanup from '../../components/DataCleanup';
 import CheckinConfigCard from '../../components/CheckinConfigCard';
 import SplashManager from '../../components/SplashManager';
+import SubjectManager from '../../components/SubjectManager';
+import AttendanceWorkspace from '../../components/AttendanceWorkspace';
 const baseMenus = [
   { key: 'analytics', label: 'Analytics Hub', icon: 'chart', path: '/super-admin' },
   { key: 'student-form', label: 'Student Master Form', icon: 'users', path: '/super-admin/student-form' },
   { key: 'students-list', label: 'Student List', icon: 'users', path: '/super-admin/students-list' },
   { key: 'teacher-form', label: 'Add Teacher', icon: 'users', path: '/super-admin/teacher-form' },
   { key: 'teachers-list', label: 'Teacher List', icon: 'users', path: '/super-admin/teachers-list' },
+  { key: 'subjects', label: 'Subjects', icon: 'spark', path: '/super-admin/subjects' },
+  { key: 'attendance', label: 'Attendance', icon: 'calendar', path: '/super-admin/attendance' },
   { key: 'lectures', label: 'Lectures Logged', icon: 'calendar', path: '/super-admin/lectures' },
   { key: 'fees', label: 'Finance Monitor', icon: 'money', path: '/super-admin/fees' },
   { key: 'notice', label: 'Notice Publisher', icon: 'bell', path: '/super-admin/notice' },
@@ -93,6 +97,8 @@ export default function SuperAdminDashboard() {
     if (location.pathname.startsWith('/super-admin/student-form')) return 'student-form';
     if (location.pathname.startsWith('/super-admin/teacher-form')) return 'teacher-form';
     if (location.pathname.startsWith('/super-admin/teachers-list')) return 'teachers-list';
+    if (location.pathname.startsWith('/super-admin/subjects')) return 'subjects';
+    if (location.pathname.startsWith('/super-admin/attendance')) return 'attendance';
     if (location.pathname.startsWith('/super-admin/lectures')) return 'lectures';
     if (location.pathname.startsWith('/super-admin/fees')) return 'fees';
     if (location.pathname.startsWith('/super-admin/notice')) return 'notice';
@@ -230,6 +236,28 @@ if (currentModule === 'admins') {
             <VectorIcon name="users" size={18} />
           </div>
           <TeacherList />
+        </article>
+      );
+    }
+    if (currentModule === 'subjects') {
+      return (
+        <article className="panel">
+          <div className="panel-head">
+            <h3>Subject Management</h3>
+            <VectorIcon name="spark" size={18} />
+          </div>
+          <SubjectManager />
+        </article>
+      );
+    }
+    if (currentModule === 'attendance') {
+      return (
+        <article className="panel">
+          <div className="panel-head">
+            <h3>Subject Attendance & Reports</h3>
+            <VectorIcon name="calendar" size={18} />
+          </div>
+          <AttendanceWorkspace role="super_admin" />
         </article>
       );
     }

@@ -6,6 +6,12 @@ const attendanceSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     batchId: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch' },
     date: { type: Date, required: true },
+    subjectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject' },
+    subjectName: String,
+    subjectKey: { type: String, default: '__daily__' },
+    lectureCount: { type: Number, default: 1 },
+    currentClass: String,
+    division: String,
     status: { type: String, enum: ['present', 'absent', 'late', 'leave'], required: true },
     leaveStatus: { type: String, enum: ['requested', 'approved', 'rejected'], default: 'requested' },
     leaveType: { type: String, enum: ['short', 'full_day', 'multi_day'] },
@@ -39,7 +45,7 @@ const attendanceSchema = new mongoose.Schema(
 );
 
 attendanceSchema.index(
-  { studentId: 1, date: 1 },
+  { studentId: 1, date: 1, subjectKey: 1 },
   { unique: true, partialFilterExpression: { studentId: { $exists: true } } }
 );
 

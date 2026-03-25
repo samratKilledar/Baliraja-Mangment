@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import VectorIcon from './VectorIcon';
 import api from '../api/client';
 
+const CLASS_OPTIONS = ['11th Std', '12th Std'];
+
 const initialForm = {
   admissionNo: '',
   admissionDate: '',
@@ -19,10 +21,26 @@ const initialForm = {
   email: '',
   previousSchool: '',
   currentClass: '',
+  division: '',
   board: '',
   medium: '',
   passingYear: '',
   percentage: '',
+  tenthSchoolName: '',
+  tenthBoard: '',
+  tenthPassingYear: '',
+  tenthPercentage: '',
+  tenthMarks: '',
+  eleventhSchoolName: '',
+  eleventhBoard: '',
+  eleventhPassingYear: '',
+  eleventhPercentage: '',
+  eleventhMarks: '',
+  twelfthSchoolName: '',
+  twelfthBoard: '',
+  twelfthPassingYear: '',
+  twelfthPercentage: '',
+  twelfthMarks: '',
   height: '',
   weight: '',
   vision: '',
@@ -131,10 +149,26 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         status: st.status || 'active',
         previousSchool: d.education?.previousSchool || '',
         currentClass: d.education?.currentClass || '',
+        division: d.education?.division || '',
         board: d.education?.board || '',
         medium: d.education?.medium || '',
         passingYear: d.education?.passingYear || '',
         percentage: d.education?.percentage || '',
+        tenthSchoolName: d.education?.academicHistory?.tenth?.schoolName || '',
+        tenthBoard: d.education?.academicHistory?.tenth?.board || '',
+        tenthPassingYear: d.education?.academicHistory?.tenth?.passingYear || '',
+        tenthPercentage: d.education?.academicHistory?.tenth?.percentage || '',
+        tenthMarks: d.education?.academicHistory?.tenth?.marks || '',
+        eleventhSchoolName: d.education?.academicHistory?.eleventh?.schoolName || '',
+        eleventhBoard: d.education?.academicHistory?.eleventh?.board || '',
+        eleventhPassingYear: d.education?.academicHistory?.eleventh?.passingYear || '',
+        eleventhPercentage: d.education?.academicHistory?.eleventh?.percentage || '',
+        eleventhMarks: d.education?.academicHistory?.eleventh?.marks || '',
+        twelfthSchoolName: d.education?.academicHistory?.twelfth?.schoolName || '',
+        twelfthBoard: d.education?.academicHistory?.twelfth?.board || '',
+        twelfthPassingYear: d.education?.academicHistory?.twelfth?.passingYear || '',
+        twelfthPercentage: d.education?.academicHistory?.twelfth?.percentage || '',
+        twelfthMarks: d.education?.academicHistory?.twelfth?.marks || '',
         height: d.physical?.height || '',
         weight: d.physical?.weight || '',
         vision: d.physical?.vision || '',
@@ -284,6 +318,9 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
     }
   }
 
+  const isSeniorSecondary = ['11th Std', '12th Std'].includes(form.currentClass);
+  const isTwelfthAdmission = form.currentClass === '12th Std';
+
   return (
     <form className="student-form" onSubmit={onSubmit}>
       <div className="form-head">
@@ -340,12 +377,46 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         <h4><VectorIcon name="chart" size={16} /> Education Info</h4>
         <div className="form-grid">
           <label><span>Previous School</span><input value={form.previousSchool} onChange={(e) => setField('previousSchool', e.target.value)} /></label>
-          <label><span>Current Class</span><input value={form.currentClass} onChange={(e) => setField('currentClass', e.target.value)} /></label>
+          <label><span>Current Class</span>
+            <select value={form.currentClass} onChange={(e) => setField('currentClass', e.target.value)}>
+              <option value="">Select Class</option>
+              {CLASS_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </label>
+          <label><span>Division</span><input value={form.division} onChange={(e) => setField('division', e.target.value.toUpperCase())} placeholder="A / B / Science / Commerce" /></label>
           <label><span>Board</span><input value={form.board} onChange={(e) => setField('board', e.target.value)} /></label>
           <label><span>Medium</span><input value={form.medium} onChange={(e) => setField('medium', e.target.value)} /></label>
           <label><span>Passing Year</span><input value={form.passingYear} onChange={(e) => setField('passingYear', e.target.value)} /></label>
           <label><span>Percentage / Grade</span><input value={form.percentage} onChange={(e) => setField('percentage', e.target.value)} /></label>
         </div>
+        {isSeniorSecondary && (
+          <div className="form-grid" style={{ marginTop: 16 }}>
+            <h5 style={{ gridColumn: '1 / -1', marginBottom: 0 }}>Previous Marks To Store In Database</h5>
+            <label><span>10th School Name</span><input value={form.tenthSchoolName} onChange={(e) => setField('tenthSchoolName', e.target.value)} /></label>
+            <label><span>10th Board</span><input value={form.tenthBoard} onChange={(e) => setField('tenthBoard', e.target.value)} /></label>
+            <label><span>10th Passing Year</span><input value={form.tenthPassingYear} onChange={(e) => setField('tenthPassingYear', e.target.value)} /></label>
+            <label><span>10th Percentage</span><input value={form.tenthPercentage} onChange={(e) => setField('tenthPercentage', e.target.value)} /></label>
+            <label><span>10th Marks</span><input value={form.tenthMarks} onChange={(e) => setField('tenthMarks', e.target.value)} /></label>
+
+            {isTwelfthAdmission && (
+              <>
+                <label><span>11th School / College</span><input value={form.eleventhSchoolName} onChange={(e) => setField('eleventhSchoolName', e.target.value)} /></label>
+                <label><span>11th Board</span><input value={form.eleventhBoard} onChange={(e) => setField('eleventhBoard', e.target.value)} /></label>
+                <label><span>11th Passing Year</span><input value={form.eleventhPassingYear} onChange={(e) => setField('eleventhPassingYear', e.target.value)} /></label>
+                <label><span>11th Percentage</span><input value={form.eleventhPercentage} onChange={(e) => setField('eleventhPercentage', e.target.value)} /></label>
+                <label><span>11th Marks</span><input value={form.eleventhMarks} onChange={(e) => setField('eleventhMarks', e.target.value)} /></label>
+
+                <label><span>12th School / College</span><input value={form.twelfthSchoolName} onChange={(e) => setField('twelfthSchoolName', e.target.value)} /></label>
+                <label><span>12th Board</span><input value={form.twelfthBoard} onChange={(e) => setField('twelfthBoard', e.target.value)} /></label>
+                <label><span>12th Passing Year</span><input value={form.twelfthPassingYear} onChange={(e) => setField('twelfthPassingYear', e.target.value)} /></label>
+                <label><span>12th Percentage</span><input value={form.twelfthPercentage} onChange={(e) => setField('twelfthPercentage', e.target.value)} /></label>
+                <label><span>12th Marks</span><input value={form.twelfthMarks} onChange={(e) => setField('twelfthMarks', e.target.value)} /></label>
+              </>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="form-section">

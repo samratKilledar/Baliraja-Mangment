@@ -13,6 +13,8 @@ import LeaveCenter from '../../components/LeaveCenter';
 import LectureList from '../../components/LectureList';
 import CheckinConfigCard from '../../components/CheckinConfigCard';
 import SplashManager from '../../components/SplashManager';
+import SubjectManager from '../../components/SubjectManager';
+import AttendanceWorkspace from '../../components/AttendanceWorkspace';
 import api from '../../api/client';
 
 const navItems = [
@@ -21,6 +23,7 @@ const navItems = [
   { key: 'students-list', label: 'Student List', icon: 'users', path: '/admin/students-list' },
   { key: 'teachers', label: 'Add Teacher', icon: 'spark', path: '/admin/teachers' },
   { key: 'teachers-list', label: 'Teacher List', icon: 'users', path: '/admin/teachers-list' },
+  { key: 'subjects', label: 'Subjects', icon: 'spark', path: '/admin/subjects' },
   { key: 'notices', label: 'Notices', icon: 'bell', path: '/admin/notices' },
   { key: 'lectures', label: 'Lectures', icon: 'calendar', path: '/admin/lectures' },
   { key: 'attendance', label: 'Attendance', icon: 'calendar', path: '/admin/attendance' },
@@ -92,6 +95,7 @@ export default function AdminDashboard() {
     if (location.pathname.startsWith('/admin/students-list')) return 'students-list';
     if (location.pathname.startsWith('/admin/teachers-list')) return 'teachers-list';
     if (location.pathname.startsWith('/admin/teachers')) return 'teachers';
+    if (location.pathname.startsWith('/admin/subjects')) return 'subjects';
     if (location.pathname.startsWith('/admin/notices')) return 'notices';
     if (location.pathname.startsWith('/admin/students')) return 'students';
     if (location.pathname.startsWith('/admin/lectures')) return 'lectures';
@@ -153,6 +157,17 @@ export default function AdminDashboard() {
         </article>
       );
     }
+    if (routeKey === 'subjects') {
+      return (
+        <article className="panel">
+          <div className="panel-head">
+            <h3>Subject Management</h3>
+            <VectorIcon name="spark" size={18} />
+          </div>
+          <SubjectManager />
+        </article>
+      );
+    }
     if (routeKey === 'lectures') {
       return (
         <article className="panel">
@@ -179,15 +194,10 @@ export default function AdminDashboard() {
       return (
         <article className="panel">
           <div className="panel-head">
-            <h3>Attendance Monitor</h3>
+            <h3>Subject Attendance & Reports</h3>
             <VectorIcon name="calendar" size={18} />
           </div>
-          <ul className="task-list">
-            <li>Class 10-A: 92% present</li>
-            <li>Class 12-Science: 88% present</li>
-            <li>Faculty attendance pending: 3 entries</li>
-            <li>Daily attendance report ready for export</li>
-          </ul>
+          <AttendanceWorkspace role="admin" />
         </article>
       );
     }

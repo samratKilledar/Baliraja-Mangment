@@ -97,7 +97,7 @@ function isSameOrBeforeDay(left, right) {
 async function ensureStudentActiveForAttendance(studentId, date) {
   if (!studentId) return { ok: true };
 
-  const student = await Student.findById(studentId).select('admissionDate status');
+  const student = await Student.findById(studentId).select('admissionDate status batchId details');
   if (!student) return { ok: false, status: 404, message: 'Student profile not found' };
 
   if (student.status && student.status !== 'active') {
@@ -165,10 +165,17 @@ function extractAcademicContext(student) {
   return { currentClass, division };
 }
 
+function resolveSubjectKey(payload = {}) {
+  const key = payload.subjectId || payload.subjectName;
+  return key ? String(key) : '__daily__';
+}
+
 async function markAttendance(req, res, next) {
   try {
     const payload = { ...req.body, markedBy: req.user.sub };
     payload.date = normalizeDate(payload.date);
+    payload.subjectKey = resolveSubjectKey(payload);
+    payload.lectureCount = Number(payload.lectureCount) || 1;
 
     if (payload.studentId) {
       const teacherAccess = await canTeacherAccessStudent(req.user, payload.studentId);
@@ -180,10 +187,15 @@ async function markAttendance(req, res, next) {
       if (!activeState.ok) {
         return res.status(activeState.status || 403).json({ message: activeState.message });
       }
+
+      payload.batchId = payload.batchId || teacherAccess.student?.batchId || activeState.student?.batchId;
+      const academic = extractAcademicContext(activeState.student || teacherAccess.student);
+      payload.currentClass = payload.currentClass || academic.currentClass;
+      payload.division = payload.division || academic.division;
     }
 
     const match = payload.studentId
-      ? { studentId: payload.studentId, date: payload.date }
+      ? { studentId: payload.studentId, date: payload.date, subjectKey: payload.subjectKey }
       : { userId: payload.userId, date: payload.date };
 
     const record = await Attendance.findOneAndUpdate(
@@ -202,6 +214,7 @@ async function dailyAttendanceOverview(req, res, next) {
   try {
     const date = normalizeDate(req.query.date);
     const filter = {};
+    const subjectKey = resolveSubjectKey(req.query);
 
     if (req.query.batchId) {
       filter.batchId = req.query.batchId;
@@ -209,6 +222,10 @@ async function dailyAttendanceOverview(req, res, next) {
 
     if (req.query.status) {
       filter.status = req.query.status;
+    }
+
+    if (req.query.currentClass) {
+      filter['details.education.currentClass'] = req.query.currentClass;
     }
 
     if (req.user?.role === 'teacher') {
@@ -231,6 +248,7 @@ async function dailyAttendanceOverview(req, res, next) {
 
     const attendanceRows = await Attendance.find({
       studentId: { $in: students.map((student) => student._id) },
+      subjectKey,
       $or: [
         { date },
         { status: 'leave', leaveStatus: 'approved', leaveFrom: { $lte: date }, leaveTo: { $gte: date } }
@@ -264,6 +282,8 @@ async function dailyAttendanceOverview(req, res, next) {
         capacity: Number(student.batchId?.capacity) || 0,
         ...extractAcademicContext(student),
         admissionDate: student.admissionDate || null,
+        subjectKey,
+        subjectName: attendanceMap[student._id.toString()]?.subjectName || req.query.subjectName || '',
         date,
         attendance: attendanceMap[student._id.toString()] || null
       }))
@@ -276,6 +296,7 @@ async function dailyAttendanceOverview(req, res, next) {
 async function teacherRoster(req, res, next) {
   try {
     const date = normalizeDate(req.query.date);
+    const subjectKey = resolveSubjectKey(req.query);
     const teacher = await Teacher.findOne({ userId: req.user.sub })
       .populate('userId', 'fullName email phone')
       .lean();
@@ -289,7 +310,12 @@ async function teacherRoster(req, res, next) {
       return res.json({ teacher, date, batches: [] });
     }
 
-    const students = await Student.find({ batchId: { $in: teacherBatchIds }, status: 'active' })
+    const studentFilter = { batchId: { $in: teacherBatchIds }, status: 'active' };
+    if (req.query.currentClass) {
+      studentFilter['details.education.currentClass'] = req.query.currentClass;
+    }
+
+    const students = await Student.find(studentFilter)
       .populate('userId', 'fullName phone')
       .populate('batchId', 'batchName capacity')
       .sort({ 'details.education.currentClass': 1, 'details.education.division': 1, createdAt: 1 })
@@ -297,7 +323,8 @@ async function teacherRoster(req, res, next) {
 
     const records = await Attendance.find({
       studentId: { $in: students.map((student) => student._id) },
-      date
+      date,
+      subjectKey
     }).lean();
 
     const attendanceMap = new Map(records.map((record) => [record.studentId?.toString(), record]));
@@ -327,12 +354,14 @@ async function teacherRoster(req, res, next) {
         studentName: student.userId?.fullName || 'Student',
         mobileNo: student.userId?.phone || '',
         admissionDate: student.admissionDate || null,
+        currentClass: extractAcademicContext(student).currentClass,
+        division: extractAcademicContext(student).division,
         attendance: attendanceMap.get(student._id.toString()) || null,
         attendanceAllowed: !activeStateStart || date.getTime() >= activeStateStart.getTime()
       });
     });
 
-    res.json({ teacher, date, batches });
+    res.json({ teacher, date, subjectKey, batches });
   } catch (err) {
     next(err);
   }
@@ -341,6 +370,7 @@ async function teacherRoster(req, res, next) {
 async function classAttendanceSummary(req, res, next) {
   try {
     const date = normalizeDate(req.query.date);
+    const subjectKey = resolveSubjectKey(req.query);
     const studentFilter = { status: 'active' };
 
     if (req.query.currentClass) {
@@ -355,7 +385,8 @@ async function classAttendanceSummary(req, res, next) {
     const studentIds = students.map((student) => student._id);
     const attendanceRows = await Attendance.find({
       studentId: { $in: studentIds },
-      date
+      date,
+      subjectKey
     }).lean();
     const attendanceMap = new Map(attendanceRows.map((row) => [row.studentId?.toString(), row]));
 
@@ -408,7 +439,97 @@ async function classAttendanceSummary(req, res, next) {
       .filter((item) => ['11th Std', '12th Std'].includes(item.currentClass))
       .sort((left, right) => `${left.currentClass}-${left.division}`.localeCompare(`${right.currentClass}-${right.division}`));
 
-    res.json({ date, items });
+    res.json({ date, subjectKey, items });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function attendanceReport(req, res, next) {
+  try {
+    const fromDate = normalizeDate(req.query.fromDate);
+    const toDate = normalizeDate(req.query.toDate || req.query.fromDate);
+    const subjectKey = resolveSubjectKey(req.query);
+    const studentFilter = { status: 'active' };
+
+    if (req.query.currentClass) {
+      studentFilter['details.education.currentClass'] = req.query.currentClass;
+    }
+
+    if (req.query.batchId) {
+      studentFilter.batchId = req.query.batchId;
+    }
+
+    if (req.user?.role === 'teacher') {
+      const teacherBatchIds = await getTeacherBatchIds(req.user.sub);
+      if (!teacherBatchIds.length) {
+        return res.json({ fromDate, toDate, items: [] });
+      }
+      studentFilter.batchId = req.query.batchId
+        ? req.query.batchId
+        : { $in: teacherBatchIds };
+    }
+
+    const students = await Student.find(studentFilter)
+      .populate('userId', 'fullName phone')
+      .populate('batchId', 'batchName capacity')
+      .sort({ 'details.education.currentClass': 1, 'details.education.division': 1, createdAt: 1 })
+      .lean();
+
+    const attendanceRows = await Attendance.find({
+      studentId: { $in: students.map((student) => student._id) },
+      date: { $gte: fromDate, $lte: toDate },
+      subjectKey
+    }).lean();
+
+    const groupedRows = attendanceRows.reduce((acc, row) => {
+      const key = row.studentId?.toString();
+      if (!key) return acc;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(row);
+      return acc;
+    }, {});
+
+    const items = students.map((student) => {
+      const rows = groupedRows[student._id.toString()] || [];
+      const totalLectures = rows.reduce((sum, row) => sum + (Number(row.lectureCount) || 1), 0);
+      const presentLectures = rows.reduce((sum, row) => (
+        row.status === 'present' ? sum + (Number(row.lectureCount) || 1) : sum
+      ), 0);
+      const lateLectures = rows.reduce((sum, row) => (
+        row.status === 'late' ? sum + (Number(row.lectureCount) || 1) : sum
+      ), 0);
+      const attendancePercentage = totalLectures > 0
+        ? Number((((presentLectures + lateLectures) / totalLectures) * 100).toFixed(2))
+        : 0;
+      const academic = extractAcademicContext(student);
+
+      return {
+        studentId: student._id,
+        studentName: student.userId?.fullName || 'Student',
+        enrollmentNo: student.enrollmentNo || '',
+        batchName: student.batchId?.batchName || '',
+        currentClass: academic.currentClass,
+        division: academic.division,
+        totalLectures,
+        presentLectures,
+        lateLectures,
+        absentLectures: rows.reduce((sum, row) => (
+          row.status === 'absent' ? sum + (Number(row.lectureCount) || 1) : sum
+        ), 0),
+        leaveLectures: rows.reduce((sum, row) => (
+          row.status === 'leave' ? sum + (Number(row.lectureCount) || 1) : sum
+        ), 0),
+        attendancePercentage
+      };
+    });
+
+    res.json({
+      fromDate,
+      toDate,
+      subjectKey,
+      items
+    });
   } catch (err) {
     next(err);
   }
@@ -882,6 +1003,7 @@ module.exports = {
   dailyAttendanceOverview,
   teacherRoster,
   classAttendanceSummary,
+  attendanceReport,
   flaggedAbsentees,
   listLeaves,
   updateLeaveStatus,

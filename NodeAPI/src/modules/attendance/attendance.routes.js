@@ -9,6 +9,7 @@ const {
   dailyAttendanceOverview,
   teacherRoster,
   classAttendanceSummary,
+  attendanceReport,
   flaggedAbsentees,
   publicCheckIn,
   publicCheckOut,
@@ -61,6 +62,7 @@ router.post('/checkin-config', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), setChe
 router.get('/daily', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), dailyAttendanceOverview);
 router.get('/teacher/roster', authorize(ROLES.TEACHER), teacherRoster);
 router.get('/class-summary', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), classAttendanceSummary);
+router.get('/report', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), attendanceReport);
 router.get('/student/:studentId', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT), attendanceByStudent);
 router.get('/my', myAttendance);
 router.get('/flagged/missing', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), flaggedAbsentees);

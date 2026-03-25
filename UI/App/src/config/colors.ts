@@ -1,18 +1,19 @@
 const COLORS = {
   // Brand
-  primary: '#1a237e',
-  primaryLight: '#3949ab',
-  accent: '#f39c12',
+  primary: '#2563EB',
+  primaryLight: '#1D4ED8',
+  accent: '#F59E0B',
+  info: '#0891B2',
 
   // Status
-  success: '#2ecc71',
-  danger: '#e74c3c',
-  warning: '#f39c12',
+  success: '#16A34A',
+  danger: '#DC2626',
+  warning: '#F59E0B',
 
   // Backgrounds
-  white: '#ffffff',
-  background: '#f4f7f6',
-  light: '#eef2ff',
+  white: '#FFFFFF',
+  background: '#F8FAFC',
+  light: '#DBEAFE',
   lightGray: '#f1f2f6',
 
   // Overlays
@@ -20,15 +21,15 @@ const COLORS = {
   modalOverlay: 'rgba(0, 0, 0, 0.7)',
 
   // Text
-  text: '#2c3e50',
-  textDark: '#2f3640',
-  textGray: '#666',
-  textMuted: '#95a5a6',
+  text: '#111827',
+  textDark: '#111827',
+  textGray: '#6B7280',
+  textMuted: '#6B7280',
 
   // Borders & UI
-  border: '#dcdde1',
-  borderLight: '#ced4da',
-  divider: '#e5e7eb'
+  border: '#E5E7EB',
+  borderLight: '#E5E7EB',
+  divider: '#E5E7EB',
 };
 
 export default COLORS;
