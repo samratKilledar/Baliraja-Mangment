@@ -3,6 +3,8 @@ const User = require('../users/user.model');
 const Student = require('../students/student.model');
 const CheckinConfig = require('./checkinConfig.model');
 const Fee = require('../fees/fee.model');
+const Teacher = require('../teachers/teacher.model');
+const Batch = require('../courses/batch.model');
 
 function normalizeDate(dateStr) {
   const d = dateStr ? new Date(dateStr) : new Date();
@@ -117,10 +119,69 @@ async function ensureStudentActiveForAttendance(studentId, date) {
   return { ok: true, student, fee };
 }
 
+function toObjectIdStrings(values = []) {
+  return values.map((value) => value?.toString()).filter(Boolean);
+}
+
+async function getTeacherBatchIds(userId) {
+  if (!userId) return [];
+  const teacher = await Teacher.findOne({ userId }).select('assignedBatchIds');
+  if (!teacher) return [];
+
+  const explicitBatchIds = toObjectIdStrings(teacher.assignedBatchIds || []);
+  const linkedBatches = await Batch.find({ teacherId: teacher._id }).select('_id').lean();
+  const linkedBatchIds = toObjectIdStrings(linkedBatches.map((batch) => batch._id));
+
+  return Array.from(new Set([...explicitBatchIds, ...linkedBatchIds]));
+}
+
+async function canTeacherAccessStudent(reqUser, studentId) {
+  if (!studentId || reqUser?.role !== 'teacher') return true;
+
+  const [teacherBatchIds, student] = await Promise.all([
+    getTeacherBatchIds(reqUser.sub),
+    Student.findById(studentId).select('batchId')
+  ]);
+
+  if (!student) {
+    return { ok: false, status: 404, message: 'Student profile not found' };
+  }
+
+  if (!student.batchId) {
+    return { ok: false, status: 403, message: 'Student is not assigned to a division' };
+  }
+
+  if (!teacherBatchIds.includes(student.batchId.toString())) {
+    return { ok: false, status: 403, message: 'You can only mark attendance for your assigned divisions' };
+  }
+
+  return { ok: true, student };
+}
+
+function extractAcademicContext(student) {
+  const education = student?.details?.education || {};
+  const currentClass = education.currentClass || student?.details?.currentClass || '';
+  const division = education.division || student?.details?.division || '';
+  return { currentClass, division };
+}
+
 async function markAttendance(req, res, next) {
   try {
     const payload = { ...req.body, markedBy: req.user.sub };
     payload.date = normalizeDate(payload.date);
+
+    if (payload.studentId) {
+      const teacherAccess = await canTeacherAccessStudent(req.user, payload.studentId);
+      if (teacherAccess !== true && !teacherAccess.ok) {
+        return res.status(teacherAccess.status || 403).json({ message: teacherAccess.message });
+      }
+
+      const activeState = await ensureStudentActiveForAttendance(payload.studentId, payload.date);
+      if (!activeState.ok) {
+        return res.status(activeState.status || 403).json({ message: activeState.message });
+      }
+    }
+
     const match = payload.studentId
       ? { studentId: payload.studentId, date: payload.date }
       : { userId: payload.userId, date: payload.date };
@@ -140,9 +201,32 @@ async function markAttendance(req, res, next) {
 async function dailyAttendanceOverview(req, res, next) {
   try {
     const date = normalizeDate(req.query.date);
-    const students = await Student.find({})
+    const filter = {};
+
+    if (req.query.batchId) {
+      filter.batchId = req.query.batchId;
+    }
+
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+
+    if (req.user?.role === 'teacher') {
+      const teacherBatchIds = await getTeacherBatchIds(req.user.sub);
+      if (!teacherBatchIds.length) {
+        return res.json([]);
+      }
+      if (req.query.batchId && !teacherBatchIds.includes(String(req.query.batchId))) {
+        return res.status(403).json({ message: 'You can only view your assigned divisions' });
+      }
+      filter.batchId = req.query.batchId
+        ? req.query.batchId
+        : { $in: teacherBatchIds };
+    }
+
+    const students = await Student.find(filter)
       .populate('userId', 'fullName phone email')
-      .populate('batchId', 'batchName')
+      .populate('batchId', 'batchName capacity')
       .sort({ admissionDate: -1, createdAt: -1 });
 
     const attendanceRows = await Attendance.find({
@@ -176,10 +260,155 @@ async function dailyAttendanceOverview(req, res, next) {
         studentName: student.userId?.fullName || 'Student',
         mobileNo: student.userId?.phone || '',
         batchName: student.batchId?.batchName || '',
+        batchId: student.batchId?._id || null,
+        capacity: Number(student.batchId?.capacity) || 0,
+        ...extractAcademicContext(student),
+        admissionDate: student.admissionDate || null,
         date,
         attendance: attendanceMap[student._id.toString()] || null
       }))
     );
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function teacherRoster(req, res, next) {
+  try {
+    const date = normalizeDate(req.query.date);
+    const teacher = await Teacher.findOne({ userId: req.user.sub })
+      .populate('userId', 'fullName email phone')
+      .lean();
+
+    if (!teacher) {
+      return res.status(404).json({ message: 'Teacher profile not found' });
+    }
+
+    const teacherBatchIds = await getTeacherBatchIds(req.user.sub);
+    if (!teacherBatchIds.length) {
+      return res.json({ teacher, date, batches: [] });
+    }
+
+    const students = await Student.find({ batchId: { $in: teacherBatchIds }, status: 'active' })
+      .populate('userId', 'fullName phone')
+      .populate('batchId', 'batchName capacity')
+      .sort({ 'details.education.currentClass': 1, 'details.education.division': 1, createdAt: 1 })
+      .lean();
+
+    const records = await Attendance.find({
+      studentId: { $in: students.map((student) => student._id) },
+      date
+    }).lean();
+
+    const attendanceMap = new Map(records.map((record) => [record.studentId?.toString(), record]));
+    const batches = [];
+    const batchMap = new Map();
+
+    students.forEach((student) => {
+      const key = student.batchId?._id?.toString() || 'unassigned';
+      if (!batchMap.has(key)) {
+        const academic = extractAcademicContext(student);
+        const item = {
+          batchId: student.batchId?._id || null,
+          batchName: student.batchId?.batchName || 'Unassigned Division',
+          capacity: Number(student.batchId?.capacity) || 0,
+          currentClass: academic.currentClass,
+          division: academic.division,
+          students: []
+        };
+        batchMap.set(key, item);
+        batches.push(item);
+      }
+
+      const activeStateStart = student.admissionDate ? normalizeDate(student.admissionDate) : null;
+      batchMap.get(key).students.push({
+        studentId: student._id,
+        enrollmentNo: student.enrollmentNo || '',
+        studentName: student.userId?.fullName || 'Student',
+        mobileNo: student.userId?.phone || '',
+        admissionDate: student.admissionDate || null,
+        attendance: attendanceMap.get(student._id.toString()) || null,
+        attendanceAllowed: !activeStateStart || date.getTime() >= activeStateStart.getTime()
+      });
+    });
+
+    res.json({ teacher, date, batches });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function classAttendanceSummary(req, res, next) {
+  try {
+    const date = normalizeDate(req.query.date);
+    const studentFilter = { status: 'active' };
+
+    if (req.query.currentClass) {
+      studentFilter['details.education.currentClass'] = req.query.currentClass;
+    }
+
+    const students = await Student.find(studentFilter)
+      .populate('batchId', 'batchName capacity')
+      .select('batchId admissionDate details')
+      .lean();
+
+    const studentIds = students.map((student) => student._id);
+    const attendanceRows = await Attendance.find({
+      studentId: { $in: studentIds },
+      date
+    }).lean();
+    const attendanceMap = new Map(attendanceRows.map((row) => [row.studentId?.toString(), row]));
+
+    const grouped = new Map();
+
+    students.forEach((student) => {
+      const academic = extractAcademicContext(student);
+      const classKey = academic.currentClass || 'Unassigned';
+      const divisionKey = academic.division || student.batchId?.batchName || 'General';
+      const groupKey = `${classKey}__${divisionKey}__${student.batchId?._id || 'none'}`;
+      if (!grouped.has(groupKey)) {
+        grouped.set(groupKey, {
+          currentClass: classKey,
+          division: divisionKey,
+          batchId: student.batchId?._id || null,
+          batchName: student.batchId?.batchName || 'No batch',
+          capacity: Number(student.batchId?.capacity) || 0,
+          totalStudents: 0,
+          presentCount: 0,
+          absentCount: 0,
+          lateCount: 0,
+          leaveCount: 0,
+          notMarkedCount: 0
+        });
+      }
+
+      const group = grouped.get(groupKey);
+      const activeFrom = student.admissionDate ? normalizeDate(student.admissionDate) : null;
+      const isActiveForDate = !activeFrom || date.getTime() >= activeFrom.getTime();
+      if (!isActiveForDate) {
+        return;
+      }
+
+      group.totalStudents += 1;
+
+      const attendance = attendanceMap.get(student._id.toString());
+      if (!attendance) {
+        group.notMarkedCount += 1;
+        return;
+      }
+
+      if (attendance.status === 'present') group.presentCount += 1;
+      else if (attendance.status === 'absent') group.absentCount += 1;
+      else if (attendance.status === 'late') group.lateCount += 1;
+      else if (attendance.status === 'leave') group.leaveCount += 1;
+      else group.notMarkedCount += 1;
+    });
+
+    const items = Array.from(grouped.values())
+      .filter((item) => ['11th Std', '12th Std'].includes(item.currentClass))
+      .sort((left, right) => `${left.currentClass}-${left.division}`.localeCompare(`${right.currentClass}-${right.division}`));
+
+    res.json({ date, items });
   } catch (err) {
     next(err);
   }
@@ -651,6 +880,8 @@ module.exports = {
   requestLeave,
   myAttendance,
   dailyAttendanceOverview,
+  teacherRoster,
+  classAttendanceSummary,
   flaggedAbsentees,
   listLeaves,
   updateLeaveStatus,

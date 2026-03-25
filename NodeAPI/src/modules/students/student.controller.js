@@ -33,10 +33,34 @@ function shapeStudentDetails(raw = {}) {
   const education = {
     previousSchool: raw.previousSchool,
     currentClass: raw.currentClass,
+    division: raw.division,
     board: raw.board,
     medium: raw.medium,
     passingYear: raw.passingYear,
-    percentage: raw.percentage
+    percentage: raw.percentage,
+    academicHistory: {
+      tenth: {
+        schoolName: raw.tenthSchoolName,
+        board: raw.tenthBoard,
+        passingYear: raw.tenthPassingYear,
+        percentage: raw.tenthPercentage,
+        marks: raw.tenthMarks
+      },
+      eleventh: {
+        schoolName: raw.eleventhSchoolName,
+        board: raw.eleventhBoard,
+        passingYear: raw.eleventhPassingYear,
+        percentage: raw.eleventhPercentage,
+        marks: raw.eleventhMarks
+      },
+      twelfth: {
+        schoolName: raw.twelfthSchoolName,
+        board: raw.twelfthBoard,
+        passingYear: raw.twelfthPassingYear,
+        percentage: raw.twelfthPercentage,
+        marks: raw.twelfthMarks
+      }
+    }
   };
   const physical = {
     height: raw.height,

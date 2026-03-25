@@ -3,6 +3,13 @@ const Teacher = require('../teachers/teacher.model');
 const Worker = require('../workers/worker.model');
 const Fee = require('../fees/fee.model');
 const User = require('../users/user.model');
+const Attendance = require('../attendance/attendance.model');
+
+function normalizeDate(value) {
+  const date = value ? new Date(value) : new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
 
 async function superAdminDashboard(req, res, next) {
   try {
@@ -14,7 +21,9 @@ async function superAdminDashboard(req, res, next) {
     const twoWeeksAgo = new Date(now);
     twoWeeksAgo.setDate(now.getDate() - 13);
 
-    const [totalUsers, studentCount, teacherCount, workerCount, feeSummary, monthAdmissions, weekAdmissions, dayAdmissions] = await Promise.all([
+    const today = normalizeDate();
+
+    const [totalUsers, studentCount, teacherCount, workerCount, feeSummary, monthAdmissions, weekAdmissions, dayAdmissions, classStudents, todayAttendance] = await Promise.all([
       User.countDocuments(),
       Student.countDocuments(),
       Teacher.countDocuments(),
@@ -58,7 +67,12 @@ async function superAdminDashboard(req, res, next) {
           }
         },
         { $sort: { '_id.d': 1 } }
-      ])
+      ]),
+      Student.find({ status: 'active', 'details.education.currentClass': { $in: ['11th Std', '12th Std'] } })
+        .populate('batchId', 'batchName capacity')
+        .select('admissionDate batchId details')
+        .lean(),
+      Attendance.find({ date: today }).select('studentId status').lean()
     ]);
 
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -78,6 +92,37 @@ async function superAdminDashboard(req, res, next) {
     const revenuePass = req.query.revenuePass || req.headers['x-revenue-pass'];
     const canViewRevenue = req.user?.role === 'super_admin';
     const revenueAllowed = canViewRevenue && (process.env.REVENUE_PASS ? revenuePass === process.env.REVENUE_PASS : true);
+    const attendanceMap = new Map(todayAttendance.map((row) => [row.studentId?.toString(), row.status]));
+    const classCapacityMap = new Map();
+
+    classStudents.forEach((student) => {
+      const education = student.details?.education || {};
+      const currentClass = education.currentClass || 'Unassigned';
+      const division = education.division || student.batchId?.batchName || 'General';
+      const key = `${currentClass}__${division}__${student.batchId?._id || 'none'}`;
+      if (!classCapacityMap.has(key)) {
+        classCapacityMap.set(key, {
+          currentClass,
+          division,
+          batchName: student.batchId?.batchName || 'No batch',
+          batchId: student.batchId?._id || null,
+          capacity: Number(student.batchId?.capacity) || 0,
+          totalStudents: 0,
+          presentCount: 0
+        });
+      }
+
+      const item = classCapacityMap.get(key);
+      const activeFrom = student.admissionDate ? normalizeDate(student.admissionDate) : null;
+      if (activeFrom && today.getTime() < activeFrom.getTime()) {
+        return;
+      }
+
+      item.totalStudents += 1;
+      if (attendanceMap.get(student._id.toString()) === 'present') {
+        item.presentCount += 1;
+      }
+    });
 
     res.json({
       totalUsers,
@@ -87,6 +132,9 @@ async function superAdminDashboard(req, res, next) {
       fees: feeSummary[0] || { totalExpected: 0, totalCollected: 0, totalDue: 0 },
       revenueLocked: !revenueAllowed,
       revenue: revenueAllowed ? (feeSummary[0]?.totalCollected || 0) : undefined,
+      classCapacitySummary: Array.from(classCapacityMap.values()).sort((left, right) =>
+        `${left.currentClass}-${left.division}`.localeCompare(`${right.currentClass}-${right.division}`)
+      ),
       admissions: {
         month: byMonth,
         week: byWeek,
