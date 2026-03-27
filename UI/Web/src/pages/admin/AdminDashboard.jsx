@@ -17,6 +17,7 @@ import SubjectManager from '../../components/SubjectManager';
 import AttendanceWorkspace from '../../components/AttendanceWorkspace';
 import ChangePasswordForm from '../../components/ChangePasswordForm';
 import DivisionAllocationManager from '../../components/DivisionAllocationManager';
+import DivisionAttendanceBoard from '../../components/DivisionAttendanceBoard';
 import SharedGrid from '../../components/SharedGrid';
 import api from '../../api/client';
 
@@ -28,6 +29,7 @@ const navItems = [
   { key: 'teachers-list', label: 'Teacher List', icon: 'users', path: '/admin/teachers-list' },
   { key: 'subjects', label: 'Subjects', icon: 'spark', path: '/admin/subjects' },
   { key: 'divisions', label: 'Division Allocation', icon: 'users', path: '/admin/divisions' },
+  { key: 'division-attendance', label: 'Division Attendance', icon: 'calendar', path: '/admin/division-attendance' },
   { key: 'notices', label: 'Notices', icon: 'bell', path: '/admin/notices' },
   { key: 'lectures', label: 'Lectures', icon: 'calendar', path: '/admin/lectures' },
   { key: 'attendance', label: 'Attendance', icon: 'calendar', path: '/admin/attendance' },
@@ -103,6 +105,7 @@ export default function AdminDashboard() {
     if (location.pathname.startsWith('/admin/teachers')) return 'teachers';
     if (location.pathname.startsWith('/admin/subjects')) return 'subjects';
     if (location.pathname.startsWith('/admin/divisions')) return 'divisions';
+    if (location.pathname.startsWith('/admin/division-attendance')) return 'division-attendance';
     if (location.pathname.startsWith('/admin/notices')) return 'notices';
     if (location.pathname.startsWith('/admin/students')) return 'students';
     if (location.pathname.startsWith('/admin/lectures')) return 'lectures';
@@ -188,6 +191,17 @@ export default function AdminDashboard() {
             <VectorIcon name="users" size={18} />
           </div>
           <DivisionAllocationManager />
+        </article>
+      );
+    }
+    if (routeKey === 'division-attendance') {
+      return (
+        <article className="panel">
+          <div className="panel-head">
+            <h3>Division Attendance</h3>
+            <VectorIcon name="calendar" size={18} />
+          </div>
+          <DivisionAttendanceBoard />
         </article>
       );
     }
@@ -305,6 +319,7 @@ export default function AdminDashboard() {
               <button onClick={() => navigate('/admin/teachers')}>Add Teacher</button>
               <button onClick={() => navigate('/admin/notices')}>Issue Notice</button>
               <button onClick={() => navigate('/admin/attendance')}>Attendance Audit</button>
+              <button onClick={() => navigate('/admin/division-attendance')}>Division Attendance</button>
             </div>
           </article>
           <CheckinConfigCard />

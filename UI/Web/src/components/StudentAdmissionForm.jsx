@@ -4,7 +4,7 @@ import VectorIcon from './VectorIcon';
 import api from '../api/client';
 
 const CLASS_OPTIONS = ['11th Std', '12th Std', 'Summer Camp', 'Completed 12th', 'Graduate', 'Other'];
-const ADMISSION_TYPE_OPTIONS = ['Junior College', 'Recruitment Preparation', 'Both'];
+const ADMISSION_TYPE_OPTIONS = ['Junior College', 'Recruitment Preparation', 'Both', 'Summer Camp'];
 
 const initialForm = {
   admissionNo: '',
@@ -69,7 +69,8 @@ const initialForm = {
   feeAmount: '',
   feeFrom: '',
   feeTo: '',
-  batchId: ''
+  batchId: '',
+  assignedSubjects: []
 };
 
 function createEducationRow() {
@@ -127,14 +128,22 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
   const [geoLoading, setGeoLoading] = useState(false);
   const [batches, setBatches] = useState([]);
   const [feeReason, setFeeReason] = useState('');
+  const [subjectsList, setSubjectsList] = useState([]);
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
+  const [newSubjectName, setNewSubjectName] = useState('');
   const { user } = useAuth() || {};
 
   useEffect(() => {
     loadBatches();
+    loadSubjects();
     if (editId) {
       loadExisting(editId);
     }
   }, [editId]);
+
+  useEffect(() => {
+    loadSubjects(form.currentClass);
+  }, [form.currentClass]);
 
   async function loadBatches() {
     try {
@@ -148,6 +157,16 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
       }
     } catch {
       setBatches([]);
+    }
+  }
+
+  async function loadSubjects(currentClass = form.currentClass) {
+    try {
+      const params = currentClass ? { currentClass } : undefined;
+      const { data } = await api.get('/subjects', { params });
+      setSubjectsList(Array.isArray(data) ? data : []);
+    } catch {
+      setSubjectsList([]);
     }
   }
 
@@ -179,6 +198,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         admissionPurposes: Array.isArray(d.education?.admissionPurposes) && d.education.admissionPurposes.length
           ? d.education.admissionPurposes
           : [''],
+        assignedSubjects: Array.isArray(d.education?.assignedSubjects) ? d.education.assignedSubjects : [],
         previousSchool: d.education?.previousSchool || '',
         previousEducationRows: Array.isArray(d.education?.previousEducations) && d.education.previousEducations.length
           ? d.education.previousEducations.map((item) => ({
@@ -259,8 +279,64 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
       if (key === 'currentClass' && nextValue === 'Summer Camp') {
         next.admissionType = 'Summer Camp';
       }
+      if (key === 'currentClass') {
+        next.assignedSubjects = Array.isArray(next.assignedSubjects) ? next.assignedSubjects : [];
+      }
       return next;
     });
+  }
+
+  function addAssignedSubjectById(subjectId) {
+    if (!subjectId) return;
+    const selected = subjectsList.find((subject) => subject._id === subjectId);
+    if (!selected) return;
+    setForm((prev) => {
+      const exists = (prev.assignedSubjects || []).some((item) => item.subjectId === selected._id);
+      if (exists) return prev;
+      return {
+        ...prev,
+        assignedSubjects: [
+          ...(prev.assignedSubjects || []),
+          { subjectId: selected._id, name: selected.name, code: selected.code || '' }
+        ]
+      };
+    });
+    setSelectedSubjectId('');
+  }
+
+  function removeAssignedSubject(subjectId) {
+    setForm((prev) => ({
+      ...prev,
+      assignedSubjects: (prev.assignedSubjects || []).filter((item) => item.subjectId !== subjectId)
+    }));
+  }
+
+  async function addNewSubjectAndAssign() {
+    const name = String(newSubjectName || '').trim();
+    if (!name) return;
+    try {
+      const { data } = await api.post('/subjects', {
+        name,
+        currentClasses: form.currentClass ? [form.currentClass] : []
+      });
+      await loadSubjects(form.currentClass);
+      setNewSubjectName('');
+      if (data?._id) {
+        setForm((prev) => {
+          const exists = (prev.assignedSubjects || []).some((item) => item.subjectId === data._id);
+          if (exists) return prev;
+          return {
+            ...prev,
+            assignedSubjects: [
+              ...(prev.assignedSubjects || []),
+              { subjectId: data._id, name: data.name, code: data.code || '' }
+            ]
+          };
+        });
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Unable to add subject');
+    }
   }
 
   function updateEducationRow(index, key, value) {
@@ -505,6 +581,44 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
               ))}
             </select>
           </label>
+          <label><span>Assign Subject (Dropdown)</span>
+            <select value={selectedSubjectId} onChange={(e) => setSelectedSubjectId(e.target.value)}>
+              <option value="">Select subject</option>
+              {subjectsList.map((subject) => (
+                <option key={subject._id} value={subject._id}>
+                  {subject.name} ({subject.code || 'AUTO'})
+                </option>
+              ))}
+            </select>
+          </label>
+          <div style={{ display: 'flex', alignItems: 'end' }}>
+            <button type="button" className="ghost-btn" onClick={() => addAssignedSubjectById(selectedSubjectId)} disabled={!selectedSubjectId}>
+              Add Selected Subject
+            </button>
+          </div>
+          <label><span>Add New Subject</span>
+            <input
+              value={newSubjectName}
+              onChange={(e) => setNewSubjectName(e.target.value)}
+              placeholder="Subject name (code auto-generated)"
+            />
+          </label>
+          <div style={{ display: 'flex', alignItems: 'end' }}>
+            <button type="button" className="ghost-btn" onClick={addNewSubjectAndAssign} disabled={!newSubjectName.trim()}>
+              Add + Assign New Subject
+            </button>
+          </div>
+          <div className="full">
+            <span style={{ display: 'block', marginBottom: 8, color: '#6b7280', fontWeight: 700 }}>Assigned Subjects</span>
+            <div className="subject-filter">
+              {(form.assignedSubjects || []).map((item) => (
+                <button key={item.subjectId || item.name} type="button" className="result-chip active" onClick={() => removeAssignedSubject(item.subjectId)}>
+                  {item.name} {item.code ? `(${item.code})` : ''} ×
+                </button>
+              ))}
+              {!form.assignedSubjects?.length && <small style={{ color: '#6b7280' }}>No subjects assigned yet.</small>}
+            </div>
+          </div>
           {!isSummerCamp && <label><span>Previous School</span><input value={form.previousSchool} onChange={(e) => setField('previousSchool', e.target.value)} /></label>}
           <label><span>Academic Stage / Class</span>
             <select value={form.currentClass} onChange={(e) => setField('currentClass', e.target.value)}>

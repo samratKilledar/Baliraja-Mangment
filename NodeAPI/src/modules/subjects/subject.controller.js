@@ -2,6 +2,26 @@ const Subject = require('./subject.model');
 const Teacher = require('../teachers/teacher.model');
 const ALLOWED_CLASSES = ['11th Std', '12th Std', 'Summer Camp', 'Trainning'];
 
+function buildSubjectCode(name = '') {
+  const normalized = String(name || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '')
+    .slice(0, 12) || 'SUBJECT';
+  const randomNo = String(Math.floor(1000 + Math.random() * 9000));
+  return `SUB-${normalized}-${randomNo}`;
+}
+
+async function generateUniqueSubjectCode(name = '') {
+  let code = buildSubjectCode(name);
+  let exists = await Subject.findOne({ code }).select('_id').lean();
+  while (exists) {
+    code = buildSubjectCode(name);
+    // eslint-disable-next-line no-await-in-loop
+    exists = await Subject.findOne({ code }).select('_id').lean();
+  }
+  return code;
+}
+
 async function listSubjects(req, res, next) {
   try {
     const filter = { isActive: true };
@@ -22,9 +42,11 @@ async function listSubjects(req, res, next) {
 
 async function createSubject(req, res, next) {
   try {
+    const subjectName = String(req.body.name || '').trim();
+    const manualCode = String(req.body.code || '').trim().toUpperCase();
     const payload = {
-      name: String(req.body.name || '').trim(),
-      code: String(req.body.code || '').trim(),
+      name: subjectName,
+      code: manualCode,
       currentClasses: Array.isArray(req.body.currentClasses)
         ? req.body.currentClasses.filter((value) => ALLOWED_CLASSES.includes(value))
         : [],
@@ -36,15 +58,17 @@ async function createSubject(req, res, next) {
     if (!payload.name) {
       return res.status(400).json({ message: 'Subject name is required' });
     }
-    if (!payload.teacherId) {
-      return res.status(400).json({ message: 'Teacher is required' });
+    if (!payload.code) {
+      payload.code = await generateUniqueSubjectCode(payload.name);
     }
 
-    const teacher = await Teacher.findById(payload.teacherId).populate('userId', 'fullName').lean();
-    if (!teacher) {
-      return res.status(400).json({ message: 'Selected teacher not found' });
+    if (payload.teacherId) {
+      const teacher = await Teacher.findById(payload.teacherId).populate('userId', 'fullName').lean();
+      if (!teacher) {
+        return res.status(400).json({ message: 'Selected teacher not found' });
+      }
+      payload.teacherName = teacher.userId?.fullName || '';
     }
-    payload.teacherName = teacher.userId?.fullName || '';
 
     const subject = await Subject.create(payload);
     res.status(201).json(subject);

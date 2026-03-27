@@ -48,6 +48,15 @@ function shapeStudentDetails(raw = {}) {
     percentage: raw.percentage,
     previousEducations,
     admissionPurposes,
+    assignedSubjects: Array.isArray(raw.assignedSubjects)
+      ? raw.assignedSubjects
+          .map((item = {}) => ({
+            subjectId: item.subjectId || '',
+            name: item.name || '',
+            code: item.code || ''
+          }))
+          .filter((item) => item.subjectId || item.name || item.code)
+      : [],
     academicHistory: {
       tenth: {
         schoolName: raw.tenthSchoolName,
