@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 
-const CLASS_OPTIONS = ['11th Std', '12th Std', 'Trainning'];
+const CLASS_OPTIONS = ['11th Std', '12th Std', 'Summer Camp', 'Trainning'];
 
 export default function SubjectManager() {
   const [subjects, setSubjects] = useState([]);
@@ -12,7 +12,7 @@ export default function SubjectManager() {
   const [form, setForm] = useState({
     name: '',
     code: '',
-    currentClasses: ['11th Std', '12th Std', 'Trainning'],
+    currentClasses: ['11th Std', '12th Std', 'Summer Camp', 'Trainning'],
     teacherId: ''
   });
 
@@ -61,7 +61,7 @@ export default function SubjectManager() {
     setSaving(true);
     try {
       await api.post('/subjects', form);
-      setForm({ name: '', code: '', currentClasses: ['11th Std', '12th Std', 'Trainning'], teacherId: '' });
+      setForm({ name: '', code: '', currentClasses: ['11th Std', '12th Std', 'Summer Camp', 'Trainning'], teacherId: '' });
       await loadSubjects();
     } catch (err) {
       setError(err?.response?.data?.message || 'Unable to save subject');

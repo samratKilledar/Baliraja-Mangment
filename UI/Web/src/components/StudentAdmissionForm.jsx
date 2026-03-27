@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import VectorIcon from './VectorIcon';
 import api from '../api/client';
 
-const CLASS_OPTIONS = ['11th Std', '12th Std', 'Completed 12th', 'Graduate', 'Other'];
+const CLASS_OPTIONS = ['11th Std', '12th Std', 'Summer Camp', 'Completed 12th', 'Graduate', 'Other'];
 const ADMISSION_TYPE_OPTIONS = ['Junior College', 'Recruitment Preparation', 'Both'];
 
 const initialForm = {
@@ -256,6 +256,9 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
       if (key === 'dob') {
         next.age = calculateAge(nextValue);
       }
+      if (key === 'currentClass' && nextValue === 'Summer Camp') {
+        next.admissionType = 'Summer Camp';
+      }
       return next;
     });
   }
@@ -351,6 +354,35 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
     setSaving(true);
     const fallbackBatchId = getPreferredBatchId(batches, form.batchId);
     try {
+    const isSummerCamp = form.currentClass === 'Summer Camp';
+    const detailsPayload = isSummerCamp
+      ? {
+          ...form,
+          admissionType: 'Summer Camp',
+          previousSchool: '',
+          previousEducationRows: [],
+          board: '',
+          medium: '',
+          passingYear: '',
+          percentage: '',
+          tenthSchoolName: '',
+          tenthBoard: '',
+          tenthPassingYear: '',
+          tenthPercentage: '',
+          tenthMarks: '',
+          eleventhSchoolName: '',
+          eleventhBoard: '',
+          eleventhPassingYear: '',
+          eleventhPercentage: '',
+          eleventhMarks: '',
+          twelfthSchoolName: '',
+          twelfthBoard: '',
+          twelfthPassingYear: '',
+          twelfthPercentage: '',
+          twelfthMarks: ''
+        }
+      : form;
+
     const payload = {
       fullName: [form.firstName, form.middleName, form.lastName].filter(Boolean).join(' ').trim() || 'Student',
       email: form.email,
@@ -364,7 +396,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         age: form.age ? Number(form.age) : undefined,
         address: [form.addressLine1, form.addressLine2, form.city, form.state, form.pinCode].filter(Boolean).join(', '),
         emergencyContact: form.guardianMobile || form.fatherMobile || form.motherMobile,
-        details: form,
+        details: detailsPayload,
       feeAmount: ['super_admin', 'admin'].includes(user?.role) && form.feeAmount ? Number(form.feeAmount) : undefined,
       feeDueDate: form.feeTo || undefined,
       feeFrom: form.feeFrom || undefined,
@@ -404,6 +436,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
     }
   }
 
+  const isSummerCamp = form.currentClass === 'Summer Camp';
   const isSeniorSecondary = ['11th Std', '12th Std'].includes(form.currentClass);
   const isTwelfthAdmission = form.currentClass === '12th Std';
 
@@ -411,7 +444,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
     <form className="student-form" onSubmit={onSubmit}>
       <div className="form-head">
         <h3>Student Master Form {editId ? '(Edit)' : ''}</h3>
-        <p>Single student form for 11th, 12th and recruitment preparation admissions</p>
+        <p>Single student form for 11th, 12th, Summer Camp and recruitment preparation admissions</p>
       </div>
       {loading && <p>Loading student...</p>}
 
@@ -467,12 +500,12 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         <div className="form-grid">
           <label><span>Admission Type</span>
             <select value={form.admissionType} onChange={(e) => setField('admissionType', e.target.value)}>
-              {ADMISSION_TYPE_OPTIONS.map((option) => (
+              {(isSummerCamp ? ['Summer Camp'] : ADMISSION_TYPE_OPTIONS).map((option) => (
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>
           </label>
-          <label><span>Previous School</span><input value={form.previousSchool} onChange={(e) => setField('previousSchool', e.target.value)} /></label>
+          {!isSummerCamp && <label><span>Previous School</span><input value={form.previousSchool} onChange={(e) => setField('previousSchool', e.target.value)} /></label>}
           <label><span>Academic Stage / Class</span>
             <select value={form.currentClass} onChange={(e) => setField('currentClass', e.target.value)}>
               <option value="">Select Class</option>
@@ -481,11 +514,15 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
               ))}
             </select>
           </label>
-          <label><span>Branch / Stream</span><input value={form.branch} onChange={(e) => setField('branch', e.target.value)} placeholder="Science / Commerce / Arts / General" /></label>
-          <label><span>Board</span><input value={form.board} onChange={(e) => setField('board', e.target.value)} /></label>
-          <label><span>Medium</span><input value={form.medium} onChange={(e) => setField('medium', e.target.value)} /></label>
-          <label><span>Passing Year</span><input value={form.passingYear} onChange={(e) => setField('passingYear', e.target.value)} /></label>
-          <label><span>Percentage / Grade</span><input value={form.percentage} onChange={(e) => setField('percentage', e.target.value)} /></label>
+          {!isSummerCamp && (
+            <>
+              <label><span>Branch / Stream</span><input value={form.branch} onChange={(e) => setField('branch', e.target.value)} placeholder="Science / Commerce / Arts / General" /></label>
+              <label><span>Board</span><input value={form.board} onChange={(e) => setField('board', e.target.value)} /></label>
+              <label><span>Medium</span><input value={form.medium} onChange={(e) => setField('medium', e.target.value)} /></label>
+              <label><span>Passing Year</span><input value={form.passingYear} onChange={(e) => setField('passingYear', e.target.value)} /></label>
+              <label><span>Percentage / Grade</span><input value={form.percentage} onChange={(e) => setField('percentage', e.target.value)} /></label>
+            </>
+          )}
         </div>
         <p className="graph-note" style={{ marginTop: 10 }}>
           Division is removed from admission time. Admin can assign students division-wise later based on total strength.
@@ -506,26 +543,28 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
             </div>
           ))}
         </div>
-        <div className="form-grid" style={{ marginTop: 16 }}>
-          <div className="full" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-            <h5 style={{ margin: 0 }}>Previous Education Rows</h5>
-            <button type="button" className="ghost-btn" onClick={addEducationRow}>+ Add Row</button>
-          </div>
-          {form.previousEducationRows.map((row, index) => (
-            <div key={`edu-${index}`} className="full" style={{ border: '1px solid #dde5fa', borderRadius: 12, padding: 12 }}>
-              <div className="form-grid" style={{ marginTop: 0 }}>
-                <label><span>Previous School</span><input value={row.previousSchool} onChange={(e) => updateEducationRow(index, 'previousSchool', e.target.value)} /></label>
-                <label><span>Board</span><input value={row.board} onChange={(e) => updateEducationRow(index, 'board', e.target.value)} /></label>
-                <label><span>Medium</span><input value={row.medium} onChange={(e) => updateEducationRow(index, 'medium', e.target.value)} /></label>
-                <label><span>Passing Year</span><input value={row.passingYear} onChange={(e) => updateEducationRow(index, 'passingYear', e.target.value)} /></label>
-                <label><span>Percentage / Grade</span><input value={row.percentage} onChange={(e) => updateEducationRow(index, 'percentage', e.target.value)} /></label>
-                <div style={{ display: 'flex', alignItems: 'end' }}>
-                  <button type="button" className="ghost-btn" onClick={() => removeEducationRow(index)}>Remove Row</button>
+        {!isSummerCamp && (
+          <div className="form-grid" style={{ marginTop: 16 }}>
+            <div className="full" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <h5 style={{ margin: 0 }}>Previous Education Rows</h5>
+              <button type="button" className="ghost-btn" onClick={addEducationRow}>+ Add Row</button>
+            </div>
+            {form.previousEducationRows.map((row, index) => (
+              <div key={`edu-${index}`} className="full" style={{ border: '1px solid #dde5fa', borderRadius: 12, padding: 12 }}>
+                <div className="form-grid" style={{ marginTop: 0 }}>
+                  <label><span>Previous School</span><input value={row.previousSchool} onChange={(e) => updateEducationRow(index, 'previousSchool', e.target.value)} /></label>
+                  <label><span>Board</span><input value={row.board} onChange={(e) => updateEducationRow(index, 'board', e.target.value)} /></label>
+                  <label><span>Medium</span><input value={row.medium} onChange={(e) => updateEducationRow(index, 'medium', e.target.value)} /></label>
+                  <label><span>Passing Year</span><input value={row.passingYear} onChange={(e) => updateEducationRow(index, 'passingYear', e.target.value)} /></label>
+                  <label><span>Percentage / Grade</span><input value={row.percentage} onChange={(e) => updateEducationRow(index, 'percentage', e.target.value)} /></label>
+                  <div style={{ display: 'flex', alignItems: 'end' }}>
+                    <button type="button" className="ghost-btn" onClick={() => removeEducationRow(index)}>Remove Row</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         {isSeniorSecondary && (
           <div className="form-grid" style={{ marginTop: 16 }}>
             <h5 style={{ gridColumn: '1 / -1', marginBottom: 0 }}>Previous Marks To Store In Database</h5>
@@ -554,16 +593,18 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         )}
       </section>
 
-      <section className="form-section">
-        <h4><VectorIcon name="star" size={16} /> Physical & Medical Info</h4>
-        <div className="form-grid">
-          <label><span>Height (cm)</span><input value={form.height} onChange={(e) => setField('height', e.target.value)} /></label>
-          <label><span>Weight (kg)</span><input value={form.weight} onChange={(e) => setField('weight', e.target.value)} /></label>
-          <label><span>Vision</span><input value={form.vision} onChange={(e) => setField('vision', e.target.value)} /></label>
-          <label><span>Disability</span><input value={form.disability} onChange={(e) => setField('disability', e.target.value)} /></label>
-          <label className="full"><span>Allergies / Medical Notes</span><input value={form.allergy} onChange={(e) => setField('allergy', e.target.value)} /></label>
-        </div>
-      </section>
+      {!isSummerCamp && (
+        <section className="form-section">
+          <h4><VectorIcon name="star" size={16} /> Physical & Medical Info</h4>
+          <div className="form-grid">
+            <label><span>Height (cm)</span><input value={form.height} onChange={(e) => setField('height', e.target.value)} /></label>
+            <label><span>Weight (kg)</span><input value={form.weight} onChange={(e) => setField('weight', e.target.value)} /></label>
+            <label><span>Vision</span><input value={form.vision} onChange={(e) => setField('vision', e.target.value)} /></label>
+            <label><span>Disability</span><input value={form.disability} onChange={(e) => setField('disability', e.target.value)} /></label>
+            <label className="full"><span>Allergies / Medical Notes</span><input value={form.allergy} onChange={(e) => setField('allergy', e.target.value)} /></label>
+          </div>
+        </section>
+      )}
 
       <section className="form-section">
         <h4><VectorIcon name="users" size={16} /> Parent / Guardian Details</h4>

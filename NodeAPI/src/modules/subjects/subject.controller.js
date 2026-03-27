@@ -1,6 +1,6 @@
 const Subject = require('./subject.model');
 const Teacher = require('../teachers/teacher.model');
-const ALLOWED_CLASSES = ['11th Std', '12th Std', 'Trainning'];
+const ALLOWED_CLASSES = ['11th Std', '12th Std', 'Summer Camp', 'Trainning'];
 
 async function listSubjects(req, res, next) {
   try {

@@ -32,7 +32,8 @@ async function register(req, res, next) {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
-        role: user.role
+        role: user.role,
+        mustChangePassword: Boolean(user.mustChangePassword)
       }
     });
   } catch (err) {
@@ -65,7 +66,8 @@ async function login(req, res, next) {
         fullName: user.fullName,
         email: user.email,
         phone: user.phone,
-        role: user.role
+        role: user.role,
+        mustChangePassword: Boolean(user.mustChangePassword)
       }
     });
   } catch (err) {
@@ -94,7 +96,10 @@ async function bootstrapSuperAdmin(req, res, next) {
     });
 
     const token = signToken(user);
-    res.status(201).json({ token, user: { id: user._id, fullName, email, role: user.role } });
+    res.status(201).json({
+      token,
+      user: { id: user._id, fullName, email, role: user.role, mustChangePassword: Boolean(user.mustChangePassword) }
+    });
   } catch (err) {
     next(err);
   }

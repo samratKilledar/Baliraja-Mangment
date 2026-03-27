@@ -69,7 +69,7 @@ async function superAdminDashboard(req, res, next) {
         },
         { $sort: { '_id.d': 1 } }
       ]),
-      Student.find({ status: 'active', 'details.education.currentClass': { $in: ['11th Std', '12th Std'] } })
+      Student.find({ status: 'active', 'details.education.currentClass': { $in: ['11th Std', '12th Std', 'Summer Camp'] } })
         .populate('batchId', 'batchName capacity')
         .select('admissionDate batchId details')
         .lean(),

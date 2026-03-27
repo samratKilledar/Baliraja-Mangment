@@ -16,6 +16,11 @@ export function AuthProvider({ children }) {
     setUser(authUser);
   }, []);
 
+  const updateUser = useCallback((nextUser) => {
+    localStorage.setItem('ims_user', JSON.stringify(nextUser));
+    setUser(nextUser);
+  }, []);
+
   const logout = useCallback((reason) => {
     if (reason) {
       localStorage.setItem('ims_logout_reason', reason);
@@ -45,7 +50,7 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('ims:logout', handler);
   }, [logout]);
 
-  const value = useMemo(() => ({ user, login, logout }), [user, login, logout]);
+  const value = useMemo(() => ({ user, login, logout, updateUser }), [user, login, logout, updateUser]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

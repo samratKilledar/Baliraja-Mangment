@@ -8,7 +8,7 @@ const optionalNumber = z.preprocess((value) => {
 
 const createUserSchema = z.object({
   fullName: z.string().min(2),
-  email: z.string().email(),
+  email: z.string().email().optional(),
   phone: z.string().optional(),
   role: z.nativeEnum(ROLES),
   password: z.string().min(6).optional(),

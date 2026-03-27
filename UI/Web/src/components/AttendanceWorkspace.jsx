@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
 
-const CLASS_OPTIONS = ['11th Std', '12th Std'];
+const CLASS_OPTIONS = ['11th Std', '12th Std', 'Summer Camp'];
 const STATUS_OPTIONS = [
   { value: 'present', label: 'Present', tone: 'green' },
   { value: 'absent', label: 'Absent', tone: 'red' },
@@ -42,6 +42,7 @@ export default function AttendanceWorkspace({ role = 'admin' }) {
   const [fromDate, setFromDate] = useState(formatDateInput(new Date(new Date().setDate(new Date().getDate() - 30))));
   const [toDate, setToDate] = useState(formatDateInput());
   const [currentClass, setCurrentClass] = useState('11th Std');
+  const [teacherClassOptions, setTeacherClassOptions] = useState([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [loadingDaily, setLoadingDaily] = useState(false);
   const [loadingReport, setLoadingReport] = useState(false);
@@ -79,6 +80,11 @@ export default function AttendanceWorkspace({ role = 'admin' }) {
       };
       if (role === 'teacher') {
         const { data } = await api.get('/attendance/teacher/roster', { params });
+        const allowedClasses = Array.isArray(data?.availableClasses) ? data.availableClasses : [];
+        setTeacherClassOptions(allowedClasses);
+        if (allowedClasses.length && !allowedClasses.includes(currentClass)) {
+          setCurrentClass(allowedClasses[0]);
+        }
         const rows = (data?.batches || []).flatMap((batch) =>
           (batch.students || []).map((student) => ({
             ...student,
@@ -167,7 +173,7 @@ export default function AttendanceWorkspace({ role = 'admin' }) {
           <label>
             <span>Class</span>
             <select value={currentClass} onChange={(e) => setCurrentClass(e.target.value)}>
-              {CLASS_OPTIONS.map((option) => (
+              {(role === 'teacher' && teacherClassOptions.length ? teacherClassOptions : CLASS_OPTIONS).map((option) => (
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>

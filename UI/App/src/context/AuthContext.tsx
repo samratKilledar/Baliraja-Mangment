@@ -1,19 +1,27 @@
-import React, { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthUser } from '../types';
-import { setupPushNotifications } from '../notifications/pushSetup';
+import {AuthUser} from '../types';
+import {setupPushNotifications} from '../notifications/pushSetup';
 
 type AuthContextType = {
   token: string | null;
   user: AuthUser | null;
   setSession: (token: string, user: AuthUser) => void;
+  updateUser: (nextUser: AuthUser) => void;
   clearSession: () => void;
   hydrated: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({children}: {children: ReactNode}) {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   // ensures we don't block rendering while rehydrating but lets consumers know
@@ -24,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const [savedToken, savedUser] = await Promise.all([
           AsyncStorage.getItem('ims_token'),
-          AsyncStorage.getItem('ims_user')
+          AsyncStorage.getItem('ims_user'),
         ]);
         if (savedToken && savedUser) {
           setToken(savedToken);
@@ -49,16 +57,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(nextToken);
         setUser(nextUser);
         AsyncStorage.setItem('ims_token', nextToken).catch(() => {});
-        AsyncStorage.setItem('ims_user', JSON.stringify(nextUser)).catch(() => {});
+        AsyncStorage.setItem('ims_user', JSON.stringify(nextUser)).catch(
+          () => {},
+        );
         setupPushNotifications(nextUser.role);
+      },
+      updateUser: (nextUser: AuthUser) => {
+        setUser(nextUser);
+        AsyncStorage.setItem('ims_user', JSON.stringify(nextUser)).catch(
+          () => {},
+        );
       },
       clearSession: () => {
         setToken(null);
         setUser(null);
         AsyncStorage.multiRemove(['ims_token', 'ims_user']).catch(() => {});
-      }
+      },
     }),
-    [token, user, hydrated]
+    [token, user, hydrated],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -66,6 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used inside AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used inside AuthProvider');
+  }
   return context;
 }

@@ -1,15 +1,24 @@
-import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, {useState} from 'react';
+import {
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import client from '../api/client';
 
 type PasswordChangeCardProps = {
   title?: string;
   subtitle?: string;
+  onSuccess?: (updatedUser?: any) => void;
 };
 
 export default function PasswordChangeCard({
   title = 'Password',
-  subtitle = 'Update your login password here.'
+  subtitle = 'Update your login password here.',
+  onSuccess,
 }: PasswordChangeCardProps) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -22,7 +31,10 @@ export default function PasswordChangeCard({
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert('Weak password', 'New password must be at least 6 characters.');
+      Alert.alert(
+        'Weak password',
+        'New password must be at least 6 characters.',
+      );
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -32,16 +44,21 @@ export default function PasswordChangeCard({
 
     try {
       setLoading(true);
-      await client.put('/users/me/password', {
+      const {data} = await client.put('/users/me/password', {
         currentPassword,
-        newPassword
+        newPassword,
       });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      onSuccess?.(data?.user);
       Alert.alert('Success', 'Password updated successfully.');
     } catch (err: any) {
-      Alert.alert('Unable to update', err?.response?.data?.message || 'Please check your current password and try again.');
+      Alert.alert(
+        'Unable to update',
+        err?.response?.data?.message ||
+          'Please check your current password and try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -52,12 +69,35 @@ export default function PasswordChangeCard({
       <Text style={styles.heading}>{title}</Text>
       <Text style={styles.subtext}>{subtitle}</Text>
 
-      <TextInput placeholder="Current password" secureTextEntry value={currentPassword} onChangeText={setCurrentPassword} style={styles.input} />
-      <TextInput placeholder="New password" secureTextEntry value={newPassword} onChangeText={setNewPassword} style={styles.input} />
-      <TextInput placeholder="Confirm new password" secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} style={styles.input} />
+      <TextInput
+        placeholder="Current password"
+        secureTextEntry
+        value={currentPassword}
+        onChangeText={setCurrentPassword}
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="New password"
+        secureTextEntry
+        value={newPassword}
+        onChangeText={setNewPassword}
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Confirm new password"
+        secureTextEntry
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        style={styles.input}
+      />
 
-      <Pressable style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSubmit} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? 'Updating...' : 'Update Password'}</Text>
+      <Pressable
+        style={[styles.button, loading && styles.buttonDisabled]}
+        onPress={handleSubmit}
+        disabled={loading}>
+        <Text style={styles.buttonText}>
+          {loading ? 'Updating...' : 'Update Password'}
+        </Text>
       </Pressable>
     </View>
   );
@@ -70,17 +110,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#d7dff6'
+    borderColor: '#d7dff6',
   },
   heading: {
     color: '#1f2f75',
     fontWeight: '800',
-    fontSize: 17
+    fontSize: 17,
   },
   subtext: {
     color: '#5e688f',
     marginTop: 4,
-    marginBottom: 12
+    marginBottom: 12,
   },
   input: {
     borderWidth: 1,
@@ -90,7 +130,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: '#f9fbff',
     marginBottom: 10,
-    color: '#15213d'
+    color: '#15213d',
   },
   button: {
     marginTop: 4,
@@ -98,13 +138,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12
+    paddingVertical: 12,
   },
   buttonDisabled: {
-    opacity: 0.7
+    opacity: 0.7,
   },
   buttonText: {
     color: '#fff',
-    fontWeight: '800'
-  }
+    fontWeight: '800',
+  },
 });

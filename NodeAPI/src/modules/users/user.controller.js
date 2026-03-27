@@ -115,6 +115,17 @@ function getDefaultPasswordForRole(role) {
   return '';
 }
 
+async function ensureUniqueStudentEmail(seed = '') {
+  const normalizedSeed = String(seed || 'student').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  let candidate = `${normalizedSeed || 'student'}@baliraja.local`;
+  let suffix = 1;
+  while (await User.findOne({ email: candidate })) {
+    candidate = `${normalizedSeed || 'student'}${suffix}@baliraja.local`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
 function calculateAgeFromDateOfBirth(dateOfBirth) {
   if (!dateOfBirth) return undefined;
   const dob = new Date(dateOfBirth);
@@ -174,6 +185,12 @@ function serializeUser(userDoc) {
 async function createUser(req, res, next) {
   try {
     const payload = createUserSchema.parse(req.body);
+    const normalizedEmail = payload.email?.toLowerCase()?.trim();
+    const normalizedPhone = payload.phone?.trim();
+
+    if (payload.role !== ROLES.STUDENT && !normalizedEmail) {
+      return res.status(400).json({ message: 'email is required for this role' });
+    }
 
     if (!roleGuard(req.user.role, payload.role)) {
       return res.status(403).json({ message: 'Forbidden: cannot create this role' });
@@ -186,7 +203,12 @@ async function createUser(req, res, next) {
       return res.status(400).json({ message: 'phone is required for student' });
     }
 
-    const exists = await User.findOne({ $or: [{ email: payload.email }, { phone: payload.phone }] });
+    const finalEmail = normalizedEmail || await ensureUniqueStudentEmail(normalizedPhone || payload.fullName || Date.now());
+
+    const duplicateChecks = [];
+    if (finalEmail) duplicateChecks.push({ email: finalEmail });
+    if (normalizedPhone) duplicateChecks.push({ phone: normalizedPhone });
+    const exists = duplicateChecks.length ? await User.findOne({ $or: duplicateChecks }) : null;
     if (exists) {
       return res.status(409).json({ message: 'Email or phone already in use' });
     }
@@ -201,11 +223,13 @@ async function createUser(req, res, next) {
 
     const user = await User.create({
       fullName: payload.fullName,
-      email: payload.email,
-      phone: payload.phone,
+      email: finalEmail,
+      phone: normalizedPhone,
       role: payload.role,
       passwordHash,
-      passwordCipher: encryptPassword(plainPassword)
+      passwordCipher: encryptPassword(plainPassword),
+      mustChangePassword: payload.role === ROLES.TEACHER,
+      passwordChangedAt: payload.role === ROLES.TEACHER ? undefined : new Date()
     });
 
     // Attach role specific profile if provided
@@ -281,6 +305,7 @@ async function createUser(req, res, next) {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
+        phone: user.phone,
         role: user.role
       },
       tempPassword: payload.password ? undefined : plainPassword
@@ -373,9 +398,11 @@ async function updateMyPassword(req, res, next) {
 
     user.passwordHash = await bcrypt.hash(payload.newPassword, 10);
     user.passwordCipher = encryptPassword(payload.newPassword);
+    user.mustChangePassword = false;
+    user.passwordChangedAt = new Date();
     await user.save();
 
-    res.json({ message: 'Password updated successfully' });
+    res.json({ message: 'Password updated successfully', user: serializeUser(user) });
   } catch (error) {
     next(error);
   }
@@ -394,6 +421,8 @@ async function resetUserPassword(req, res, next) {
 
     user.passwordHash = await bcrypt.hash(payload.newPassword, 10);
     user.passwordCipher = encryptPassword(payload.newPassword);
+    user.mustChangePassword = user.role === ROLES.TEACHER;
+    user.passwordChangedAt = user.role === ROLES.TEACHER ? undefined : new Date();
     await user.save();
 
     res.json({

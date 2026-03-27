@@ -7,7 +7,7 @@ const initialForm = {
   confirmPassword: ''
 };
 
-export default function ChangePasswordForm() {
+export default function ChangePasswordForm({ onSuccess }) {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -39,10 +39,11 @@ export default function ChangePasswordForm() {
 
     try {
       setSaving(true);
-      await api.put('/users/me/password', {
+      const { data } = await api.put('/users/me/password', {
         currentPassword: form.currentPassword,
         newPassword: form.newPassword
       });
+      onSuccess?.(data?.user);
       setMessage('Password updated successfully.');
       setForm(initialForm);
     } catch (err) {

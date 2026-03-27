@@ -5,7 +5,7 @@ import api from '../../api/client';
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState(import.meta.env.VITE_SUPER_EMAIL || 'superadmin@baliraja.com');
+  const [identifier, setIdentifier] = useState(import.meta.env.VITE_SUPER_EMAIL || 'superadmin@baliraja.com');
   const [password, setPassword] = useState(import.meta.env.VITE_SUPER_PASSWORD || '123456');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -20,8 +20,8 @@ export default function LoginPage() {
   }, []);
 
   const canSubmit = useMemo(
-    () => email.trim().length > 4 && password.length >= 4,
-    [email, password]
+    () => identifier.trim().length >= 3 && password.length >= 6,
+    [identifier, password]
   );
 
   async function onSubmit(e) {
@@ -29,18 +29,17 @@ export default function LoginPage() {
     setError('');
 
     if (!canSubmit) {
-      setError('Enter valid email and password to continue.');
+      setError('Enter valid mobile/email and password to continue.');
       return;
     }
 
     try {
       setLoading(true);
       const { data } = await api.post('/auth/login', {
-        identifier: email,
+        identifier: identifier.trim(),
         password
       });
 
-      // persist token + user to context/localStorage
       login({
         token: data.token,
         user: data.user
@@ -55,50 +54,58 @@ export default function LoginPage() {
 
   return (
     <div className="auth-shell">
-      <div className="auth-bg auth-bg-one" />
-      <div className="auth-bg auth-bg-two" />
+      <div className="login-demo-frame fade-up">
+        <div className="login-demo-card">
+          <section className="login-illustration-pane">
+            <div className="login-illustration-art">
+              <div className="login-art-monitor" />
+              <div className="login-art-person">
+                <div className="login-art-head" />
+                <div className="login-art-body" />
+              </div>
+              <div className="login-art-desk" />
+            </div>
+            <div className="login-illustration-copy">
+              <h1 className="brand-heading">Baliraja Academy</h1>
+              <p className="auth-subtitle">Management Portal</p>
+            </div>
+          </section>
 
-      <form className="auth-card fade-up shadow-lg border-0" onSubmit={onSubmit}>
-        <div className="auth-head">
-          <div className="auth-logo">
-            <VectorIcon name="shield" size={32} animated />
-          </div>
-          <div>
-            <h1 className="brand-heading">Baliraja Academy</h1>
-            <p className="auth-subtitle">Management Portal</p>
-          </div>
+          <form className="login-form-pane" onSubmit={onSubmit}>
+            <div className="login-form-head">
+              <VectorIcon name="shield" size={18} />
+              <strong>Login</strong>
+            </div>
+
+            <label className="field">
+              <span><VectorIcon name="mail" size={16} /> Mobile / Email</span>
+              <input
+                placeholder="Enter mobile number or email"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+              />
+            </label>
+
+            <label className="field">
+              <span><VectorIcon name="lock" size={16} /> Password</span>
+              <input
+                placeholder="Password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </label>
+
+            {error ? <p className="error">{error}</p> : null}
+            {!error && notice ? <p style={{ color: '#1e8e3e', marginTop: 8 }}>{notice}</p> : null}
+
+            <button className="primary-btn btn btn-primary btn-lg w-100" type="submit" disabled={!canSubmit || loading}>
+              {loading ? 'Signing in...' : 'Login'}
+            </button>
+            <p className="login-help-line">Contact admin support if you forgot credentials.</p>
+          </form>
         </div>
-
-        <p className="auth-subtitle border-start border-4 ps-3 mt-3">
-          Static Login – Super Admin Dashboard Access
-        </p>
-
-        <label className="field">
-          <span><VectorIcon name="mail" size={16} /> Email</span>
-          <input
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-
-        <label className="field">
-          <span><VectorIcon name="lock" size={16} /> Password</span>
-          <input
-            placeholder="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-
-        {error ? <p className="error">{error}</p> : null}
-        {!error && notice ? <p style={{ color: '#1e8e3e', marginTop: 8 }}>{notice}</p> : null}
-
-        <button className="primary-btn btn btn-primary btn-lg w-100" type="submit" disabled={!canSubmit || loading}>
-          {loading ? 'Signing in...' : 'Sign In'}
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

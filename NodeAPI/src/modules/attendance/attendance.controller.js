@@ -313,19 +313,26 @@ async function teacherRoster(req, res, next) {
       return res.json({ teacher, date, batches: [] });
     }
 
-    const studentFilter = { batchId: { $in: teacherBatchIds }, status: 'active' };
-    if (req.query.currentClass) {
-      studentFilter['details.education.currentClass'] = req.query.currentClass;
-    }
-
-    const students = await Student.find(studentFilter)
+    const students = await Student.find({ batchId: { $in: teacherBatchIds }, status: 'active' })
       .populate('userId', 'fullName phone')
       .populate('batchId', 'batchName capacity')
       .sort({ 'details.education.currentClass': 1, 'details.education.division': 1, createdAt: 1 })
       .lean();
 
+    const availableClasses = Array.from(
+      new Set(
+        students
+          .map((student) => extractAcademicContext(student).currentClass)
+          .filter(Boolean)
+      )
+    );
+    const selectedClass = req.query.currentClass || availableClasses[0] || '';
+    const filteredStudents = selectedClass
+      ? students.filter((student) => extractAcademicContext(student).currentClass === selectedClass)
+      : students;
+
     const records = await Attendance.find({
-      studentId: { $in: students.map((student) => student._id) },
+      studentId: { $in: filteredStudents.map((student) => student._id) },
       date,
       subjectKey
     }).lean();
@@ -334,7 +341,7 @@ async function teacherRoster(req, res, next) {
     const batches = [];
     const batchMap = new Map();
 
-    students.forEach((student) => {
+    filteredStudents.forEach((student) => {
       const key = student.batchId?._id?.toString() || 'unassigned';
       if (!batchMap.has(key)) {
         const academic = extractAcademicContext(student);
@@ -364,7 +371,7 @@ async function teacherRoster(req, res, next) {
       });
     });
 
-    res.json({ teacher, date, subjectKey, batches });
+    res.json({ teacher, date, subjectKey, selectedClass, availableClasses, batches });
   } catch (err) {
     next(err);
   }
@@ -439,7 +446,7 @@ async function classAttendanceSummary(req, res, next) {
     });
 
     const items = Array.from(grouped.values())
-      .filter((item) => ['11th Std', '12th Std'].includes(item.currentClass))
+      .filter((item) => ['11th Std', '12th Std', 'Summer Camp'].includes(item.currentClass))
       .sort((left, right) => `${left.currentClass}-${left.division}`.localeCompare(`${right.currentClass}-${right.division}`));
 
     res.json({ date, subjectKey, items });
