@@ -43,10 +43,9 @@ async function listSubjects(req, res, next) {
 async function createSubject(req, res, next) {
   try {
     const subjectName = String(req.body.name || '').trim();
-    const manualCode = String(req.body.code || '').trim().toUpperCase();
     const payload = {
       name: subjectName,
-      code: manualCode,
+      code: '',
       currentClasses: Array.isArray(req.body.currentClasses)
         ? req.body.currentClasses.filter((value) => ALLOWED_CLASSES.includes(value))
         : [],
@@ -58,9 +57,11 @@ async function createSubject(req, res, next) {
     if (!payload.name) {
       return res.status(400).json({ message: 'Subject name is required' });
     }
-    if (!payload.code) {
-      payload.code = await generateUniqueSubjectCode(payload.name);
+    const existingByName = await Subject.findOne({ name: payload.name }).collation({ locale: 'en', strength: 2 }).lean();
+    if (existingByName) {
+      return res.status(409).json({ message: 'Subject already exists' });
     }
+    payload.code = await generateUniqueSubjectCode(payload.name);
 
     if (payload.teacherId) {
       const teacher = await Teacher.findById(payload.teacherId).populate('userId', 'fullName').lean();
@@ -73,6 +74,15 @@ async function createSubject(req, res, next) {
     const subject = await Subject.create(payload);
     res.status(201).json(subject);
   } catch (err) {
+    if (err?.code === 11000) {
+      if (err?.keyPattern?.name) {
+        return res.status(409).json({ message: 'Subject already exists' });
+      }
+      if (err?.keyPattern?.code) {
+        return res.status(409).json({ message: 'Duplicate subject code generated. Please try again.' });
+      }
+      return res.status(409).json({ message: 'Duplicate subject details' });
+    }
     next(err);
   }
 }

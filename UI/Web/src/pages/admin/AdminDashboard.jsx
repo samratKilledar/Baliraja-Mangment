@@ -82,6 +82,10 @@ function normalizeSummary(data = {}) {
   };
 }
 
+function formatCurrency(value) {
+  return `₹${(Number(value) || 0).toLocaleString('en-IN')}`;
+}
+
 export default function AdminDashboard() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
@@ -276,38 +280,126 @@ export default function AdminDashboard() {
     }
     return (
       <>
-        <SharedGrid columns={4} className="stats-grid fade-up delay-1">
-          <article className="stat-card">
-            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
-            <p>Total Users</p>
-            <h3>{summary.totalUsers || 0}</h3>
-          </article>
-          <article className="stat-card">
-            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
-            <p>Students</p>
-            <h3>{summary.studentCount || 0}</h3>
-          </article>
-          <article className="stat-card">
-            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
-            <p>Teachers</p>
-            <h3>{summary.teacherCount || 0}</h3>
-          </article>
-          <article className="stat-card">
-            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
-            <p>Workers</p>
-            <h3>{summary.workerCount || 0}</h3>
-          </article>
-        </SharedGrid>
-        <SharedGrid columns={3} className="dash-grid fade-up delay-2">
-          <article className="panel">
+        <section className="analytics-hero fade-up delay-1">
+          <div className="analytics-hero-copy">
+            <p className="analytics-kicker">Analytics Hub</p>
+            <h3>Institution snapshot for admissions, finance and operations</h3>
+            <p className="graph-note">
+              Track student intake, collections and staff activity in one place.
+            </p>
+          </div>
+          <div className="analytics-hero-metrics">
+            <article className="analytics-metric-card">
+              <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+              <small>Total Users</small>
+              <strong>{summary.totalUsers || 0}</strong>
+            </article>
+            <article className="analytics-metric-card">
+              <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+              <small>Students</small>
+              <strong>{summary.studentCount || 0}</strong>
+            </article>
+            <article className="analytics-metric-card">
+              <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+              <small>Teachers</small>
+              <strong>{summary.teacherCount || 0}</strong>
+            </article>
+            <article className="analytics-metric-card">
+              <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+              <small>Workers</small>
+              <strong>{summary.workerCount || 0}</strong>
+            </article>
+          </div>
+        </section>
+
+        <SharedGrid columns={1} className="dash-grid fade-up delay-2">
+          <article className="panel analytics-panel analytics-finance-panel">
             <div className="panel-head">
-              <h3>Today Priorities</h3>
-              <VectorIcon name="star" size={18} />
+              <h3>Finance Monitor (Live)</h3>
+              <VectorIcon name="money" size={18} />
             </div>
-            <ul className="task-list">
-              {tasks.map((task) => <li key={task}>{task}</li>)}
-            </ul>
+            <div className="analytics-scroll-area">
+              <div className="analytics-finance-grid">
+                <div className="analytics-money-card tone-warn">
+                  <small>Total Fees</small>
+                  <strong>{formatCurrency(summary.fees?.totalExpected)}</strong>
+                </div>
+                <div className="analytics-money-card tone-good">
+                  <small>Collected</small>
+                  <strong>{formatCurrency(summary.fees?.totalCollected)}</strong>
+                </div>
+                <div className="analytics-money-card tone-danger">
+                  <small>Remaining</small>
+                  <strong>{formatCurrency(summary.fees?.totalDue)}</strong>
+                </div>
+                <div className="analytics-money-card tone-primary">
+                  <small>Revenue MTD</small>
+                  <strong>{formatCurrency(summary.revenue)}</strong>
+                </div>
+              </div>
+            </div>
           </article>
+
+          <article className="panel analytics-panel analytics-signal-panel">
+            <div className="panel-head">
+              <h3>System Signals</h3>
+              <VectorIcon name="chart" size={18} />
+            </div>
+            <div className="analytics-signal-grid">
+              <div className="analytics-signal-card">
+                <small>Admissions by Month</small>
+                <div className="analytics-scroll-area analytics-scroll-area-inline">
+                  <div className="mini-chart-row">
+                    {summary.admissions.month.map((item) => (
+                      <div key={item.label} className="mini-bar">
+                        <div className="mini-track">
+                          <div className="mini-fill" style={{ height: `${Math.min(item.count * 10, 100)}%` }} />
+                        </div>
+                        <small>{item.label}</small>
+                        <strong>{item.count}</strong>
+                      </div>
+                    ))}
+                    {!summary.admissions.month.length && <p className="graph-note">No data</p>}
+                  </div>
+                </div>
+              </div>
+              <div className="analytics-signal-card">
+                <small>Admissions by Week</small>
+                <div className="analytics-scroll-area analytics-scroll-area-inline">
+                  <div className="mini-chart-row">
+                    {summary.admissions.week.map((item) => (
+                      <div key={item.label} className="mini-bar">
+                        <div className="mini-track">
+                          <div className="mini-fill" style={{ height: `${Math.min(item.count * 15, 100)}%` }} />
+                        </div>
+                        <small>{item.label}</small>
+                        <strong>{item.count}</strong>
+                      </div>
+                    ))}
+                    {!summary.admissions.week.length && <p className="graph-note">No data</p>}
+                  </div>
+                </div>
+              </div>
+              <div className="analytics-signal-card">
+                <small>Admissions by Day</small>
+                <div className="analytics-scroll-area analytics-scroll-area-inline">
+                  <div className="mini-chart-row">
+                    {summary.admissions.day.map((item) => (
+                      <div key={item.label} className="mini-bar">
+                        <div className="mini-track">
+                          <div className="mini-fill" style={{ height: `${Math.min(item.count * 25, 100)}%` }} />
+                        </div>
+                        <small>{item.label.slice(5)}</small>
+                        <strong>{item.count}</strong>
+                      </div>
+                    ))}
+                    {!summary.admissions.day.length && <p className="graph-note">No data</p>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
           <article className="panel">
             <div className="panel-head">
               <h3>Quick Actions</h3>
@@ -321,7 +413,11 @@ export default function AdminDashboard() {
               <button onClick={() => navigate('/admin/attendance')}>Attendance Audit</button>
               <button onClick={() => navigate('/admin/division-attendance')}>Division Attendance</button>
             </div>
+            <ul className="task-list" style={{ marginTop: 12 }}>
+              {tasks.map((task) => <li key={task}>{task}</li>)}
+            </ul>
           </article>
+
           <CheckinConfigCard />
         </SharedGrid>
       </>
