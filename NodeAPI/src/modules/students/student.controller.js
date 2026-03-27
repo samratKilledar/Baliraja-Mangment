@@ -23,6 +23,20 @@ const DEVANAGARI_FONT_CANDIDATES = [
 ];
 
 function shapeStudentDetails(raw = {}) {
+  const previousEducations = Array.isArray(raw.previousEducationRows || raw.previousEducations)
+    ? (raw.previousEducationRows || raw.previousEducations)
+        .map((item = {}) => ({
+          previousSchool: item.previousSchool || '',
+          board: item.board || '',
+          medium: item.medium || '',
+          passingYear: item.passingYear || '',
+          percentage: item.percentage || ''
+        }))
+        .filter((item) => Object.values(item).some(Boolean))
+    : [];
+  const admissionPurposes = Array.isArray(raw.admissionPurposes)
+    ? raw.admissionPurposes.map((item) => String(item || '').trim()).filter(Boolean)
+    : [];
   const personal = {
     middleName: raw.middleName,
     lastName: raw.lastName,
@@ -31,13 +45,17 @@ function shapeStudentDetails(raw = {}) {
     gender: raw.gender
   };
   const education = {
+    admissionType: raw.admissionType,
     previousSchool: raw.previousSchool,
     currentClass: raw.currentClass,
     division: raw.division,
+    branch: raw.branch,
     board: raw.board,
     medium: raw.medium,
     passingYear: raw.passingYear,
     percentage: raw.percentage,
+    previousEducations,
+    admissionPurposes,
     academicHistory: {
       tenth: {
         schoolName: raw.tenthSchoolName,
@@ -89,6 +107,21 @@ function shapeStudentDetails(raw = {}) {
     pinCode: raw.pinCode
   };
   return { personal, education, physical, parent, address };
+}
+
+function normalizeDivision(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function nextDivisionLabel(index) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let value = '';
+  let current = index;
+  do {
+    value = alphabet[current % 26] + value;
+    current = Math.floor(current / 26) - 1;
+  } while (current >= 0);
+  return value;
 }
 
 function calculateAgeFromDateOfBirth(dateOfBirth) {
@@ -239,12 +272,14 @@ async function createStudent(req, res, next) {
 
 async function listStudents(req, res, next) {
   try {
-    const { q, batchId, status } = req.query;
+    const { q, batchId, status, currentClass, division } = req.query;
     const { page, limit, skip } = normalizePagination(req.query, 10, 100);
     const filter = {};
 
     if (batchId) filter.batchId = batchId;
     if (status) filter.status = status;
+    if (currentClass) filter['details.education.currentClass'] = currentClass;
+    if (division) filter['details.education.division'] = normalizeDivision(division);
     if (q) {
       filter.$or = [
         { enrollmentNo: { $regex: q, $options: 'i' } },
@@ -335,6 +370,108 @@ async function getMyStudent(req, res, next) {
     }
     if (!student) return res.status(404).json({ message: 'Student not found' });
     res.json(student);
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function divisionAllocationRoster(req, res, next) {
+  try {
+    const { currentClass, batchId } = req.query;
+    const filter = { status: 'active' };
+    if (currentClass) filter['details.education.currentClass'] = currentClass;
+    if (batchId) filter.batchId = batchId;
+
+    const students = await Student.find(filter)
+      .populate('userId', 'fullName phone email')
+      .populate('batchId', 'batchName capacity')
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const divisions = students.reduce((acc, student) => {
+      const division = normalizeDivision(student?.details?.education?.division || '');
+      if (!division) return acc;
+      acc[division] = (acc[division] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      currentClass: currentClass || '',
+      batchId: batchId || '',
+      totalStudents: students.length,
+      divisions,
+      items: students.map((student) => ({
+        studentId: student._id,
+        studentName: student.userId?.fullName || 'Student',
+        enrollmentNo: student.enrollmentNo || '',
+        mobileNo: student.userId?.phone || '',
+        currentClass: student?.details?.education?.currentClass || '',
+        division: normalizeDivision(student?.details?.education?.division || ''),
+        branch: student?.details?.education?.branch || '',
+        batchId: student.batchId?._id || null,
+        batchName: student.batchId?.batchName || '',
+        batchCapacity: Number(student.batchId?.capacity) || 0
+      }))
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function assignStudentDivision(req, res, next) {
+  try {
+    const { studentIds, division } = req.body;
+    const normalizedDivision = normalizeDivision(division);
+    if (!Array.isArray(studentIds) || !studentIds.length) {
+      return res.status(400).json({ message: 'studentIds are required' });
+    }
+    if (!normalizedDivision) {
+      return res.status(400).json({ message: 'division is required' });
+    }
+
+    const students = await Student.find({ _id: { $in: studentIds } });
+    await Promise.all(students.map(async (student) => {
+      const details = student.details || {};
+      details.education = details.education || {};
+      details.education.division = normalizedDivision;
+      student.details = details;
+      await student.save();
+    }));
+
+    res.json({ message: 'Division assigned successfully', division: normalizedDivision, updatedCount: students.length });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function autoAllocateDivisions(req, res, next) {
+  try {
+    const { currentClass, batchId, capacityPerDivision = 60 } = req.body;
+    const capacity = Math.max(Number(capacityPerDivision) || 60, 1);
+    const filter = { status: 'active' };
+    if (currentClass) filter['details.education.currentClass'] = currentClass;
+    if (batchId) filter.batchId = batchId;
+
+    const students = await Student.find(filter).sort({ createdAt: 1 });
+    if (!students.length) {
+      return res.status(404).json({ message: 'No students found for allocation' });
+    }
+
+    await Promise.all(students.map(async (student, index) => {
+      const bucket = Math.floor(index / capacity);
+      const division = nextDivisionLabel(bucket);
+      const details = student.details || {};
+      details.education = details.education || {};
+      details.education.division = division;
+      student.details = details;
+      await student.save();
+    }));
+
+    res.json({
+      message: 'Students allocated division-wise successfully',
+      totalStudents: students.length,
+      capacityPerDivision: capacity
+    });
   } catch (err) {
     next(err);
   }
@@ -640,7 +777,7 @@ async function exportStudentPdf(req, res, next) {
         { label: 'Mother Mobile', value: parent.motherMobile || details.motherMobile || '—' }
       ],
       [
-        { label: 'Guardian Name', value: parent.guardianName || details.guardianName || '—' },
+        { label: 'Referance Name', value: parent.guardianName || details.guardianName || '—' },
         { label: 'Relation', value: parent.guardianRelation || details.guardianRelation || '—' }
       ],
       [
@@ -767,4 +904,17 @@ async function publicStudentByPhone(req, res, next) {
   }
 }
 
-module.exports = { createStudent, listStudents, getStudent, getMyStudent, updateStudent, deleteStudent, exportStudentPdf, publicStudentByPhone, reverseGeocode };
+module.exports = {
+  createStudent,
+  listStudents,
+  getStudent,
+  getMyStudent,
+  divisionAllocationRoster,
+  assignStudentDivision,
+  autoAllocateDivisions,
+  updateStudent,
+  deleteStudent,
+  exportStudentPdf,
+  publicStudentByPhone,
+  reverseGeocode
+};

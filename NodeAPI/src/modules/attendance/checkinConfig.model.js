@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const checkinConfigSchema = new mongoose.Schema(
   {
-    lat: { type: Number, required: true },
-    lng: { type: Number, required: true },
+    lat: { type: Number, default: null },
+    lng: { type: Number, default: null },
     radiusMeters: { type: Number, default: 500 }, // default 500m
     checkInTime: { type: String }, // HH:mm (24h)
     checkOutTime: { type: String }, // HH:mm (24h)

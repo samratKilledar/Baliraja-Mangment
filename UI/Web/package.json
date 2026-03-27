@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "start": "vite",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
@@ -11,9 +12,11 @@
   "dependencies": {
     "axios": "^1.7.4",
     "cors": "^2.8.6",
+    "framer-motion": "^12.38.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.1"
+    "react-router-dom": "^6.26.1",
+    "react-ui-animate": "^5.2.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

@@ -283,6 +283,54 @@ async function collectionByRange(req, res, next) {
   }
 }
 
+function getFeeCategory(student = {}) {
+  const education = student?.details?.education || {};
+  const currentClass = education.currentClass || '';
+  const purposes = Array.isArray(education.admissionPurposes) ? education.admissionPurposes : [];
+  const normalizedPurposes = purposes.map((item) => String(item || '').toLowerCase());
+
+  if (currentClass === '11th Std' || normalizedPurposes.some((item) => item.includes('11th'))) return '11th';
+  if (currentClass === '12th Std' || normalizedPurposes.some((item) => item.includes('12th'))) return '12th';
+  if (normalizedPurposes.some((item) => item.includes('army') || item.includes('aramy'))) return 'Army Preparation';
+  if (normalizedPurposes.some((item) => item.includes('police'))) return 'Police Preparation';
+  if (normalizedPurposes.some((item) => item.includes('recruitment'))) return 'Recruitment Preparation';
+  return education.admissionType || 'Other';
+}
+
+async function feeCategorySummary(req, res, next) {
+  try {
+    const fees = await Fee.find()
+      .populate({
+        path: 'studentId',
+        select: 'details enrollmentNo',
+        populate: { path: 'userId', select: 'fullName phone email' }
+      })
+      .sort({ createdAt: -1 });
+
+    const summary = fees.reduce((acc, fee) => {
+      const category = getFeeCategory(fee.studentId || {});
+      if (!acc[category]) {
+        acc[category] = {
+          category,
+          studentCount: 0,
+          totalExpected: 0,
+          totalCollected: 0,
+          totalDue: 0
+        };
+      }
+      acc[category].studentCount += 1;
+      acc[category].totalExpected += Number(fee.totalAmount) || 0;
+      acc[category].totalCollected += Number(fee.paidAmount) || 0;
+      acc[category].totalDue += Number(fee.dueAmount) || 0;
+      return acc;
+    }, {});
+
+    res.json({ items: Object.values(summary) });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createFeeRecord,
   addPayment,
@@ -292,6 +340,7 @@ module.exports = {
   getFeeByStudent,
   myFee,
   collectionByRange,
+  feeCategorySummary,
   listFees,
   deleteFeeRecord
 };

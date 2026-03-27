@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const User = require('../modules/users/user.model');
 const { ROLES } = require('../utils/constants');
+const { encryptPassword } = require('../utils/passwordVault');
 
 /**
  * Ensures a super admin account exists.
@@ -25,7 +26,8 @@ async function seedSuperAdmin() {
       email,
       phone,
       role: ROLES.SUPER_ADMIN,
-      passwordHash
+      passwordHash,
+      passwordCipher: encryptPassword(password)
     });
     console.log(`Seeded super admin ${email}`);
     return;
@@ -41,6 +43,7 @@ async function seedSuperAdmin() {
   // Optionally reset password each boot
   if (forceReset) {
     user.passwordHash = await bcrypt.hash(password, 10);
+    user.passwordCipher = encryptPassword(password);
     changed = true;
     console.log(`Super admin ${email} password reset from env.`);
   }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
+import { resolveApiOrigin } from '../config/env';
 
 const audienceOptions = [
   { key: 'student', label: 'Students' },
@@ -12,7 +13,7 @@ const audienceOptions = [
 function resolveImage(url) {
   if (!url) return '';
   if (url.includes('/api/v1/uploads')) url = url.replace('/api/v1/uploads', '/uploads');
-  const baseEnv = import.meta.env.VITE_API_URL || api.defaults.baseURL || window.location.origin;
+  const baseEnv = resolveApiOrigin() || api.defaults.baseURL || window.location.origin;
   const base = baseEnv.replace(/\/api\/v1$/, '');
   try {
     return new URL(url, base).toString();

@@ -15,14 +15,14 @@ export default function TeacherDashboard() {
   const [activeMenu, setActiveMenu] = useState('attendance');
 
   return (
-    <div className="dashboard-shell">
+    <div className="dashboard-shell container-fluid px-2 px-md-3 px-xl-4">
       <p className="dash-brand">Baliraja Academy Gangapur Management</p>
       <header className="dash-topbar fade-up">
         <div>
           <p className="dash-kicker">Role: Teacher</p>
           <h2>Teacher Attendance Dashboard</h2>
         </div>
-        <button className="ghost-btn" onClick={logout}>Logout</button>
+        <button className="ghost-btn btn btn-outline-primary" onClick={logout}>Logout</button>
       </header>
       <NoticeStrip />
 

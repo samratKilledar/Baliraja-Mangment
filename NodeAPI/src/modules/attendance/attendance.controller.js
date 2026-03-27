@@ -61,6 +61,9 @@ async function getActiveCheckinConfig() {
 async function enforceGeofence(location) {
   const cfg = await getActiveCheckinConfig();
   if (!cfg) return { ok: true };
+  if (cfg.lat === null || cfg.lat === undefined || cfg.lng === null || cfg.lng === undefined) {
+    return { ok: true, cfg };
+  }
   if (!location?.lat || !location?.lng) {
     return { ok: false, message: 'Location required for check-in/out' };
   }
@@ -976,14 +979,23 @@ async function getCheckinConfig(req, res, next) {
 
 async function setCheckinConfig(req, res, next) {
   try {
-    const { lat, lng, radiusMeters = 500, checkInTime, checkOutTime, windowMinutes = 30 } = req.body;
-    if (lat === undefined || lng === undefined) return res.status(400).json({ message: 'lat and lng are required' });
-    const cfg = await CheckinConfig.create({
-      lat: Number(lat),
-      lng: Number(lng),
-      radiusMeters: Number(radiusMeters) || 500,
+    const {
+      lat,
+      lng,
+      radiusMeters = 500,
       checkInTime,
       checkOutTime,
+      windowMinutes = 30
+    } = req.body;
+    const hasLat = lat !== undefined && lat !== null && String(lat).trim() !== '';
+    const hasLng = lng !== undefined && lng !== null && String(lng).trim() !== '';
+    if (hasLat !== hasLng) return res.status(400).json({ message: 'Both lat and lng are required together' });
+    const cfg = await CheckinConfig.create({
+      lat: hasLat ? Number(lat) : null,
+      lng: hasLng ? Number(lng) : null,
+      radiusMeters: Number(radiusMeters) || 500,
+      checkInTime: checkInTime || undefined,
+      checkOutTime: checkOutTime || undefined,
       windowMinutes: Number(windowMinutes) || 30,
       updatedBy: req.user.sub
     });

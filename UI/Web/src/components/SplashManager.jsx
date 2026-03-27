@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../api/client';
+import { resolveApiOrigin } from '../config/env';
 
 function normalizeUrl(url) {
   if (!url) return '';
   let clean = url;
   if (clean.includes('/api/v1/uploads')) clean = clean.replace('/api/v1/uploads', '/uploads');
-  const base = (import.meta.env.VITE_API_URL || api.defaults.baseURL || '').replace(/\/api\/v1$/, '');
+  const base = resolveApiOrigin() || (api.defaults.baseURL || '').replace(/\/api\/v1$/, '');
   if (clean.startsWith('http')) return clean;
   return `${base}${clean.startsWith('/') ? clean : `/${clean}`}`;
 }

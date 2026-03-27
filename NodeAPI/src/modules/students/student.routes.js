@@ -4,6 +4,9 @@ const {
   listStudents,
   getStudent,
   getMyStudent,
+  divisionAllocationRoster,
+  assignStudentDivision,
+  autoAllocateDivisions,
   updateStudent,
   deleteStudent,
   exportStudentPdf,
@@ -20,6 +23,9 @@ router.get('/public/by-phone/:phone', publicStudentByPhone);
 
 router.use(authenticate);
 router.get('/reverse-geocode', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), reverseGeocode);
+router.get('/division-allocation', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), divisionAllocationRoster);
+router.post('/division-allocation/assign', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), assignStudentDivision);
+router.post('/division-allocation/auto', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), autoAllocateDivisions);
 router.get('/', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), listStudents);
 router.post('/', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), createStudent);
 router.get('/:studentId/pdf', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), exportStudentPdf);

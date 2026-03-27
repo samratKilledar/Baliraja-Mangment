@@ -5,8 +5,8 @@ import api from '../../api/client';
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('superadmin@baliraja.com');
-  const [password, setPassword] = useState('123456');
+  const [email, setEmail] = useState(import.meta.env.VITE_SUPER_EMAIL || 'superadmin@baliraja.com');
+  const [password, setPassword] = useState(import.meta.env.VITE_SUPER_PASSWORD || '123456');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
@@ -58,10 +58,10 @@ export default function LoginPage() {
       <div className="auth-bg auth-bg-one" />
       <div className="auth-bg auth-bg-two" />
 
-      <form className="auth-card fade-up" onSubmit={onSubmit}>
+      <form className="auth-card fade-up shadow-lg border-0" onSubmit={onSubmit}>
         <div className="auth-head">
           <div className="auth-logo">
-            <VectorIcon name="shield" size={32} />
+            <VectorIcon name="shield" size={32} animated />
           </div>
           <div>
             <h1 className="brand-heading">Baliraja Academy</h1>
@@ -69,7 +69,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="auth-subtitle">
+        <p className="auth-subtitle border-start border-4 ps-3 mt-3">
           Static Login – Super Admin Dashboard Access
         </p>
 
@@ -95,7 +95,7 @@ export default function LoginPage() {
         {error ? <p className="error">{error}</p> : null}
         {!error && notice ? <p style={{ color: '#1e8e3e', marginTop: 8 }}>{notice}</p> : null}
 
-        <button className="primary-btn" type="submit" disabled={!canSubmit || loading}>
+        <button className="primary-btn btn btn-primary btn-lg w-100" type="submit" disabled={!canSubmit || loading}>
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
       </form>

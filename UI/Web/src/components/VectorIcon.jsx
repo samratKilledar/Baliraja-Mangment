@@ -21,10 +21,17 @@ const ICONS = {
     'M12 22a2.8 2.8 0 002.7-2h-5.4A2.8 2.8 0 0012 22zm7-5V11a7 7 0 10-14 0v6L3 19v1h18v-1l-2-2z'
 };
 
-export default function VectorIcon({ name, size = 20, className = '' }) {
+export default function VectorIcon({ name, size = 20, className = '', animated = false }) {
   const path = ICONS[name] || ICONS.spark;
   return (
-    <svg className={className} viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden>
+    <svg
+      className={`${className} ${animated ? 'icon-animated' : ''}`.trim()}
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="currentColor"
+      aria-hidden
+    >
       <path d={path} />
     </svg>
   );

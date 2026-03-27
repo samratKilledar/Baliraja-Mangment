@@ -1,22 +1,34 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 
-const CLASS_OPTIONS = ['11th Std', '12th Std'];
+const CLASS_OPTIONS = ['11th Std', '12th Std', 'Trainning'];
 
 export default function SubjectManager() {
   const [subjects, setSubjects] = useState([]);
+  const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
     name: '',
     code: '',
-    currentClasses: ['11th Std', '12th Std']
+    currentClasses: ['11th Std', '12th Std', 'Trainning'],
+    teacherId: ''
   });
 
   useEffect(() => {
+    loadTeachers();
     loadSubjects();
   }, []);
+
+  async function loadTeachers() {
+    try {
+      const { data } = await api.get('/teachers');
+      setTeachers(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setTeachers([]);
+    }
+  }
 
   async function loadSubjects() {
     setLoading(true);
@@ -49,7 +61,7 @@ export default function SubjectManager() {
     setSaving(true);
     try {
       await api.post('/subjects', form);
-      setForm({ name: '', code: '', currentClasses: ['11th Std', '12th Std'] });
+      setForm({ name: '', code: '', currentClasses: ['11th Std', '12th Std', 'Trainning'], teacherId: '' });
       await loadSubjects();
     } catch (err) {
       setError(err?.response?.data?.message || 'Unable to save subject');
@@ -69,6 +81,17 @@ export default function SubjectManager() {
           <label>
             <span>Subject Code</span>
             <input value={form.code} onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))} />
+          </label>
+          <label>
+            <span>Teacher</span>
+            <select value={form.teacherId} onChange={(e) => setForm((prev) => ({ ...prev, teacherId: e.target.value }))}>
+              <option value="">Select teacher</option>
+              {teachers.map((teacher) => (
+                <option key={teacher._id} value={teacher._id}>
+                  {teacher.userId?.fullName || teacher.fullName || 'Teacher'}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="full">
             <span style={{ display: 'block', marginBottom: 8, color: '#6b7280', fontWeight: 700 }}>Available For</span>
@@ -98,6 +121,7 @@ export default function SubjectManager() {
             <tr>
               <th>Subject</th>
               <th>Code</th>
+              <th>Teacher</th>
               <th>Classes</th>
             </tr>
           </thead>
@@ -106,12 +130,13 @@ export default function SubjectManager() {
               <tr key={subject._id}>
                 <td>{subject.name}</td>
                 <td>{subject.code || '—'}</td>
+                <td>{subject.teacherName || subject.teacherId?.userId?.fullName || '—'}</td>
                 <td>{Array.isArray(subject.currentClasses) && subject.currentClasses.length ? subject.currentClasses.join(', ') : 'All'}</td>
               </tr>
             ))}
             {!subjects.length && (
               <tr>
-                <td colSpan={3}>{loading ? 'Loading subjects...' : 'No subjects added yet.'}</td>
+                <td colSpan={4}>{loading ? 'Loading subjects...' : 'No subjects added yet.'}</td>
               </tr>
             )}
           </tbody>

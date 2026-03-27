@@ -8,6 +8,7 @@ const {
   getFeeByStudent,
   myFee,
   collectionByRange,
+  feeCategorySummary,
   listFees,
   deleteFeeRecord
 } = require('./fee.controller');
@@ -23,6 +24,7 @@ router.put('/:feeId', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), updateFeeRecord
 router.delete('/:feeId', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), deleteFeeRecord);
 router.get('/summary', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), feeSummary);
 router.get('/list', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), listFees);
+router.get('/category-summary', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), feeCategorySummary);
 router.get('/pending', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), pendingFees);
 router.get('/student/:studentId', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT), getFeeByStudent);
 router.get('/my', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT), myFee);

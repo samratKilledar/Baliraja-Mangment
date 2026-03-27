@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const Student = require('../students/student.model');
 const Teacher = require('../teachers/teacher.model');
 const Worker = require('../workers/worker.model');
@@ -89,9 +90,16 @@ async function superAdminDashboard(req, res, next) {
       count: d.count
     }));
 
-    const revenuePass = req.query.revenuePass || req.headers['x-revenue-pass'];
-    const canViewRevenue = req.user?.role === 'super_admin';
-    const revenueAllowed = canViewRevenue && (process.env.REVENUE_PASS ? revenuePass === process.env.REVENUE_PASS : true);
+    const rawRevenuePass = req.query.revenuePass ?? req.headers['x-revenue-pass'];
+    const revenuePass = typeof rawRevenuePass === 'string' ? rawRevenuePass : '';
+    const canViewRevenue = ['super_admin', 'admin'].includes(req.user?.role);
+    let revenueAllowed = false;
+    if (canViewRevenue && revenuePass) {
+      const authUser = await User.findById(req.user.sub).select('passwordHash').lean();
+      if (authUser?.passwordHash) {
+        revenueAllowed = await bcrypt.compare(revenuePass, authUser.passwordHash);
+      }
+    }
     const attendanceMap = new Map(todayAttendance.map((row) => [row.studentId?.toString(), row.status]));
     const classCapacityMap = new Map();
 

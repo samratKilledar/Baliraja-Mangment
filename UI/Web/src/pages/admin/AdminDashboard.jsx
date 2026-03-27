@@ -15,6 +15,9 @@ import CheckinConfigCard from '../../components/CheckinConfigCard';
 import SplashManager from '../../components/SplashManager';
 import SubjectManager from '../../components/SubjectManager';
 import AttendanceWorkspace from '../../components/AttendanceWorkspace';
+import ChangePasswordForm from '../../components/ChangePasswordForm';
+import DivisionAllocationManager from '../../components/DivisionAllocationManager';
+import SharedGrid from '../../components/SharedGrid';
 import api from '../../api/client';
 
 const navItems = [
@@ -24,9 +27,11 @@ const navItems = [
   { key: 'teachers', label: 'Add Teacher', icon: 'spark', path: '/admin/teachers' },
   { key: 'teachers-list', label: 'Teacher List', icon: 'users', path: '/admin/teachers-list' },
   { key: 'subjects', label: 'Subjects', icon: 'spark', path: '/admin/subjects' },
+  { key: 'divisions', label: 'Division Allocation', icon: 'users', path: '/admin/divisions' },
   { key: 'notices', label: 'Notices', icon: 'bell', path: '/admin/notices' },
   { key: 'lectures', label: 'Lectures', icon: 'calendar', path: '/admin/lectures' },
   { key: 'attendance', label: 'Attendance', icon: 'calendar', path: '/admin/attendance' },
+  { key: 'password', label: 'Change Password', icon: 'shield', path: '/admin/password' },
   { key: 'complaints', label: 'Complaints', icon: 'alert-circle', path: '/admin/complaints' },
   { key: 'leaves', label: 'Leaves', icon: 'calendar', path: '/admin/leaves' },
   { key: 'splash', label: 'App Splash', icon: 'spark', path: '/admin/splash' }
@@ -80,6 +85,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -96,10 +102,12 @@ export default function AdminDashboard() {
     if (location.pathname.startsWith('/admin/teachers-list')) return 'teachers-list';
     if (location.pathname.startsWith('/admin/teachers')) return 'teachers';
     if (location.pathname.startsWith('/admin/subjects')) return 'subjects';
+    if (location.pathname.startsWith('/admin/divisions')) return 'divisions';
     if (location.pathname.startsWith('/admin/notices')) return 'notices';
     if (location.pathname.startsWith('/admin/students')) return 'students';
     if (location.pathname.startsWith('/admin/lectures')) return 'lectures';
     if (location.pathname.startsWith('/admin/attendance')) return 'attendance';
+    if (location.pathname.startsWith('/admin/password')) return 'password';
     if (location.pathname.startsWith('/admin/complaints')) return 'complaints';
     if (location.pathname.startsWith('/admin/leaves')) return 'leaves';
     if (location.pathname.startsWith('/admin/splash')) return 'splash';
@@ -111,6 +119,10 @@ export default function AdminDashboard() {
     if (routeKey !== 'overview') return;
     loadSummary();
   }, [loadSummary, routeKey, user]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
 
   const content = useMemo(() => {
     if (routeKey === 'students') {
@@ -168,6 +180,17 @@ export default function AdminDashboard() {
         </article>
       );
     }
+    if (routeKey === 'divisions') {
+      return (
+        <article className="panel">
+          <div className="panel-head">
+            <h3>Division Allocation</h3>
+            <VectorIcon name="users" size={18} />
+          </div>
+          <DivisionAllocationManager />
+        </article>
+      );
+    }
     if (routeKey === 'lectures') {
       return (
         <article className="panel">
@@ -201,6 +224,17 @@ export default function AdminDashboard() {
         </article>
       );
     }
+    if (routeKey === 'password') {
+      return (
+        <article className="panel">
+          <div className="panel-head">
+            <h3>Change Password</h3>
+            <VectorIcon name="shield" size={18} />
+          </div>
+          <ChangePasswordForm />
+        </article>
+      );
+    }
     if (routeKey === 'complaints') {
       return (
         <article className="panel">
@@ -228,7 +262,7 @@ export default function AdminDashboard() {
     }
     return (
       <>
-        <section className="stats-grid fade-up delay-1">
+        <SharedGrid columns={4} className="stats-grid fade-up delay-1">
           <article className="stat-card">
             <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
             <p>Total Users</p>
@@ -249,8 +283,8 @@ export default function AdminDashboard() {
             <p>Workers</p>
             <h3>{summary.workerCount || 0}</h3>
           </article>
-        </section>
-        <section className="dash-grid fade-up delay-2">
+        </SharedGrid>
+        <SharedGrid columns={3} className="dash-grid fade-up delay-2">
           <article className="panel">
             <div className="panel-head">
               <h3>Today Priorities</h3>
@@ -274,29 +308,43 @@ export default function AdminDashboard() {
             </div>
           </article>
           <CheckinConfigCard />
-        </section>
+        </SharedGrid>
       </>
     );
   }, [navigate, routeKey, summary]);
 
   return (
-    <div className="dashboard-shell">
+    <div className="dashboard-shell container-fluid px-2 px-md-3 px-xl-4">
       <p className="dash-brand">Baliraja Academy Gangapur Management</p>
       <header className="dash-topbar fade-up">
         <div>
           <p className="dash-kicker">Role: Admin</p>
           <h2>Admin Operations Dashboard</h2>
         </div>
-        <button className="ghost-btn" onClick={logout}>Logout</button>
+        <button className="mobile-nav-toggle btn btn-outline-primary" onClick={() => setMenuOpen(true)}>
+          <i className="bi bi-list" />
+          <span>Menu</span>
+        </button>
+        <button className="ghost-btn btn btn-outline-primary" onClick={logout}>Logout</button>
       </header>
 
       <section className="workspace">
-        <aside className="side-nav fade-up delay-1">
+        {menuOpen ? <button className="side-nav-overlay" onClick={() => setMenuOpen(false)} aria-label="Close menu" /> : null}
+        <aside className={`side-nav fade-up delay-1 ${menuOpen ? 'open' : ''}`}>
+          <div className="side-nav-head">
+            <strong>Navigation</strong>
+            <button className="btn btn-sm btn-outline-primary" onClick={() => setMenuOpen(false)}>
+              <i className="bi bi-x-lg" />
+            </button>
+          </div>
           {navItems.map((item) => (
             <button
               key={item.key}
               className={`nav-item ${routeKey === item.key ? 'active' : ''}`}
-              onClick={() => navigate(item.path)}
+              onClick={() => {
+                navigate(item.path);
+                setMenuOpen(false);
+              }}
             >
               <VectorIcon name={item.icon} size={16} />
               <span>{item.label}</span>

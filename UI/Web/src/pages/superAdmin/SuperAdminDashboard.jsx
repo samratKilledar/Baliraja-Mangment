@@ -19,6 +19,8 @@ import CheckinConfigCard from '../../components/CheckinConfigCard';
 import SplashManager from '../../components/SplashManager';
 import SubjectManager from '../../components/SubjectManager';
 import AttendanceWorkspace from '../../components/AttendanceWorkspace';
+import ChangePasswordForm from '../../components/ChangePasswordForm';
+import SharedGrid from '../../components/SharedGrid';
 const baseMenus = [
   { key: 'analytics', label: 'Analytics Hub', icon: 'chart', path: '/super-admin' },
   { key: 'student-form', label: 'Student Master Form', icon: 'users', path: '/super-admin/student-form' },
@@ -27,6 +29,7 @@ const baseMenus = [
   { key: 'teachers-list', label: 'Teacher List', icon: 'users', path: '/super-admin/teachers-list' },
   { key: 'subjects', label: 'Subjects', icon: 'spark', path: '/super-admin/subjects' },
   { key: 'attendance', label: 'Attendance', icon: 'calendar', path: '/super-admin/attendance' },
+  { key: 'password', label: 'Change Password', icon: 'shield', path: '/super-admin/password' },
   { key: 'lectures', label: 'Lectures Logged', icon: 'calendar', path: '/super-admin/lectures' },
   { key: 'fees', label: 'Finance Monitor', icon: 'money', path: '/super-admin/fees' },
   { key: 'notice', label: 'Notice Publisher', icon: 'bell', path: '/super-admin/notice' },
@@ -65,6 +68,8 @@ function normalizeSummary(data = {}) {
       totalCollected: Number(data?.fees?.totalCollected) || 0,
       totalDue: Number(data?.fees?.totalDue) || 0
     },
+    revenueLocked: typeof data?.revenueLocked === 'boolean' ? data.revenueLocked : true,
+    revenue: Number(data?.revenue) || 0,
     admissions: {
       ...EMPTY_SUMMARY.admissions,
       ...(data?.admissions || {}),
@@ -73,6 +78,12 @@ function normalizeSummary(data = {}) {
       day: Array.isArray(data?.admissions?.day) ? data.admissions.day : []
     }
   };
+}
+
+function formatMaskedCurrency(value, locked) {
+ // alert(locked)
+  if (locked) return '*****';
+  return `₹${(Number(value) || 0).toLocaleString('en-IN')}`;
 }
 
 export default function SuperAdminDashboard() {
@@ -85,11 +96,14 @@ export default function SuperAdminDashboard() {
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [revenuePass, setRevenuePass] = useState('');
+  const [revenueUnlocked, setRevenueUnlocked] = useState(false);
   const [feesList, setFeesList] = useState([]);
+  const [feeCategorySummary, setFeeCategorySummary] = useState([]);
   const [feesLoading, setFeesLoading] = useState(false);
   const [feesError, setFeesError] = useState('');
   const [feesPage, setFeesPage] = useState(1);
   const [feesMeta, setFeesMeta] = useState({ page: 1, totalPages: 1 });
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const menuItems = useMemo(() => [...baseMenus, ...extraMenus], [extraMenus]);
   const routeModule = useMemo(() => {
@@ -99,6 +113,7 @@ export default function SuperAdminDashboard() {
     if (location.pathname.startsWith('/super-admin/teachers-list')) return 'teachers-list';
     if (location.pathname.startsWith('/super-admin/subjects')) return 'subjects';
     if (location.pathname.startsWith('/super-admin/attendance')) return 'attendance';
+    if (location.pathname.startsWith('/super-admin/password')) return 'password';
     if (location.pathname.startsWith('/super-admin/lectures')) return 'lectures';
     if (location.pathname.startsWith('/super-admin/fees')) return 'fees';
     if (location.pathname.startsWith('/super-admin/notice')) return 'notice';
@@ -132,18 +147,28 @@ export default function SuperAdminDashboard() {
 
   const loadSummary = useCallback(async (pass) => {
     setLoadingSummary(true);
+    const passAttempted = typeof pass === 'string' && pass.trim().length > 0;
     try {
       const { data } = await api.get('/dashboard/super-admin', {
         headers: pass ? { 'x-revenue-pass': pass } : undefined
       });
-      setSummary(normalizeSummary(data));
+      const normalized = normalizeSummary(data);
+      setSummary(normalized);
+      if (passAttempted) {
+        setRevenueUnlocked(!normalized.revenueLocked);
+      }
     } catch (err) {
       console.error('Summary load failed', err);
       setSummary(EMPTY_SUMMARY);
+      if (passAttempted) {
+        setRevenueUnlocked(false);
+      }
     } finally {
       setLoadingSummary(false);
     }
   }, []);
+
+  const revenueMasked = !revenueUnlocked || summary.revenueLocked;
 
   useEffect(() => {
     if (!user) return;
@@ -157,15 +182,24 @@ export default function SuperAdminDashboard() {
     }
   }, [routeModule, feesPage]);
 
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
+
   async function loadFees(nextPage = 1) {
     setFeesLoading(true);
     try {
-      const { data } = await api.get('/fees/list', { params: { page: nextPage, limit: 10 } });
+      const [{ data }, { data: categoryData }] = await Promise.all([
+        api.get('/fees/list', { params: { page: nextPage, limit: 10 } }),
+        api.get('/fees/category-summary')
+      ]);
       setFeesList(data?.items || []);
       setFeesMeta(data?.meta || { page: nextPage, totalPages: 1 });
+      setFeeCategorySummary(categoryData?.items || []);
       setFeesError('');
     } catch (err) {
       setFeesList([]);
+      setFeeCategorySummary([]);
       setFeesError(err?.response?.data?.message || 'Unable to load finance records');
     } finally {
       setFeesLoading(false);
@@ -261,6 +295,17 @@ if (currentModule === 'admins') {
         </article>
       );
     }
+    if (currentModule === 'password') {
+      return (
+        <article className="panel">
+          <div className="panel-head">
+            <h3>Change Password</h3>
+            <VectorIcon name="shield" size={18} />
+          </div>
+          <ChangePasswordForm />
+        </article>
+      );
+    }
     if (currentModule === 'lectures') {
       return (
         <article className="panel">
@@ -290,10 +335,50 @@ if (currentModule === 'admins') {
             <h3>Finance Monitor</h3>
             <VectorIcon name="money" size={18} />
           </div>
+          <div className="analytics-password-box">
+            <input
+              placeholder="Enter revenue password"
+              type="password"
+              value={revenuePass}
+              onChange={(e) => setRevenuePass(e.target.value)}
+            />
+            <button className="primary-btn analytics-inline-btn" onClick={() => loadSummary(revenuePass)} disabled={loadingSummary}>
+              {loadingSummary ? 'Checking...' : 'Show Revenue'}
+            </button>
+          </div>
           <div className="snapshot-box">
-            <div><small>Pending Money</small><strong>₹{(summary.fees?.totalExpected || 0).toLocaleString('en-IN')}</strong></div>
-            <div><small>Collected Money</small><strong>₹{(summary.fees?.totalCollected || 0).toLocaleString('en-IN')}</strong></div>
-            <div><small>Remaining Fees</small><strong>₹{(summary.fees?.totalDue || 0).toLocaleString('en-IN')}</strong></div>
+            <div><small>Pending Money</small><strong>{formatMaskedCurrency(summary.fees?.totalExpected, revenueMasked)}</strong></div>
+            <div><small>Collected Money</small><strong>{formatMaskedCurrency(summary.fees?.totalCollected, revenueMasked)}</strong></div>
+            <div><small>Remaining Fees</small><strong>{formatMaskedCurrency(summary.fees?.totalDue, revenueMasked)}</strong></div>
+          </div>
+          <div className="table-wrap" style={{ marginTop: 12 }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Admission Category</th>
+                  <th>Students</th>
+                  <th>Total Fees</th>
+                  <th>Collected</th>
+                  <th>Remaining</th>
+                </tr>
+              </thead>
+              <tbody>
+                {feeCategorySummary.map((item) => (
+                  <tr key={item.category}>
+                    <td>{item.category}</td>
+                    <td>{item.studentCount}</td>
+                    <td>{formatMaskedCurrency(item.totalExpected, revenueMasked)}</td>
+                    <td>{formatMaskedCurrency(item.totalCollected, revenueMasked)}</td>
+                    <td>{formatMaskedCurrency(item.totalDue, revenueMasked)}</td>
+                  </tr>
+                ))}
+                {!feeCategorySummary.length && (
+                  <tr>
+                    <td colSpan={5}>No category-wise fee data available.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
           <div style={{ marginTop: 12 }}>
             {feesLoading && <p className="graph-note">Loading fee records...</p>}
@@ -339,9 +424,9 @@ if (currentModule === 'admins') {
                         </div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>Admission: {admissionDate} → Due: {dueDate}</div>
                       </div>
-                    <div><small>Total</small><div style={{ fontWeight: 700 }}>₹{fee.totalAmount || 0}</div></div>
-                    <div><small>Paid</small><div style={{ fontWeight: 700, color: '#0f7d49' }}>₹{fee.paidAmount || 0}</div></div>
-                    <div><small>Due</small><div style={{ fontWeight: 800, color: status === 'danger' ? '#c0392b' : '#c27b20' }}>₹{due}</div></div>
+                    <div><small>Total</small><div style={{ fontWeight: 700 }}>{formatMaskedCurrency(fee.totalAmount, revenueMasked)}</div></div>
+                    <div><small>Paid</small><div style={{ fontWeight: 700, color: '#0f7d49' }}>{formatMaskedCurrency(fee.paidAmount, revenueMasked)}</div></div>
+                    <div><small>Due</small><div style={{ fontWeight: 800, color: status === 'danger' ? '#c0392b' : '#c27b20' }}>{formatMaskedCurrency(due, revenueMasked)}</div></div>
                     <button className="ghost-btn" onClick={() => sendReminder(guardian.guardianMobile || student.userId?.phone, student._id)}>Send Notification</button>
                   </div>
                 );
@@ -425,126 +510,188 @@ if (currentModule === 'admins') {
     }
     return (
       <>
-        <section className="stats-grid fade-up delay-1">
-          <article className="stat-card super-stat">
-            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
-            <p>Total Users</p>
-            <h3>{summary.totalUsers || 0}</h3>
-          </article>
-          <article className="stat-card super-stat">
-            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
-            <p>Students</p>
-            <h3>{summary.studentCount || 0}</h3>
-          </article>
-          <article className="stat-card super-stat">
-            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
-            <p>Teachers</p>
-            <h3>{summary.teacherCount || 0}</h3>
-          </article>
-          <article className="stat-card super-stat">
-            <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
-            <p>Workers</p>
-            <h3>{summary.workerCount || 0}</h3>
-          </article>
+        <section className="analytics-hero fade-up delay-1">
+          <div className="analytics-hero-copy">
+            <p className="analytics-kicker">Analytics Hub</p>
+            <h3>Institution snapshot for admissions, finance and operations</h3>
+            <p className="graph-note">
+              Track student intake, revenue visibility and team capacity in one place.
+            </p>
+          </div>
+          <div className="analytics-hero-metrics">
+            <article className="analytics-metric-card">
+              <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+              <small>Total Users</small>
+              <strong>{summary.totalUsers || 0}</strong>
+            </article>
+            <article className="analytics-metric-card">
+              <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+              <small>Students</small>
+              <strong>{summary.studentCount || 0}</strong>
+            </article>
+            <article className="analytics-metric-card">
+              <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+              <small>Teachers</small>
+              <strong>{summary.teacherCount || 0}</strong>
+            </article>
+            <article className="analytics-metric-card">
+              <div className="stat-icon"><VectorIcon name="users" size={18} /></div>
+              <small>Workers</small>
+              <strong>{summary.workerCount || 0}</strong>
+            </article>
+          </div>
         </section>
-        <section className="dash-grid fade-up delay-2">
-          <article className="panel">
+
+        <SharedGrid columns={1} className="dash-grid fade-up delay-2">
+          <article className="panel analytics-panel analytics-finance-panel">
             <div className="panel-head">
               <h3>Finance Monitor (Live)</h3>
               <VectorIcon name="money" size={18} />
             </div>
-            <div className="snapshot-box">
-              <div><small>Pending Money</small><strong>₹{(summary.fees?.totalExpected || 0).toLocaleString('en-IN')}</strong></div>
-              <div><small>Collected Money</small><strong>₹{(summary.fees?.totalCollected || 0).toLocaleString('en-IN')}</strong></div>
-              <div><small>Remaining Fees</small><strong>₹{(summary.fees?.totalDue || 0).toLocaleString('en-IN')}</strong></div>
+            <div className="analytics-scroll-area">
+              <div className="analytics-finance-grid">
+                <div className="analytics-money-card tone-warn">
+                  <small>Total Fees</small>
+                  <strong>{formatMaskedCurrency(summary.fees?.totalExpected, revenueMasked)}</strong>
+                </div>
+                <div className="analytics-money-card tone-good">
+                  <small>Collected</small>
+                  <strong>{formatMaskedCurrency(summary.fees?.totalCollected, revenueMasked)}</strong>
+                </div>
+                <div className="analytics-money-card tone-danger">
+                  <small>Remaining</small>
+                  <strong>{formatMaskedCurrency(summary.fees?.totalDue, revenueMasked)}</strong>
+                </div>
+                <div className="analytics-money-card tone-primary">
+                  <small>Revenue MTD</small>
+                  <strong>{formatMaskedCurrency(summary.revenue, revenueMasked)}</strong>
+                </div>
+              </div>
             </div>
-            <div style={{ marginTop: 10 }}>
+            <div className="analytics-password-box">
               <input
                 placeholder="Enter revenue password"
                 type="password"
                 value={revenuePass}
                 onChange={(e) => setRevenuePass(e.target.value)}
               />
-              <button className="primary-btn" style={{ marginLeft: 8 }} onClick={() => loadSummary(revenuePass)} disabled={loadingSummary}>
+              <button className="primary-btn analytics-inline-btn" onClick={() => loadSummary(revenuePass)} disabled={loadingSummary}>
                 {loadingSummary ? 'Checking...' : 'Show Revenue'}
               </button>
-              <div style={{ marginTop: 8 }}>
-                Revenue MTD: {summary.revenueLocked ? '*****' : `₹${(summary.revenue || 0).toLocaleString('en-IN')}`}
-              </div>
             </div>
           </article>
-          <CheckinConfigCard />
-          <article className="panel">
+
+          <article className="panel analytics-panel analytics-signal-panel">
             <div className="panel-head">
               <h3>System Signals</h3>
               <VectorIcon name="chart" size={18} />
             </div>
-            <div className="snapshot-box" style={{ gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-              <div>
-                <small>Admissions (Month)</small>
-                <div className="mini-chart-row">
-                  {summary.admissions.month.map((item) => (
-                    <div key={item.label} className="mini-bar">
-                      <div className="mini-track">
-                        <div className="mini-fill" style={{ height: `${Math.min(item.count * 10, 100)}%` }} />
+            <div className="analytics-signal-grid">
+              <div className="analytics-signal-card">
+                <small>Admissions by Month</small>
+                <div className="analytics-scroll-area analytics-scroll-area-inline">
+                  <div className="mini-chart-row">
+                    {summary.admissions.month.map((item) => (
+                      <div key={item.label} className="mini-bar">
+                        <div className="mini-track">
+                          <div className="mini-fill" style={{ height: `${Math.min(item.count * 10, 100)}%` }} />
+                        </div>
+                        <small>{item.label}</small>
+                        <strong>{item.count}</strong>
                       </div>
-                      <small>{item.label}</small>
-                      <strong>{item.count}</strong>
-                    </div>
-                  ))}
-                  {!summary.admissions.month.length && <p className="graph-note">No data</p>}
+                    ))}
+                    {!summary.admissions.month.length && <p className="graph-note">No data</p>}
+                  </div>
                 </div>
               </div>
-              <div>
-                <small>Admissions (Week)</small>
-                <div className="mini-chart-row">
-                  {summary.admissions.week.map((item) => (
-                    <div key={item.label} className="mini-bar">
-                      <div className="mini-track">
-                        <div className="mini-fill" style={{ height: `${Math.min(item.count * 15, 100)}%` }} />
+              <div className="analytics-signal-card">
+                <small>Admissions by Week</small>
+                <div className="analytics-scroll-area analytics-scroll-area-inline">
+                  <div className="mini-chart-row">
+                    {summary.admissions.week.map((item) => (
+                      <div key={item.label} className="mini-bar">
+                        <div className="mini-track">
+                          <div className="mini-fill" style={{ height: `${Math.min(item.count * 15, 100)}%` }} />
+                        </div>
+                        <small>{item.label}</small>
+                        <strong>{item.count}</strong>
                       </div>
-                      <small>{item.label}</small>
-                      <strong>{item.count}</strong>
-                    </div>
-                  ))}
-                  {!summary.admissions.week.length && <p className="graph-note">No data</p>}
+                    ))}
+                    {!summary.admissions.week.length && <p className="graph-note">No data</p>}
+                  </div>
                 </div>
               </div>
-              <div>
-                <small>Admissions (Day)</small>
-                <div className="mini-chart-row">
-                  {summary.admissions.day.map((item) => (
-                    <div key={item.label} className="mini-bar">
-                      <div className="mini-track">
-                        <div className="mini-fill" style={{ height: `${Math.min(item.count * 25, 100)}%` }} />
+              <div className="analytics-signal-card">
+                <small>Admissions by Day</small>
+                <div className="analytics-scroll-area analytics-scroll-area-inline">
+                  <div className="mini-chart-row">
+                    {summary.admissions.day.map((item) => (
+                      <div key={item.label} className="mini-bar">
+                        <div className="mini-track">
+                          <div className="mini-fill" style={{ height: `${Math.min(item.count * 25, 100)}%` }} />
+                        </div>
+                        <small>{item.label.slice(5)}</small>
+                        <strong>{item.count}</strong>
                       </div>
-                      <small>{item.label.slice(5)}</small>
-                      <strong>{item.count}</strong>
-                    </div>
-                  ))}
-                  {!summary.admissions.day.length && <p className="graph-note">No data</p>}
+                    ))}
+                    {!summary.admissions.day.length && <p className="graph-note">No data</p>}
+                  </div>
                 </div>
               </div>
             </div>
           </article>
-        </section>
+
+          <CheckinConfigCard />
+          <article className="panel analytics-panel analytics-category-panel">
+            <div className="panel-head">
+              <h3>Fee Categories</h3>
+              <VectorIcon name="money" size={18} />
+            </div>
+            <div className="analytics-category-list">
+              {feeCategorySummary.slice(0, 4).map((item) => (
+                <div key={item.category} className="analytics-category-item">
+                  <div>
+                    <strong>{item.category}</strong>
+                    <small>{item.studentCount} students</small>
+                  </div>
+                  <div>
+                    <strong>{formatMaskedCurrency(item.totalCollected, revenueMasked)}</strong>
+                    <small>Due {formatMaskedCurrency(item.totalDue, revenueMasked)}</small>
+                  </div>
+                </div>
+              ))}
+              {!feeCategorySummary.length && <p className="graph-note">No category-wise fee data available.</p>}
+            </div>
+          </article>
+        </SharedGrid>
       </>
     );
-  }, [activeModule, feesError, feesList, feesLoading, feesMeta.page, feesMeta.totalPages, loadingSummary, menuItems, revenuePass, routeModule, summary]);
+  }, [activeModule, feeCategorySummary, feesError, feesList, feesLoading, feesMeta.page, feesMeta.totalPages, loadingSummary, menuItems, revenueMasked, revenuePass, routeModule, summary]);
 
   return (
-    <div className="dashboard-shell">
+    <div className="dashboard-shell container-fluid px-2 px-md-3 px-xl-4">
       <p className="dash-brand">Baliraja Academy Gangapur Management</p>
       <header className="dash-topbar fade-up">
         <div>
           <p className="dash-kicker">Role: Super Admin</p>
           <h2>Admin Operations Dashboard</h2>
         </div>
-        <button className="ghost-btn" onClick={logout}>Logout</button>
+        <button className="mobile-nav-toggle btn btn-outline-primary" onClick={() => setMenuOpen(true)}>
+          <i className="bi bi-list" />
+          <span>Menu</span>
+        </button>
+        <button className="ghost-btn btn btn-outline-primary" onClick={logout}>Logout</button>
       </header>
 
       <section className="workspace">
-        <aside className="side-nav fade-up delay-1">
+        {menuOpen ? <button className="side-nav-overlay" onClick={() => setMenuOpen(false)} aria-label="Close menu" /> : null}
+        <aside className={`side-nav fade-up delay-1 ${menuOpen ? 'open' : ''}`}>
+          <div className="side-nav-head">
+            <strong>Navigation</strong>
+            <button className="btn btn-sm btn-outline-primary" onClick={() => setMenuOpen(false)}>
+              <i className="bi bi-x-lg" />
+            </button>
+          </div>
           {menuItems.map((item) => {
             const isActive = (activeModule === item.key) || (routeModule === item.key);
             return (
@@ -554,6 +701,7 @@ if (currentModule === 'admins') {
                 onClick={() => {
                   setActiveModule(item.key);
                   if (item.path) navigate(item.path);
+                  setMenuOpen(false);
                 }}
               >
                 <VectorIcon name={item.icon} size={16} />

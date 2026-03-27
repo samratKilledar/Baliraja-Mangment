@@ -3,13 +3,16 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import StudentAdmissionForm from './StudentAdmissionForm';
 import VectorIcon from './VectorIcon';
-
-const DEFAULT_API_URL = import.meta.env.DEV
-  ? 'http://localhost:4000/api/v1'
-  : 'https://baliraja-mangment.onrender.com/api/v1';
+import { resolveApiBaseUrl } from '../config/env';
 
 export default function StudentList() {
   const PAGE_SIZE = 10;
+  const STUDENT_VIEWS = [
+    { key: 'all', label: 'All' },
+    { key: '11th', label: '11th Students' },
+    { key: '12th', label: '12th Students' },
+    { key: 'other', label: 'Other Students' }
+  ];
   const { user } = useAuth() || {};
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -42,6 +45,7 @@ export default function StudentList() {
   const [detailPanel, setDetailPanel] = useState({ type: null, studentId: null });
   const [page, setPage] = useState(1);
   const [pageMeta, setPageMeta] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [studentView, setStudentView] = useState('all');
   const shouldShowIndex = pageMeta.total > PAGE_SIZE;
   const hasPagination = pageMeta.totalPages > 1;
   const columnCount = shouldShowIndex ? 6 : 5;
@@ -163,7 +167,26 @@ useEffect(() => {
 
   // no auto-open; sub-views open only on explicit click
 
-  const filteredStudents = students;
+  const studentViewCounts = students.reduce((acc, student) => {
+    const currentClass = student.details?.education?.currentClass || '';
+    if (currentClass === '11th Std') {
+      acc['11th'] += 1;
+    } else if (currentClass === '12th Std') {
+      acc['12th'] += 1;
+    } else {
+      acc.other += 1;
+    }
+    acc.all += 1;
+    return acc;
+  }, { all: 0, '11th': 0, '12th': 0, other: 0 });
+
+  const filteredStudents = students.filter((student) => {
+    const currentClass = student.details?.education?.currentClass || '';
+    if (studentView === '11th') return currentClass === '11th Std';
+    if (studentView === '12th') return currentClass === '12th Std';
+    if (studentView === 'other') return !['11th Std', '12th Std'].includes(currentClass);
+    return true;
+  });
 function startEdit(s) {
 
   // close all other panels first
@@ -203,7 +226,7 @@ function startEdit(s) {
 
   async function downloadPdf(id) {
     const token = localStorage.getItem('ims_token') || localStorage.getItem('token');
-    const url = `${(import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/+$/, '')}/students/${id}/pdf`;
+    const url = `${resolveApiBaseUrl()}/students/${id}/pdf`;
     try {
       const res = await fetch(url, { headers: { Authorization: token ? `Bearer ${token}` : undefined } });
       if (res.status === 401) {
@@ -430,6 +453,19 @@ function startEdit(s) {
         />
         {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
       </div>
+      <div className="student-subview-strip">
+        {STUDENT_VIEWS.map((view) => (
+          <button
+            key={view.key}
+            type="button"
+            className={`student-subview-chip ${studentView === view.key ? 'active' : ''}`}
+            onClick={() => setStudentView(view.key)}
+          >
+            {view.label}
+            <span>{studentViewCounts[view.key] || 0}</span>
+          </button>
+        ))}
+      </div>
       {hasPagination && (
         <div className="top-pagination" aria-label="Student list pages">
           {Array.from({ length: pageMeta.totalPages }, (_, index) => index + 1).map((pageNumber) => (
@@ -446,7 +482,7 @@ function startEdit(s) {
         </div>
       )}
       <div className="list-index-bar">
-        <span>Total Students: {pageMeta.total || 0}</span>
+        <span>Showing Students: {filteredStudents.length} / {pageMeta.total || 0}</span>
         <span>Index: {shouldShowIndex ? 'Visible' : 'Hidden for 10 or fewer records'}</span>
       </div>
       <div className="card" style={{ padding: 0 }}>
@@ -496,6 +532,7 @@ function startEdit(s) {
                       </td>
                       <td>
                         <div style={{ fontWeight: 600 }}>{student.batchId?.batchName || '—'}</div>
+                        <div style={{ color: '#22335f', fontSize: 12 }}>Class: {student.details?.education?.currentClass || '—'}</div>
                         <div style={{ color: '#22335f', fontSize: 12 }}>Age: {student.age ?? calculateAge(student.dateOfBirth) ?? '—'}</div>
                         <div style={{ color: '#22335f', fontSize: 12 }}>Gender: {student.gender || student.details?.personal?.gender || '—'}</div>
                         {student.batchId?.startDate ? (

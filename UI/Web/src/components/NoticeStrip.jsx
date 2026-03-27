@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
+import { resolveApiBaseUrl } from '../config/env';
 
 function getApiBase() {
-  const configured = api.defaults.baseURL || import.meta.env.VITE_API_URL || '';
+  const configured = api.defaults.baseURL || resolveApiBaseUrl() || '';
   const fallback = window?.location?.origin || '';
   const candidate = configured || fallback;
   try {

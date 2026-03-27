@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import VectorIcon from './VectorIcon';
 import api from '../api/client';
 
-const CLASS_OPTIONS = ['11th Std', '12th Std'];
+const CLASS_OPTIONS = ['11th Std', '12th Std', 'Completed 12th', 'Graduate', 'Other'];
+const ADMISSION_TYPE_OPTIONS = ['Junior College', 'Recruitment Preparation', 'Both'];
 
 const initialForm = {
   admissionNo: '',
@@ -19,9 +20,13 @@ const initialForm = {
   aadhaarNo: '',
   mobileNo: '',
   email: '',
+  admissionType: 'Junior College',
+  admissionPurposes: ['11th Admission'],
   previousSchool: '',
+  previousEducationRows: [{ previousSchool: '', board: '', medium: '', passingYear: '', percentage: '' }],
   currentClass: '',
   division: '',
+  branch: '',
   board: '',
   medium: '',
   passingYear: '',
@@ -67,6 +72,32 @@ const initialForm = {
   batchId: ''
 };
 
+function createEducationRow() {
+  return { previousSchool: '', board: '', medium: '', passingYear: '', percentage: '' };
+}
+
+function getPreferredBatchId(batchItems = [], selectedBatchId = '') {
+  if (selectedBatchId) return selectedBatchId;
+  if (!Array.isArray(batchItems) || !batchItems.length) return '';
+
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+
+  const sameMonth = batchItems.find((item) => {
+    if (!item?.startDate) return false;
+    const startDate = new Date(item.startDate);
+    return startDate.getFullYear() === currentYear && startDate.getMonth() === currentMonth;
+  });
+  if (sameMonth?._id) return sameMonth._id;
+
+  const sameYear = batchItems.find((item) => {
+    if (!item?.startDate) return false;
+    return new Date(item.startDate).getFullYear() === currentYear;
+  });
+  return sameYear?._id || batchItems[0]?._id || '';
+}
+
 function sanitizeNumeric(value) {
   return String(value || '').replace(/\D+/g, '');
 }
@@ -109,13 +140,10 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
     try {
       const { data } = await api.get('/courses/batches');
       setBatches(data || []);
-      if (!editId && !form.batchId && Array.isArray(data) && data.length) {
-        const currentYear = new Date().getFullYear();
-        const preferred =
-          data.find((b) => b.startDate && new Date(b.startDate).getFullYear() === currentYear) ||
-          data[0];
-        if (preferred?._id) {
-          setForm((prev) => ({ ...prev, batchId: preferred._id }));
+      if (!editId && Array.isArray(data) && data.length) {
+        const preferredBatchId = getPreferredBatchId(data, form.batchId);
+        if (preferredBatchId) {
+          setForm((prev) => ({ ...prev, batchId: preferredBatchId }));
         }
       }
     } catch {
@@ -147,9 +175,23 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         mobileNo: sanitizeNumeric(st.userId?.phone || ''),
         email: st.userId?.email || '',
         status: st.status || 'active',
+        admissionType: d.education?.admissionType || 'Junior College',
+        admissionPurposes: Array.isArray(d.education?.admissionPurposes) && d.education.admissionPurposes.length
+          ? d.education.admissionPurposes
+          : [''],
         previousSchool: d.education?.previousSchool || '',
+        previousEducationRows: Array.isArray(d.education?.previousEducations) && d.education.previousEducations.length
+          ? d.education.previousEducations.map((item) => ({
+              previousSchool: item.previousSchool || '',
+              board: item.board || '',
+              medium: item.medium || '',
+              passingYear: item.passingYear || '',
+              percentage: item.percentage || ''
+            }))
+          : [createEducationRow()],
         currentClass: d.education?.currentClass || '',
         division: d.education?.division || '',
+        branch: d.education?.branch || '',
         board: d.education?.board || '',
         medium: d.education?.medium || '',
         passingYear: d.education?.passingYear || '',
@@ -218,6 +260,54 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
     });
   }
 
+  function updateEducationRow(index, key, value) {
+    setForm((prev) => ({
+      ...prev,
+      previousEducationRows: prev.previousEducationRows.map((row, rowIndex) => (
+        rowIndex === index ? { ...row, [key]: value } : row
+      ))
+    }));
+  }
+
+  function addEducationRow() {
+    setForm((prev) => ({
+      ...prev,
+      previousEducationRows: [...prev.previousEducationRows, createEducationRow()]
+    }));
+  }
+
+  function removeEducationRow(index) {
+    setForm((prev) => ({
+      ...prev,
+      previousEducationRows: prev.previousEducationRows.length > 1
+        ? prev.previousEducationRows.filter((_, rowIndex) => rowIndex !== index)
+        : [createEducationRow()]
+    }));
+  }
+
+  function updateAdmissionPurpose(index, value) {
+    setForm((prev) => ({
+      ...prev,
+      admissionPurposes: prev.admissionPurposes.map((item, itemIndex) => (itemIndex === index ? value : item))
+    }));
+  }
+
+  function addAdmissionPurpose() {
+    setForm((prev) => ({
+      ...prev,
+      admissionPurposes: [...prev.admissionPurposes, '']
+    }));
+  }
+
+  function removeAdmissionPurpose(index) {
+    setForm((prev) => ({
+      ...prev,
+      admissionPurposes: prev.admissionPurposes.length > 1
+        ? prev.admissionPurposes.filter((_, itemIndex) => itemIndex !== index)
+        : ['']
+    }));
+  }
+
   function detectAddressFromLocation() {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       setGeoStatus('Geolocation not supported in this browser');
@@ -259,11 +349,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
     e.preventDefault();
     setError('');
     setSaving(true);
-    const currentYear = new Date().getFullYear();
-    const fallbackBatchId = form.batchId || (() => {
-      const yearBatch = batches.find((b) => b.startDate && new Date(b.startDate).getFullYear() === currentYear);
-      return (yearBatch || batches[0])?._id;
-    })();
+    const fallbackBatchId = getPreferredBatchId(batches, form.batchId);
     try {
     const payload = {
       fullName: [form.firstName, form.middleName, form.lastName].filter(Boolean).join(' ').trim() || 'Student',
@@ -325,7 +411,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
     <form className="student-form" onSubmit={onSubmit}>
       <div className="form-head">
         <h3>Student Master Form {editId ? '(Edit)' : ''}</h3>
-        <p>Personal, education, physical and parent details</p>
+        <p>Single student form for 11th, 12th and recruitment preparation admissions</p>
       </div>
       {loading && <p>Loading student...</p>}
 
@@ -334,14 +420,17 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         <div className="form-grid">
           <label><span>Admission No</span><input value={form.admissionNo || 'Auto-generated on save'} disabled readOnly /></label>
           <label><span>Admission Date</span><input type="date" value={form.admissionDate} onChange={(e)=>setField('admissionDate', e.target.value)} /></label>
-          <label><span>Batch (Academic Year {new Date().getFullYear()})</span>
+          <label><span>Batch (Current Year / Month Default)</span>
             <select value={form.batchId} onChange={(e)=>setField('batchId', e.target.value)}>
               <option value="">Select batch</option>
               {batches.map((b)=>{
                 const yr = b.startDate ? new Date(b.startDate).getFullYear() : new Date().getFullYear();
+                const monthLabel = b.startDate
+                  ? new Date(b.startDate).toLocaleString('en-IN', { month: 'short' })
+                  : new Date().toLocaleString('en-IN', { month: 'short' });
                 return (
                   <option key={b._id} value={b._id}>
-                    {b.batchName} · {yr}{b.courseId?.name ? ` · ${b.courseId.name}` : ''}
+                    {b.batchName} · {monthLabel} {yr}{b.courseId?.name ? ` · ${b.courseId.name}` : ''}
                   </option>
                 );
               })}
@@ -376,8 +465,15 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
       <section className="form-section">
         <h4><VectorIcon name="chart" size={16} /> Education Info</h4>
         <div className="form-grid">
+          <label><span>Admission Type</span>
+            <select value={form.admissionType} onChange={(e) => setField('admissionType', e.target.value)}>
+              {ADMISSION_TYPE_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </label>
           <label><span>Previous School</span><input value={form.previousSchool} onChange={(e) => setField('previousSchool', e.target.value)} /></label>
-          <label><span>Current Class</span>
+          <label><span>Academic Stage / Class</span>
             <select value={form.currentClass} onChange={(e) => setField('currentClass', e.target.value)}>
               <option value="">Select Class</option>
               {CLASS_OPTIONS.map((option) => (
@@ -385,11 +481,50 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
               ))}
             </select>
           </label>
-          <label><span>Division</span><input value={form.division} onChange={(e) => setField('division', e.target.value.toUpperCase())} placeholder="A / B / Science / Commerce" /></label>
+          <label><span>Branch / Stream</span><input value={form.branch} onChange={(e) => setField('branch', e.target.value)} placeholder="Science / Commerce / Arts / General" /></label>
           <label><span>Board</span><input value={form.board} onChange={(e) => setField('board', e.target.value)} /></label>
           <label><span>Medium</span><input value={form.medium} onChange={(e) => setField('medium', e.target.value)} /></label>
           <label><span>Passing Year</span><input value={form.passingYear} onChange={(e) => setField('passingYear', e.target.value)} /></label>
           <label><span>Percentage / Grade</span><input value={form.percentage} onChange={(e) => setField('percentage', e.target.value)} /></label>
+        </div>
+        <p className="graph-note" style={{ marginTop: 10 }}>
+          Division is removed from admission time. Admin can assign students division-wise later based on total strength.
+        </p>
+        <div className="form-grid" style={{ marginTop: 16 }}>
+          <div className="full" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <h5 style={{ margin: 0 }}>Admission For / Purpose</h5>
+            <button type="button" className="ghost-btn" onClick={addAdmissionPurpose}>+ Add Purpose</button>
+          </div>
+          {form.admissionPurposes.map((purpose, index) => (
+            <div key={`purpose-${index}`} className="full" style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10 }}>
+              <input
+                value={purpose}
+                onChange={(e) => updateAdmissionPurpose(index, e.target.value)}
+                placeholder="11th Admission / 12th Admission / Army / Police / Recruitment Preparation"
+              />
+              <button type="button" className="ghost-btn" onClick={() => removeAdmissionPurpose(index)}>Remove</button>
+            </div>
+          ))}
+        </div>
+        <div className="form-grid" style={{ marginTop: 16 }}>
+          <div className="full" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <h5 style={{ margin: 0 }}>Previous Education Rows</h5>
+            <button type="button" className="ghost-btn" onClick={addEducationRow}>+ Add Row</button>
+          </div>
+          {form.previousEducationRows.map((row, index) => (
+            <div key={`edu-${index}`} className="full" style={{ border: '1px solid #dde5fa', borderRadius: 12, padding: 12 }}>
+              <div className="form-grid" style={{ marginTop: 0 }}>
+                <label><span>Previous School</span><input value={row.previousSchool} onChange={(e) => updateEducationRow(index, 'previousSchool', e.target.value)} /></label>
+                <label><span>Board</span><input value={row.board} onChange={(e) => updateEducationRow(index, 'board', e.target.value)} /></label>
+                <label><span>Medium</span><input value={row.medium} onChange={(e) => updateEducationRow(index, 'medium', e.target.value)} /></label>
+                <label><span>Passing Year</span><input value={row.passingYear} onChange={(e) => updateEducationRow(index, 'passingYear', e.target.value)} /></label>
+                <label><span>Percentage / Grade</span><input value={row.percentage} onChange={(e) => updateEducationRow(index, 'percentage', e.target.value)} /></label>
+                <div style={{ display: 'flex', alignItems: 'end' }}>
+                  <button type="button" className="ghost-btn" onClick={() => removeEducationRow(index)}>Remove Row</button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
         {isSeniorSecondary && (
           <div className="form-grid" style={{ marginTop: 16 }}>
@@ -439,7 +574,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
           <label><span>Mother Name</span><input value={form.motherName} onChange={(e) => setField('motherName', e.target.value)} /></label>
           <label><span>Mother Job</span><input value={form.motherJob} onChange={(e) => setField('motherJob', e.target.value)} /></label>
           <label><span>Mother Mobile</span><input inputMode="numeric" pattern="[0-9]*" value={form.motherMobile} onChange={(e) => setField('motherMobile', e.target.value)} /></label>
-          <label><span>Guardian Name</span><input value={form.guardianName} onChange={(e) => setField('guardianName', e.target.value)} /></label>
+          <label><span>Referance Name</span><input value={form.guardianName} onChange={(e) => setField('guardianName', e.target.value)} /></label>
           <label><span>Relation</span><input value={form.guardianRelation} onChange={(e) => setField('guardianRelation', e.target.value)} /></label>
           <label><span>Guardian Mobile</span><input inputMode="numeric" pattern="[0-9]*" value={form.guardianMobile} onChange={(e) => setField('guardianMobile', e.target.value)} /></label>
         </div>

@@ -15,6 +15,20 @@ const {
 } = require('./user.validation');
 
 function shapeStudentDetails(raw = {}) {
+  const previousEducations = Array.isArray(raw.previousEducationRows || raw.previousEducations)
+    ? (raw.previousEducationRows || raw.previousEducations)
+        .map((item = {}) => ({
+          previousSchool: item.previousSchool || '',
+          board: item.board || '',
+          medium: item.medium || '',
+          passingYear: item.passingYear || '',
+          percentage: item.percentage || ''
+        }))
+        .filter((item) => Object.values(item).some(Boolean))
+    : [];
+  const admissionPurposes = Array.isArray(raw.admissionPurposes)
+    ? raw.admissionPurposes.map((item) => String(item || '').trim()).filter(Boolean)
+    : [];
   const personal = {
     middleName: raw.middleName,
     lastName: raw.lastName,
@@ -23,13 +37,17 @@ function shapeStudentDetails(raw = {}) {
     gender: raw.gender
   };
   const education = {
+    admissionType: raw.admissionType,
     previousSchool: raw.previousSchool,
     currentClass: raw.currentClass,
     division: raw.division,
+    branch: raw.branch,
     board: raw.board,
     medium: raw.medium,
     passingYear: raw.passingYear,
     percentage: raw.percentage,
+    previousEducations,
+    admissionPurposes,
     academicHistory: {
       tenth: {
         schoolName: raw.tenthSchoolName,
