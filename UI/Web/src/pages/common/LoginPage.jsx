@@ -19,7 +19,7 @@ const FUTURE_LINES = [
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [identifier, setIdentifier] = useState(import.meta.env.VITE_SUPER_EMAIL || 'superadmin@baliraja.com');
+  const [identifier, setIdentifier] = useState(import.meta.env.VITE_SUPER_EMAIL || 'superadmin@cognitix.tech');
   const [password, setPassword] = useState(import.meta.env.VITE_SUPER_PASSWORD || '123456');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');

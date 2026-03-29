@@ -9,7 +9,7 @@ const { ROLES } = require('../utils/constants');
 const { encryptPassword } = require('../utils/passwordVault');
 
 async function main() {
-  const email = (process.env.SUPER_ADMIN_EMAIL || 'superadmin@baliraja.com').toLowerCase();
+  const email = (process.env.SUPER_ADMIN_EMAIL || 'superadmin@cognitix.tech').toLowerCase();
   const password = process.env.SUPER_ADMIN_PASSWORD || '123456';
   const phone = process.env.SUPER_ADMIN_PHONE || '9999999999';
 

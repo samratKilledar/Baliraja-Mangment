@@ -6,13 +6,13 @@ const { encryptPassword } = require('../utils/passwordVault');
 /**
  * Ensures a super admin account exists.
  * Environment overrides:
- *   SUPER_ADMIN_EMAIL (default: superadmin@baliraja.com)
+ *   SUPER_ADMIN_EMAIL (default: superadmin@cognitix.tech)
  *   SUPER_ADMIN_PASSWORD (default: 123456)
  *   SUPER_ADMIN_PHONE (optional)
  *   SUPER_ADMIN_FORCE_RESET=true  -> reset password on each boot
  */
 async function seedSuperAdmin() {
-  const email = (process.env.SUPER_ADMIN_EMAIL || 'superadmin@baliraja.com').toLowerCase();
+  const email = (process.env.SUPER_ADMIN_EMAIL || 'superadmin@cognitix.tech').toLowerCase();
   const password = process.env.SUPER_ADMIN_PASSWORD || '123456';
   const phone = process.env.SUPER_ADMIN_PHONE || '9999999999';
   const forceReset = String(process.env.SUPER_ADMIN_FORCE_RESET || '').toLowerCase() === 'true';
