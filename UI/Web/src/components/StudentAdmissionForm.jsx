@@ -3,8 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import VectorIcon from './VectorIcon';
 import api from '../api/client';
 
-const CLASS_OPTIONS = ['11th Std', '12th Std', 'Summer Camp', 'Completed 12th', 'Graduate', 'Other'];
-const ADMISSION_TYPE_OPTIONS = ['Junior College', 'Recruitment Preparation', 'Both', 'Summer Camp'];
+const DEFAULT_CLASS_OPTIONS = ['11th Std', '12th Std', 'Police Batch', 'Army Batch', 'Summer Camp'];
+const DEFAULT_ADMISSION_TYPE_OPTIONS = ['11th', '12th', 'Police', 'Army', 'Summer Camp'];
 
 const initialForm = {
   admissionNo: '',
@@ -20,7 +20,7 @@ const initialForm = {
   aadhaarNo: '',
   mobileNo: '',
   email: '',
-  admissionType: 'Junior College',
+  admissionType: DEFAULT_ADMISSION_TYPE_OPTIONS[0],
   admissionPurposes: ['11th Admission'],
   previousSchool: '',
   previousEducationRows: [{ previousSchool: '', board: '', medium: '', passingYear: '', percentage: '' }],
@@ -128,14 +128,38 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
   const [geoLoading, setGeoLoading] = useState(false);
   const [batches, setBatches] = useState([]);
   const [feeReason, setFeeReason] = useState('');
+  const [admissionTypeOptions, setAdmissionTypeOptions] = useState(DEFAULT_ADMISSION_TYPE_OPTIONS);
+  const [classOptions, setClassOptions] = useState(DEFAULT_CLASS_OPTIONS);
   const { user } = useAuth() || {};
 
   useEffect(() => {
+    loadAdmissionOptions();
     loadBatches();
     if (editId) {
       loadExisting(editId);
     }
   }, [editId]);
+
+  async function loadAdmissionOptions() {
+    try {
+      const { data } = await api.get('/admission-options');
+      const nextAdmissionTypes = Array.isArray(data?.admissionTypes) && data.admissionTypes.length
+        ? data.admissionTypes
+        : DEFAULT_ADMISSION_TYPE_OPTIONS;
+      const nextClassOptions = Array.isArray(data?.academicStages) && data.academicStages.length
+        ? data.academicStages
+        : DEFAULT_CLASS_OPTIONS;
+      setAdmissionTypeOptions(nextAdmissionTypes);
+      setClassOptions(nextClassOptions);
+      setForm((prev) => ({
+        ...prev,
+        admissionType: prev.admissionType || nextAdmissionTypes[0] || DEFAULT_ADMISSION_TYPE_OPTIONS[0]
+      }));
+    } catch {
+      setAdmissionTypeOptions(DEFAULT_ADMISSION_TYPE_OPTIONS);
+      setClassOptions(DEFAULT_CLASS_OPTIONS);
+    }
+  }
 
   async function loadBatches() {
     try {
@@ -176,7 +200,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         mobileNo: sanitizeNumeric(st.userId?.phone || ''),
         email: st.userId?.email || '',
         status: st.status || 'active',
-        admissionType: d.education?.admissionType || 'Junior College',
+        admissionType: d.education?.admissionType || DEFAULT_ADMISSION_TYPE_OPTIONS[0],
         admissionPurposes: Array.isArray(d.education?.admissionPurposes) && d.education.admissionPurposes.length
           ? d.education.admissionPurposes
           : [''],
@@ -502,7 +526,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         <div className="form-grid">
           <label><span>Admission Type</span>
             <select value={form.admissionType} onChange={(e) => setField('admissionType', e.target.value)}>
-              {(isSummerCamp ? ['Summer Camp'] : ADMISSION_TYPE_OPTIONS).map((option) => (
+              {(isSummerCamp ? ['Summer Camp'] : admissionTypeOptions).map((option) => (
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>
@@ -511,7 +535,7 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
           <label><span>Academic Stage / Class</span>
             <select value={form.currentClass} onChange={(e) => setField('currentClass', e.target.value)}>
               <option value="">Select Class</option>
-              {CLASS_OPTIONS.map((option) => (
+              {classOptions.map((option) => (
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>

@@ -1,4 +1,4 @@
-import { useEffect, useState, Fragment } from 'react';
+import { useEffect, useMemo, useState, Fragment } from 'react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import StudentAdmissionForm from './StudentAdmissionForm';
@@ -7,12 +7,6 @@ import { resolveApiBaseUrl } from '../config/env';
 
 export default function StudentList() {
   const PAGE_SIZE = 10;
-  const STUDENT_VIEWS = [
-    { key: 'all', label: 'All' },
-    { key: '11th', label: '11th Students' },
-    { key: '12th', label: '12th Students' },
-    { key: 'other', label: 'Other Students' }
-  ];
   const { user } = useAuth() || {};
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -167,25 +161,44 @@ useEffect(() => {
 
   // no auto-open; sub-views open only on explicit click
 
-  const studentViewCounts = students.reduce((acc, student) => {
-    const currentClass = student.details?.education?.currentClass || '';
-    if (currentClass === '11th Std') {
-      acc['11th'] += 1;
-    } else if (currentClass === '12th Std') {
-      acc['12th'] += 1;
-    } else {
-      acc.other += 1;
+  const studentViewCounts = useMemo(() => {
+    const serverCounts = pageMeta?.admissionTypeCounts;
+    if (serverCounts && typeof serverCounts === 'object' && Object.keys(serverCounts).length) {
+      return {
+        all: Number(pageMeta?.total) || 0,
+        ...Object.entries(serverCounts).reduce((acc, [key, value]) => {
+          acc[key] = Number(value) || 0;
+          return acc;
+        }, {})
+      };
     }
-    acc.all += 1;
-    return acc;
-  }, { all: 0, '11th': 0, '12th': 0, other: 0 });
+
+    const counts = { all: students.length };
+    students.forEach((student) => {
+      const admissionType = student.details?.education?.admissionType?.trim() || 'Other';
+      counts[admissionType] = (counts[admissionType] || 0) + 1;
+    });
+    return counts;
+  }, [pageMeta?.admissionTypeCounts, pageMeta?.total, students]);
+
+  const studentViews = useMemo(() => ([
+    { key: 'all', label: 'All Students' },
+    ...Object.keys(studentViewCounts)
+      .filter((key) => key !== 'all')
+      .sort((left, right) => left.localeCompare(right))
+      .map((key) => ({ key, label: key }))
+  ]), [studentViewCounts]);
+
+  useEffect(() => {
+    if (!studentViews.some((view) => view.key === studentView)) {
+      setStudentView('all');
+    }
+  }, [studentView, studentViews]);
 
   const filteredStudents = students.filter((student) => {
-    const currentClass = student.details?.education?.currentClass || '';
-    if (studentView === '11th') return currentClass === '11th Std';
-    if (studentView === '12th') return currentClass === '12th Std';
-    if (studentView === 'other') return !['11th Std', '12th Std'].includes(currentClass);
-    return true;
+    if (studentView === 'all') return true;
+    const admissionType = student.details?.education?.admissionType?.trim() || 'Other';
+    return admissionType === studentView;
   });
 function startEdit(s) {
 
@@ -454,7 +467,7 @@ function startEdit(s) {
         {error && <p className="error" style={{ margin: 0 }}>{error}</p>}
       </div>
       <div className="student-subview-strip">
-        {STUDENT_VIEWS.map((view) => (
+        {studentViews.map((view) => (
           <button
             key={view.key}
             type="button"
@@ -485,7 +498,7 @@ function startEdit(s) {
         <span>Showing Students: {filteredStudents.length} / {pageMeta.total || 0}</span>
         <span>Index: {shouldShowIndex ? 'Visible' : 'Hidden for 10 or fewer records'}</span>
       </div>
-      <div className="card" style={{ padding: 0 }}>
+      <div className="card" style={{ padding: 10 }}>
         <div className="data-table-wrap">
           <table className="data-table">
             <thead>
@@ -533,6 +546,7 @@ function startEdit(s) {
                       <td>
                         <div style={{ fontWeight: 600 }}>{student.batchId?.batchName || '—'}</div>
                         <div style={{ color: '#22335f', fontSize: 12 }}>Class: {student.details?.education?.currentClass || '—'}</div>
+                        <div style={{ color: '#22335f', fontSize: 12 }}>Admission Type: {student.details?.education?.admissionType || 'Other'}</div>
                         <div style={{ color: '#22335f', fontSize: 12 }}>Age: {student.age ?? calculateAge(student.dateOfBirth) ?? '—'}</div>
                         <div style={{ color: '#22335f', fontSize: 12 }}>Gender: {student.gender || student.details?.personal?.gender || '—'}</div>
                         {student.batchId?.startDate ? (
@@ -1034,6 +1048,37 @@ const css = `
   font-size: 14px;
   color: #15213d;
 }
+.student-list-modern.table-wrap {
+  padding: 12px;
+}
+.student-list-modern .data-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: auto;
+  background: #fff;
+}
+.student-list-modern .data-table {
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+.student-list-modern .data-table tbody tr {
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+.student-list-modern .data-table tbody tr td {
+  background: inherit;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+}
+.student-list-modern .data-table tbody tr td:first-child {
+  border-left: 1px solid rgba(148, 163, 184, 0.25);
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+.student-list-modern .data-table tbody tr td:last-child {
+  border-right: 1px solid rgba(148, 163, 184, 0.25);
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -1150,6 +1195,45 @@ const css = `
   font-size: 14px;
   color: var(--text-primary);
   font-weight: 600;
+}
+.student-subview-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+.student-subview-chip {
+  border: 1px solid var(--border);
+  background: #f4f7ff;
+  color: #1f2d55;
+  border-radius: 999px;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.student-subview-chip span {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(23, 36, 76, 0.1);
+  color: #17244c;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}
+.student-subview-chip.active {
+  border-color: #17244c;
+  background: linear-gradient(180deg, #243056, #17203e);
+  color: #f6f9ff;
+  box-shadow: 0 10px 20px rgba(12, 18, 40, 0.2);
+}
+.student-subview-chip.active span {
+  background: rgba(255, 255, 255, 0.2);
+  color: #f6f9ff;
 }
 .list-index-bar {
   display: flex;

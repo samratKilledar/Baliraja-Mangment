@@ -23,6 +23,7 @@ export default function TeacherList() {
   const [activeAction, setActiveAction] = useState({ type: null, teacherId: null });
   const [attendance, setAttendance] = useState({});
   const [lectures, setLectures] = useState({});
+  const [showPasswords, setShowPasswords] = useState({});
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [extendForm, setExtendForm] = useState({ months: '', date: '', note: '' });
 
@@ -68,6 +69,10 @@ export default function TeacherList() {
       totalContractAmount: t.totalContractAmount ?? '',
       monthlySalary: t.monthlySalary ?? ''
     });
+  }
+
+  function togglePassword(teacherId) {
+    setShowPasswords((prev) => ({ ...prev, [teacherId]: !prev[teacherId] }));
   }
 
   async function saveEdit(id) {
@@ -213,6 +218,22 @@ export default function TeacherList() {
                         <div>
                           <VectorIcon name="mail" size={12} /> {t.userId?.email || '—'}
                         </div>
+                        {(user?.role === 'super_admin' || user?.role === 'admin') && (
+                          <div style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 12, color: '#4b5774' }}>
+                              Password: {showPasswords[t._id] ? (t.userId?.passwordVisible || '123456') : '******'}
+                            </span>
+                            <button
+                              type="button"
+                              className="ghost-btn"
+                              onClick={() => togglePassword(t._id)}
+                              title={showPasswords[t._id] ? 'Hide password' : 'Show password'}
+                              style={{ marginTop: 0, width: 'auto', padding: '6px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center' }}
+                            >
+                              <VectorIcon name={showPasswords[t._id] ? 'eyeOff' : 'eye'} size={14} />
+                            </button>
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div>Paid: ₹{t.paidAmount || 0}</div>

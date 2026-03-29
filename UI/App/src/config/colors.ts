@@ -1,12 +1,12 @@
 const COLORS = {
   // Brand
-  primary: '#CBC3E3',
-  primaryLight: '#E0B0FF',
-  accent: '#D8BFD8',
+  primary: '#7E69A5',
+  primaryLight: '#B9A8D8',
+  accent: '#C9B2D8',
   info: '#E6E6FA',
 
   // Status
-  success: '#B9A8D8',
+  success: '#6D5A8E',
   danger: '#DC2626',
   warning: '#D8BFD8',
 
@@ -21,15 +21,15 @@ const COLORS = {
   modalOverlay: 'rgba(0, 0, 0, 0.7)',
 
   // Text
-  text: '#31214A',
-  textDark: '#31214A',
-  textGray: '#675A7F',
-  textMuted: '#675A7F',
+  text: '#1F1233',
+  textDark: '#140A26',
+  textGray: '#4A3C64',
+  textMuted: '#4A3C64',
 
   // Borders & UI
-  border: '#D2C7E4',
-  borderLight: '#D8BFD8',
-  divider: '#D2C7E4',
+  border: '#B7A8CF',
+  borderLight: '#C9B2D8',
+  divider: '#B7A8CF',
 };
 
 export default COLORS;

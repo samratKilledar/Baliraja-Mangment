@@ -26,4 +26,11 @@ const loginSchema = z
     path: ['identifier']
   });
 
-module.exports = { registerSchema, loginSchema };
+const forgotSuperAdminPasswordSchema = z
+  .object({
+    email: z.string().email(),
+    recoveryKey: z.string().min(4),
+    newPassword: z.string().min(6)
+  });
+
+module.exports = { registerSchema, loginSchema, forgotSuperAdminPasswordSchema };

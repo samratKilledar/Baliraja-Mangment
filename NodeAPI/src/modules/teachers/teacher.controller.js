@@ -2,6 +2,7 @@ const Teacher = require('./teacher.model');
 const User = require('../users/user.model');
 const Attendance = require('../attendance/attendance.model');
 const mongoose = require('mongoose');
+const { decryptPassword } = require('../../utils/passwordVault');
 
 function safeDate(value) {
   if (!value) return undefined;
@@ -24,6 +25,12 @@ function deriveContractDuration(start, end) {
 function shapeTeacher(teacher, role) {
   if (!teacher) return null;
   const obj = teacher.toObject ? teacher.toObject() : teacher;
+  if (obj.userId?.passwordCipher && ['super_admin', 'admin'].includes(role)) {
+    obj.userId.passwordVisible = decryptPassword(obj.userId.passwordCipher);
+  }
+  if (obj.userId?.passwordCipher) {
+    delete obj.userId.passwordCipher;
+  }
   obj.remainingAmount =
     obj.totalContractAmount !== undefined
       ? obj.totalContractAmount - (obj.paidAmount || 0)
@@ -55,7 +62,7 @@ async function listTeachers(req, res, next) {
     }
 
     let teachers = await Teacher.find(filter)
-      .populate('userId', 'fullName email phone');
+      .populate('userId', 'fullName email phone passwordCipher');
 
     teachers = teachers.map((t) => shapeTeacher(t, req.user.role));
 
@@ -92,7 +99,7 @@ async function updateTeacher(req, res, next) {
     if (payload.monthlySalary !== undefined) teacher.monthlySalary = payload.monthlySalary;
 
     await teacher.save();
-    const refreshed = await Teacher.findById(teacherId).populate('userId', 'fullName email phone');
+    const refreshed = await Teacher.findById(teacherId).populate('userId', 'fullName email phone passwordCipher');
     res.json(shapeTeacher(refreshed, req.user.role));
   } catch (err) {
     next(err);

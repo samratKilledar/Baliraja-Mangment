@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import api from '../api/client';
+import VectorIcon from './VectorIcon';
 
 const initialForm = {
   fullName: '',
@@ -20,6 +21,8 @@ export default function TeacherForm() {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [createdPassword, setCreatedPassword] = useState('');
+  const [showCreatedPassword, setShowCreatedPassword] = useState(false);
 
   function setField(key, value) {
     const nextValue = key === 'mobileNo' ? String(value || '').replace(/\D+/g, '') : value;
@@ -29,6 +32,8 @@ export default function TeacherForm() {
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
+    setCreatedPassword('');
+    setShowCreatedPassword(false);
     setSaving(true);
     try {
       const payload = {
@@ -45,8 +50,10 @@ export default function TeacherForm() {
         monthlySalary: form.monthlySalary ? Number(form.monthlySalary) : undefined
       };
 
-      await api.post('/users', payload);
-      alert('Teacher saved to database.');
+      const { data } = await api.post('/users', payload);
+      const nextPassword = data?.tempPassword || '123456';
+      setCreatedPassword(nextPassword);
+      alert(`Teacher saved to database. Default password: ${nextPassword}`);
       setForm(initialForm);
     } catch (err) {
       setError(err?.response?.data?.message || 'Unable to save teacher');
@@ -82,6 +89,36 @@ export default function TeacherForm() {
 
       <div className="form-submit">
         {error && <p className="error">{error}</p>}
+        {createdPassword ? (
+          <div
+            style={{
+              marginBottom: 12,
+              border: '1px solid var(--line)',
+              background: 'rgba(126, 105, 165, 0.08)',
+              borderRadius: 10,
+              padding: 10
+            }}
+          >
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Default Teacher Password</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+              <strong style={{ color: 'var(--text-primary)', letterSpacing: 0.3 }}>
+                {showCreatedPassword ? createdPassword : '******'}
+              </strong>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => setShowCreatedPassword((prev) => !prev)}
+                title={showCreatedPassword ? 'Hide password' : 'Show password'}
+                style={{ marginTop: 0, width: 'auto', padding: '7px 10px', display: 'inline-flex', alignItems: 'center' }}
+              >
+                <VectorIcon name={showCreatedPassword ? 'eyeOff' : 'eye'} size={14} />
+              </button>
+            </div>
+            <div style={{ fontSize: 12, marginTop: 6, color: 'var(--text-secondary)' }}>
+              Teacher will be asked to change password after first login.
+            </div>
+          </div>
+        ) : null}
         <button type="submit" className="primary-btn" disabled={saving}>
           {saving ? 'Saving...' : 'Save Teacher'}
         </button>

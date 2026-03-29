@@ -313,10 +313,18 @@ async function listStudents(req, res, next) {
 
     const total = students.length;
     const pagedStudents = students.slice(skip, skip + limit);
+    const admissionTypeCounts = students.reduce((acc, student) => {
+      const admissionType = student?.details?.education?.admissionType?.trim() || 'Other';
+      acc[admissionType] = (acc[admissionType] || 0) + 1;
+      return acc;
+    }, {});
 
     res.json({
       items: pagedStudents.map(serializeStudent),
-      meta: buildPaginationMeta({ total, page, limit })
+      meta: {
+        ...buildPaginationMeta({ total, page, limit }),
+        admissionTypeCounts
+      }
     });
   } catch (err) {
     next(err);

@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   brandCorner: {
     marginLeft: 10,
     maxWidth: '62%',
-    color: '#1c2f7f',
+    color: COLORS.textDark,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.2,
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
   },
   marqueeText: {
     position: 'absolute',
-    color: '#1d3fa6',
+    color: COLORS.textDark,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.2,
@@ -532,31 +532,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#e6edff',
   },
   langChipText: {
-    color: '#40508b',
+    color: COLORS.textGray,
     fontWeight: '600',
   },
   langChipTextActive: {
-    color: '#243a9c',
+    color: COLORS.textDark,
     fontWeight: '800',
   },
   title: {
     marginTop: 10,
-    color: '#1f2f75',
+    color: COLORS.textDark,
     fontSize: 22,
     fontWeight: '800',
   },
   subtitle: {
-    color: '#5d678d',
+    color: COLORS.textGray,
     marginTop: 7,
   },
   headerMeta: {
     marginTop: 6,
-    color: '#1f2f75',
+    color: COLORS.textDark,
     fontSize: 12,
     fontWeight: '700',
   },
   sectionTitle: {
-    color: '#233577',
+    color: COLORS.textDark,
     fontWeight: '700',
     marginBottom: 10,
     fontSize: 14,
@@ -607,12 +607,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   slideTitle: {
-    color: '#21316f',
+    color: COLORS.textDark,
     fontWeight: '700',
   },
   slideDescription: {
     marginTop: 4,
-    color: '#5d678d',
+    color: COLORS.textGray,
     fontSize: 12,
   },
   menuCard: {
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     textAlign: 'center',
-    color: '#24305f',
+    color: COLORS.textDark,
     fontWeight: '700',
   },
   trainingCard: {
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   trainingSubtitle: {
-    color: '#6674a4',
+    color: COLORS.textGray,
     marginBottom: 8,
   },
   trainingRow: {
@@ -669,7 +669,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   trainingName: {
-    color: '#24305f',
+    color: COLORS.textDark,
     fontWeight: '700',
   },
   trainingProgress: {
@@ -694,11 +694,11 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   panelTitle: {
-    color: '#1e2b64',
+    color: COLORS.textDark,
     fontWeight: '700',
   },
   panelText: {
-    color: '#53608d',
+    color: COLORS.textGray,
     marginTop: 4,
   },
   metaRow: {
@@ -719,7 +719,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   metaText: {
-    color: '#6f7898',
+    color: COLORS.textGray,
     fontSize: 12,
   },
   modalBackdrop: {
@@ -738,7 +738,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1f2a5a',
+    color: COLORS.textDark,
     marginBottom: 10,
   },
   input: {
@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4f6ff',
   },
   cancelButtonText: {
-    color: '#3046a5',
+    color: COLORS.textDark,
     fontWeight: '700',
   },
   uploadButton: {

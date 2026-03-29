@@ -24,8 +24,24 @@ import LoadingOverlay from '../../components/LoadingOverlay';
 import {tx} from '../../i18n/strings';
 import client from '../../api/client';
 
-const BACKGROUND_IMAGE =
-  'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1400&q=80';
+const TRAINING_IMAGES = [
+  'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1400&q=80',
+  'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=1400&q=80',
+  'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1400&q=80',
+  'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1400&q=80',
+];
+const FUTURE_LINES = {
+  en: [
+    'Future of students changes with every login.',
+    'Training today builds leaders for tomorrow.',
+    'Learn skills. Build confidence. Change your future.',
+  ],
+  mr: [
+    'प्रत्येक लॉगिनसोबत विद्यार्थ्यांचे भविष्य बदलते.',
+    'आजचे प्रशिक्षण उद्याचे नेतृत्व घडवते.',
+    'कौशल्य, आत्मविश्वास आणि उज्ज्वल भविष्य इथून सुरू होते.',
+  ],
+};
 const LOGIN_LOTTIE = require('../../assets/animations/login-lottie.json');
 
 export default function LoginScreen() {
@@ -38,6 +54,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [imageIndex, setImageIndex] = useState(0);
+  const [futureIndex, setFutureIndex] = useState(0);
   const fadeIn = useRef(new Animated.Value(0)).current;
   const liftIn = useRef(new Animated.Value(20)).current;
   const trimmedIdentifier = identifier.trim();
@@ -48,6 +66,8 @@ export default function LoginScreen() {
     password.length >= 6 &&
     !loading;
   const lottieHeight = Math.max(160, Math.min(240, width * 0.45));
+  const futureTextList = FUTURE_LINES[language] || FUTURE_LINES.en;
+  const futureText = futureTextList[futureIndex];
 
   useEffect(() => {
     Animated.parallel([
@@ -65,6 +85,24 @@ export default function LoginScreen() {
       }),
     ]).start();
   }, [fadeIn, liftIn]);
+
+  useEffect(() => {
+    const imageTimer = setInterval(() => {
+      setImageIndex(prev => (prev + 1) % TRAINING_IMAGES.length);
+    }, 4600);
+    return () => clearInterval(imageTimer);
+  }, []);
+
+  useEffect(() => {
+    setFutureIndex(0);
+  }, [language]);
+
+  useEffect(() => {
+    const futureTimer = setInterval(() => {
+      setFutureIndex(prev => (prev + 1) % futureTextList.length);
+    }, 3200);
+    return () => clearInterval(futureTimer);
+  }, [futureTextList.length]);
 
   async function handleLogin() {
     if (!isEmailLogin && mobileDigits.length !== 10) {
@@ -101,7 +139,7 @@ export default function LoginScreen() {
 
   return (
     <ImageBackground
-      source={{uri: BACKGROUND_IMAGE}}
+      source={{uri: TRAINING_IMAGES[imageIndex]}}
       resizeMode="cover"
       style={styles.bgImage}>
       <View style={styles.bgOverlay} />
@@ -162,6 +200,11 @@ export default function LoginScreen() {
               <Text style={styles.brand}>{t.appName}</Text>
               <Text style={styles.title}>{t.loginTitle}</Text>
               <Text style={styles.subtitle}>{t.loginSubtitle}</Text>
+              <Text
+                key={`${language}-${futureIndex}`}
+                style={styles.futureText}>
+                {futureText}
+              </Text>
 
               <View style={[styles.lottieBox, {height: lottieHeight}]}>
                 <LottieView
@@ -300,7 +343,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   langLabel: {
-    color: '#5a6791',
+    color: COLORS.textGray,
     fontWeight: '700',
   },
   langSwitch: {
@@ -320,16 +363,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#e6edff',
   },
   langChipText: {
-    color: '#40508b',
+    color: COLORS.textGray,
     fontWeight: '600',
   },
   langChipTextActive: {
-    color: '#243a9c',
+    color: COLORS.textDark,
     fontWeight: '800',
   },
   brand: {
     marginTop: 12,
-    color: COLORS.primary,
+    color: COLORS.textDark,
     fontWeight: '800',
     fontSize: 28,
     lineHeight: 34,
@@ -339,11 +382,17 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 24,
     fontWeight: '700',
-    color: '#1f2a5a',
+    color: COLORS.textDark,
   },
   subtitle: {
     marginTop: 4,
     color: COLORS.textGray,
+  },
+  futureText: {
+    marginTop: 6,
+    color: '#1c43a5',
+    fontWeight: '700',
+    fontSize: 13,
   },
   form: {
     marginTop: 14,

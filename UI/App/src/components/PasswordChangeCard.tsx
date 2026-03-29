@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import client from '../api/client';
+import COLORS from '../config/colors';
 
 type PasswordChangeCardProps = {
   title?: string;
@@ -113,12 +114,12 @@ const styles = StyleSheet.create({
     borderColor: '#d7dff6',
   },
   heading: {
-    color: '#1f2f75',
+    color: COLORS.textDark,
     fontWeight: '800',
     fontSize: 17,
   },
   subtext: {
-    color: '#5e688f',
+    color: COLORS.textGray,
     marginTop: 4,
     marginBottom: 12,
   },
@@ -130,7 +131,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: '#f9fbff',
     marginBottom: 10,
-    color: '#15213d',
+    color: COLORS.textDark,
   },
   button: {
     marginTop: 4,

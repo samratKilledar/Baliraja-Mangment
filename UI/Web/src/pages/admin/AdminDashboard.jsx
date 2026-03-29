@@ -19,6 +19,7 @@ import ChangePasswordForm from '../../components/ChangePasswordForm';
 import DivisionAllocationManager from '../../components/DivisionAllocationManager';
 import DivisionAttendanceBoard from '../../components/DivisionAttendanceBoard';
 import SharedGrid from '../../components/SharedGrid';
+import AdmissionOptionsManager from '../../components/AdmissionOptionsManager';
 import api from '../../api/client';
 
 const navItems = [
@@ -33,6 +34,7 @@ const navItems = [
   { key: 'notices', label: 'Notices', icon: 'bell', path: '/admin/notices' },
   { key: 'lectures', label: 'Lectures', icon: 'calendar', path: '/admin/lectures' },
   { key: 'attendance', label: 'Attendance', icon: 'calendar', path: '/admin/attendance' },
+  { key: 'admission-options', label: 'Admission Setup', icon: 'spark', path: '/admin/admission-options' },
   { key: 'password', label: 'Change Password', icon: 'shield', path: '/admin/password' },
   { key: 'complaints', label: 'Complaints', icon: 'alert-circle', path: '/admin/complaints' },
   { key: 'leaves', label: 'Leaves', icon: 'calendar', path: '/admin/leaves' },
@@ -92,6 +94,18 @@ export default function AdminDashboard() {
   const location = useLocation();
   const [summary, setSummary] = useState(EMPTY_SUMMARY);
   const [menuOpen, setMenuOpen] = useState(false);
+  const lastLoginLabel = useMemo(() => {
+    if (!user?.lastLoginAt) return '';
+    const parsed = new Date(user.lastLoginAt);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, [user?.lastLoginAt]);
 
   const loadSummary = useCallback(async () => {
     try {
@@ -114,6 +128,7 @@ export default function AdminDashboard() {
     if (location.pathname.startsWith('/admin/students')) return 'students';
     if (location.pathname.startsWith('/admin/lectures')) return 'lectures';
     if (location.pathname.startsWith('/admin/attendance')) return 'attendance';
+    if (location.pathname.startsWith('/admin/admission-options')) return 'admission-options';
     if (location.pathname.startsWith('/admin/password')) return 'password';
     if (location.pathname.startsWith('/admin/complaints')) return 'complaints';
     if (location.pathname.startsWith('/admin/leaves')) return 'leaves';
@@ -241,6 +256,9 @@ export default function AdminDashboard() {
           <AttendanceWorkspace role="admin" />
         </article>
       );
+    }
+    if (routeKey === 'admission-options') {
+      return <AdmissionOptionsManager />;
     }
     if (routeKey === 'password') {
       return (
@@ -429,7 +447,7 @@ export default function AdminDashboard() {
       <p className="dash-brand">Baliraja Academy Gangapur Management</p>
       <header className="dash-topbar fade-up">
         <div>
-          <p className="dash-kicker">Role: Admin</p>
+          <p className="dash-kicker">Role: Admin · {user?.email || 'no-email'}</p>
           <h2>Admin Operations Dashboard</h2>
         </div>
         <button className="mobile-nav-toggle btn btn-outline-primary" onClick={() => setMenuOpen(true)}>
@@ -441,12 +459,27 @@ export default function AdminDashboard() {
 
       <section className="workspace">
         {menuOpen ? <button className="side-nav-overlay" onClick={() => setMenuOpen(false)} aria-label="Close menu" /> : null}
-        <aside className={`side-nav fade-up delay-1 ${menuOpen ? 'open' : ''}`}>
+        <aside className={`side-nav side-nav-drop ${menuOpen ? 'open' : ''}`}>
           <div className="side-nav-head">
             <strong>Navigation</strong>
             <button className="btn btn-sm btn-outline-primary" onClick={() => setMenuOpen(false)}>
               <i className="bi bi-x-lg" />
             </button>
+          </div>
+          <div className="side-nav-profile">
+            <div className="side-nav-lottie">
+              <dotlottie-player
+                src="/assets/login-lottie.json"
+                background="transparent"
+                speed="1"
+                loop
+                autoplay
+              ></dotlottie-player>
+            </div>
+            <p className="side-nav-role">Role: Admin</p>
+            <strong>{user?.fullName || 'Admin'}</strong>
+            <small>{user?.email || 'no-email'}</small>
+            {lastLoginLabel ? <small>Last login: {lastLoginLabel}</small> : null}
           </div>
           {navItems.map((item) => (
             <button
@@ -463,7 +496,7 @@ export default function AdminDashboard() {
           ))}
         </aside>
 
-        <main className="workspace-main fade-up delay-2">
+        <main className="workspace-main workspace-main-enter">
           <NoticeStrip />
           {content}
         </main>

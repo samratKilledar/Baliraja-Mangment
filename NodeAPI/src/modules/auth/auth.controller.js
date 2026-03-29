@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../users/user.model');
-const { registerSchema, loginSchema } = require('./auth.validation');
+const { registerSchema, loginSchema, forgotSuperAdminPasswordSchema } = require('./auth.validation');
 const { ROLES } = require('../../utils/constants');
 const { encryptPassword } = require('../../utils/passwordVault');
 
@@ -58,6 +58,11 @@ async function login(req, res, next) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    if ([ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(user.role)) {
+      user.lastLoginAt = new Date();
+      await user.save();
+    }
+
     const token = signToken(user);
     return res.json({
       token,
@@ -67,6 +72,7 @@ async function login(req, res, next) {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        lastLoginAt: user.lastLoginAt || null,
         mustChangePassword: Boolean(user.mustChangePassword)
       }
     });
@@ -105,4 +111,37 @@ async function bootstrapSuperAdmin(req, res, next) {
   }
 }
 
-module.exports = { register, login, bootstrapSuperAdmin };
+async function forgotSuperAdminPassword(req, res, next) {
+  try {
+    const payload = forgotSuperAdminPasswordSchema.parse(req.body);
+    const configuredRecoveryKey = process.env.SUPER_ADMIN_RECOVERY_KEY || process.env.BOOTSTRAP_KEY;
+
+    if (!configuredRecoveryKey) {
+      return res.status(503).json({ message: 'Recovery is not configured on server' });
+    }
+
+    if (payload.recoveryKey !== configuredRecoveryKey) {
+      return res.status(401).json({ message: 'Invalid recovery key' });
+    }
+
+    const user = await User.findOne({
+      email: payload.email.toLowerCase(),
+      role: ROLES.SUPER_ADMIN
+    });
+    if (!user) {
+      return res.status(404).json({ message: 'Super admin account not found for this email' });
+    }
+
+    user.passwordHash = await bcrypt.hash(payload.newPassword, 10);
+    user.passwordCipher = encryptPassword(payload.newPassword);
+    user.mustChangePassword = false;
+    user.passwordChangedAt = new Date();
+    await user.save();
+
+    return res.json({ message: 'Super admin password reset successful. Please login now.' });
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = { register, login, bootstrapSuperAdmin, forgotSuperAdminPassword };

@@ -118,6 +118,9 @@ function getDefaultPasswordForRole(role) {
   if (role === ROLES.ADMIN) {
     return process.env.DEFAULT_ADMIN_PASSWORD || '123456';
   }
+  if (role === ROLES.TEACHER) {
+    return process.env.DEFAULT_TEACHER_PASSWORD || '123456';
+  }
   if (role === ROLES.STUDENT) {
     return process.env.DEFAULT_STUDENT_PASSWORD || '123456';
   }

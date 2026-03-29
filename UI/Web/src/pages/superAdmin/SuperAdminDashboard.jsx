@@ -21,6 +21,7 @@ import SubjectManager from '../../components/SubjectManager';
 import AttendanceWorkspace from '../../components/AttendanceWorkspace';
 import ChangePasswordForm from '../../components/ChangePasswordForm';
 import SharedGrid from '../../components/SharedGrid';
+import AdmissionOptionsManager from '../../components/AdmissionOptionsManager';
 const baseMenus = [
   { key: 'analytics', label: 'Analytics Hub', icon: 'chart', path: '/super-admin' },
   { key: 'student-form', label: 'Student Master Form', icon: 'users', path: '/super-admin/student-form' },
@@ -29,6 +30,7 @@ const baseMenus = [
   { key: 'teachers-list', label: 'Teacher List', icon: 'users', path: '/super-admin/teachers-list' },
   { key: 'subjects', label: 'Subjects', icon: 'spark', path: '/super-admin/subjects' },
   { key: 'attendance', label: 'Attendance', icon: 'calendar', path: '/super-admin/attendance' },
+  { key: 'admission-options', label: 'Admission Setup', icon: 'spark', path: '/super-admin/admission-options' },
   { key: 'password', label: 'Change Password', icon: 'shield', path: '/super-admin/password' },
   { key: 'lectures', label: 'Lectures Logged', icon: 'calendar', path: '/super-admin/lectures' },
   { key: 'fees', label: 'Finance Monitor', icon: 'money', path: '/super-admin/fees' },
@@ -104,6 +106,18 @@ export default function SuperAdminDashboard() {
   const [feesPage, setFeesPage] = useState(1);
   const [feesMeta, setFeesMeta] = useState({ page: 1, totalPages: 1 });
   const [menuOpen, setMenuOpen] = useState(false);
+  const lastLoginLabel = useMemo(() => {
+    if (!user?.lastLoginAt) return '';
+    const parsed = new Date(user.lastLoginAt);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }, [user?.lastLoginAt]);
 
   const menuItems = useMemo(() => [...baseMenus, ...extraMenus], [extraMenus]);
   const routeModule = useMemo(() => {
@@ -113,6 +127,7 @@ export default function SuperAdminDashboard() {
     if (location.pathname.startsWith('/super-admin/teachers-list')) return 'teachers-list';
     if (location.pathname.startsWith('/super-admin/subjects')) return 'subjects';
     if (location.pathname.startsWith('/super-admin/attendance')) return 'attendance';
+    if (location.pathname.startsWith('/super-admin/admission-options')) return 'admission-options';
     if (location.pathname.startsWith('/super-admin/password')) return 'password';
     if (location.pathname.startsWith('/super-admin/lectures')) return 'lectures';
     if (location.pathname.startsWith('/super-admin/fees')) return 'fees';
@@ -240,7 +255,7 @@ if (currentModule === 'admins') {
     </article>
   );
 }
-    if (currentModule === 'student-form') {
+if (currentModule === 'student-form') {
       return (
         <article className="panel">
           <div className="panel-head">
@@ -250,7 +265,10 @@ if (currentModule === 'admins') {
           <StudentAdmissionForm />
         </article>
       );
-    }
+}
+if (currentModule === 'admission-options') {
+  return <AdmissionOptionsManager />;
+}
     if (currentModule === 'teacher-form') {
       return (
         <article className="panel">
@@ -673,7 +691,7 @@ if (currentModule === 'admins') {
       <p className="dash-brand">Baliraja Academy Gangapur Management</p>
       <header className="dash-topbar fade-up">
         <div>
-          <p className="dash-kicker">Role: Super Admin</p>
+          <p className="dash-kicker">Role: Super Admin · {user?.email || 'no-email'}</p>
           <h2>Admin Operations Dashboard</h2>
         </div>
         <button className="mobile-nav-toggle btn btn-outline-primary" onClick={() => setMenuOpen(true)}>
@@ -685,12 +703,27 @@ if (currentModule === 'admins') {
 
       <section className="workspace">
         {menuOpen ? <button className="side-nav-overlay" onClick={() => setMenuOpen(false)} aria-label="Close menu" /> : null}
-        <aside className={`side-nav fade-up delay-1 ${menuOpen ? 'open' : ''}`}>
+        <aside className={`side-nav side-nav-drop ${menuOpen ? 'open' : ''}`}>
           <div className="side-nav-head">
             <strong>Navigation</strong>
             <button className="btn btn-sm btn-outline-primary" onClick={() => setMenuOpen(false)}>
               <i className="bi bi-x-lg" />
             </button>
+          </div>
+          <div className="side-nav-profile">
+            <div className="side-nav-lottie">
+              <dotlottie-player
+                src="/assets/login-lottie.json"
+                background="transparent"
+                speed="1"
+                loop
+                autoplay
+              ></dotlottie-player>
+            </div>
+            <p className="side-nav-role">Role: Super Admin</p>
+            <strong>{user?.fullName || 'Super Admin'}</strong>
+            <small>{user?.email || 'no-email'}</small>
+            {lastLoginLabel ? <small>Last login: {lastLoginLabel}</small> : null}
           </div>
           {menuItems.map((item) => {
             const isActive = (activeModule === item.key) || (routeModule === item.key);
@@ -711,7 +744,7 @@ if (currentModule === 'admins') {
           })}
         </aside>
 
-        <main className="workspace-main fade-up delay-2">
+        <main className="workspace-main workspace-main-enter">
           <NoticeStrip />
           {moduleView}
         </main>

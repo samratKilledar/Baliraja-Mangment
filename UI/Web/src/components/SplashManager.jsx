@@ -105,7 +105,7 @@ export default function SplashManager() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
         <form onSubmit={handleUpload} className="form-grid">
           <label>
             <span>Choose Image or 4s Video</span>
@@ -129,10 +129,12 @@ export default function SplashManager() {
 
           <div className="preview-card">
           <p style={{ margin: '0 0 8px', color: '#4a5a7a' }}>Live Preview</p>
-          <div style={{ border: '1px dashed #cbd2e1', borderRadius: 12, padding: 10, background: '#f8fafc' }}>
+          <div style={{ border: '1px dashed #cbd2e1', borderRadius: 12, padding: 8, background: '#f8fafc' }}>
             <div
               style={{
                 width: '100%',
+                maxWidth: 220,
+                margin: '0 auto',
                 aspectRatio: 9 / 16,
                 background: previewVideo
                   ? '#000'
