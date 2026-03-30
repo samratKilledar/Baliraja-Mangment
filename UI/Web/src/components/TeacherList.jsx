@@ -26,6 +26,7 @@ export default function TeacherList() {
   const [showPasswords, setShowPasswords] = useState({});
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [extendForm, setExtendForm] = useState({ months: '', date: '', note: '' });
+  const [actionBusy, setActionBusy] = useState('');
 
   useEffect(() => {
     load();
@@ -75,6 +76,73 @@ export default function TeacherList() {
 
   function togglePassword(teacherId) {
     setShowPasswords((prev) => ({ ...prev, [teacherId]: !prev[teacherId] }));
+  }
+
+  async function shareTeacherCredentials(teacher, nextPassword) {
+    const teacherName = teacher?.userId?.fullName || 'Teacher';
+    const loginId = teacher?.userId?.phone || teacher?.userId?.email || '';
+    const message =
+      `Teacher Login Credentials\n` +
+      `Name: ${teacherName}\n` +
+      `Login: ${loginId}\n` +
+      `Password: ${nextPassword}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ text: message });
+        return;
+      }
+    } catch (err) {
+      // fallback to clipboard below
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(message);
+        alert('New password created and copied. Share with teacher.');
+      } else {
+        alert(`New password created. Share this with teacher:\n\n${message}`);
+      }
+    } catch (err) {
+      alert(`New password created. Share this with teacher:\n\n${message}`);
+    }
+  }
+
+  async function resetTeacherPassword(teacher) {
+    const userId = teacher?.userId?._id || teacher?.userId;
+    if (!userId) {
+      setError('Unable to reset password: teacher user id missing.');
+      return;
+    }
+    const busyKey = `password-reset-${teacher._id}`;
+    setActionBusy(busyKey);
+    try {
+      const { data } = await api.post(`/users/${userId}/password/auto`, { length: 8 });
+      const nextPassword = data?.tempPassword || '';
+      if (!nextPassword) {
+        setError('Password reset failed: temp password not returned.');
+        return;
+      }
+      setTeachers((prev) =>
+        prev.map((item) =>
+          item._id === teacher._id
+            ? {
+                ...item,
+                userId: {
+                  ...item.userId,
+                  passwordVisible: nextPassword
+                }
+              }
+            : item
+        )
+      );
+      setError('');
+      await shareTeacherCredentials(teacher, nextPassword);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Unable to reset teacher password');
+    } finally {
+      setActionBusy('');
+    }
   }
 
   async function saveEdit(id) {
@@ -305,6 +373,15 @@ export default function TeacherList() {
                           >
                             Payment Notes
                           </button>
+                          {(user?.role === 'super_admin' || user?.role === 'admin') ? (
+                            <button
+                              className="ghost-btn"
+                              onClick={() => resetTeacherPassword(t)}
+                              disabled={actionBusy === `password-reset-${t._id}`}
+                            >
+                              {actionBusy === `password-reset-${t._id}` ? 'Resetting...' : 'Reset Password'}
+                            </button>
+                          ) : null}
                           <button
                             className="danger-btn"
                             onClick={async () => {

@@ -114,7 +114,7 @@ function shapeStudentDetails(raw = {}) {
 }
 
 function generatePassword() {
-  return Math.random().toString(36).slice(-10);
+  return generateAlphaNumericPassword(8);
 }
 
 function generateNumericPassword(length = 6) {
@@ -125,6 +125,75 @@ function generateNumericPassword(length = 6) {
   return out;
 }
 
+function generateAlphaNumericPassword(length = 8) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let out = '';
+  for (let i = 0; i < length; i += 1) {
+    out += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return out;
+}
+
+function generateStrongAlphaNumericPassword(length = 8) {
+  const safeLength = Math.min(Math.max(Number(length) || 8, 6), 8);
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+  const digits = '0123456789';
+  const all = `${letters}${digits}`;
+  const chars = [
+    letters.charAt(Math.floor(Math.random() * letters.length)),
+    digits.charAt(Math.floor(Math.random() * digits.length))
+  ];
+  while (chars.length < safeLength) {
+    chars.push(all.charAt(Math.floor(Math.random() * all.length)));
+  }
+  for (let i = chars.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
+}
+
+function normalizeEnrollmentNo(value = '') {
+  return String(value || '').trim().toUpperCase();
+}
+
+function isStudentPasswordFormatValid(password = '') {
+  const text = String(password || '');
+  return (
+    text.length >= 6 &&
+    text.length <= 8 &&
+    /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z0-9]+$/.test(text)
+  );
+}
+
+function studentPasswordFormatMessage() {
+  return 'Student password must be 6 to 8 characters and include both letters and numbers.';
+}
+
+async function isPasswordInUseForRole(role, plainPassword, excludeUserId = null) {
+  if (!plainPassword) return false;
+  const query = { role };
+  if (excludeUserId) query._id = { $ne: excludeUserId };
+  const users = await User.find(query).select('_id passwordHash');
+  for (const user of users) {
+    // bcrypt.compare is required because hashes are salted.
+    // eslint-disable-next-line no-await-in-loop
+    const same = await bcrypt.compare(plainPassword, user.passwordHash);
+    if (same) return true;
+  }
+  return false;
+}
+
+async function generateUniqueStudentPassword(length = 8) {
+  for (let i = 0; i < 30; i += 1) {
+    const candidate = generateStrongAlphaNumericPassword(length);
+    // eslint-disable-next-line no-await-in-loop
+    const exists = await isPasswordInUseForRole(ROLES.STUDENT, candidate);
+    if (!exists) return candidate;
+  }
+  throw new Error('Unable to generate unique student password. Please try again.');
+}
+
 function getDefaultPasswordForRole(role) {
   if (role === ROLES.ADMIN) {
     return process.env.DEFAULT_ADMIN_PASSWORD || '123456';
@@ -133,7 +202,7 @@ function getDefaultPasswordForRole(role) {
     return process.env.DEFAULT_TEACHER_PASSWORD || '123456';
   }
   if (role === ROLES.STUDENT) {
-    return process.env.DEFAULT_STUDENT_PASSWORD || '123456';
+    return '';
   }
   return '';
 }
@@ -225,7 +294,7 @@ async function createUser(req, res, next) {
     }
 
     const enrollmentNo = payload.role === ROLES.STUDENT
-      ? (payload.enrollmentNo || (await generateEnrollmentNo(payload.fullName)))
+      ? normalizeEnrollmentNo(payload.enrollmentNo || (await generateEnrollmentNo(payload.fullName)))
       : undefined;
     if (payload.role === ROLES.STUDENT && !payload.phone) {
       return res.status(400).json({ message: 'phone is required for student' });
@@ -246,7 +315,21 @@ async function createUser(req, res, next) {
       return res.status(409).json({ message: 'Enrollment number already exists' });
     }
 
-    const plainPassword = payload.password || getDefaultPasswordForRole(payload.role) || generatePassword();
+    let plainPassword = payload.password || getDefaultPasswordForRole(payload.role) || generatePassword();
+    if (payload.role === ROLES.STUDENT) {
+      if (payload.password && !isStudentPasswordFormatValid(payload.password)) {
+        return res.status(400).json({ message: studentPasswordFormatMessage() });
+      }
+      if (payload.password) {
+        const duplicate = await isPasswordInUseForRole(ROLES.STUDENT, payload.password);
+        if (duplicate) {
+          return res.status(409).json({ message: 'Student password already exists. Please choose a different password.' });
+        }
+      } else {
+        plainPassword = await generateUniqueStudentPassword(8);
+      }
+    }
+
     const passwordHash = await bcrypt.hash(plainPassword, 10);
 
     const user = await User.create({
@@ -451,6 +534,15 @@ async function resetUserPassword(req, res, next) {
     if (!canManageUser(req.user, user)) {
       return res.status(403).json({ message: 'Forbidden: cannot update this password' });
     }
+    if (user.role === ROLES.STUDENT) {
+      if (!isStudentPasswordFormatValid(payload.newPassword)) {
+        return res.status(400).json({ message: studentPasswordFormatMessage() });
+      }
+      const duplicate = await isPasswordInUseForRole(ROLES.STUDENT, payload.newPassword, user._id);
+      if (duplicate) {
+        return res.status(409).json({ message: 'Student password already exists. Please choose a different password.' });
+      }
+    }
 
     user.passwordHash = await bcrypt.hash(payload.newPassword, 10);
     user.passwordCipher = encryptPassword(payload.newPassword);
@@ -482,22 +574,29 @@ async function autoResetUserPassword(req, res, next) {
     if (!canManageUser(req.user, user)) {
       return res.status(403).json({ message: 'Forbidden: cannot update this password' });
     }
-    if (user.role !== ROLES.STUDENT) {
-      return res.status(400).json({ message: 'Auto reset is only available for student users.' });
+    if (![ROLES.STUDENT, ROLES.TEACHER].includes(user.role)) {
+      return res.status(400).json({ message: 'Auto reset is only available for student or teacher users.' });
     }
 
-    const nextPassword = generateNumericPassword(payload.length || 6);
+    const nextPassword = user.role === ROLES.STUDENT
+      ? await generateUniqueStudentPassword(payload.length || 8)
+      : generateStrongAlphaNumericPassword(payload.length || 8);
     user.passwordHash = await bcrypt.hash(nextPassword, 10);
     user.passwordCipher = encryptPassword(nextPassword);
-    user.mustChangePassword = false;
-    user.passwordChangedAt = new Date();
-    user.mobileAppSessionActive = false;
-    user.mobileAppSessionKey = '';
-    user.mobileAppSessionStartedAt = undefined;
+    if (user.role === ROLES.TEACHER) {
+      user.mustChangePassword = true;
+      user.passwordChangedAt = undefined;
+    } else {
+      user.mustChangePassword = false;
+      user.passwordChangedAt = new Date();
+      user.mobileAppSessionActive = false;
+      user.mobileAppSessionKey = '';
+      user.mobileAppSessionStartedAt = undefined;
+    }
     await user.save();
 
     return res.json({
-      message: 'Student password reset successfully.',
+      message: `${user.role === ROLES.TEACHER ? 'Teacher' : 'Student'} password reset successfully.`,
       tempPassword: nextPassword,
       user: serializeUser(user)
     });

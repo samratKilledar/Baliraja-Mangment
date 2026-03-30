@@ -38,7 +38,12 @@ export default function RootNavigator() {
       {!hydrated ? (
         <LoadingOverlay visible text="Restoring session..." />
       ) : (
-        <Stack.Navigator screenOptions={{headerShown: false}}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+            animationDuration: 300,
+          }}>
           {!user ? (
             <>
               <Stack.Screen name="Login" component={LoginScreen} />

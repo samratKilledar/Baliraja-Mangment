@@ -20,6 +20,7 @@ import LottieView from 'lottie-react-native';
 import {useAuth} from '../../context/AuthContext';
 import {useLanguage} from '../../context/LanguageContext';
 import COLORS from '../../config/colors';
+import TYPOGRAPHY from '../../config/typography';
 import LoadingOverlay from '../../components/LoadingOverlay';
 import {tx} from '../../i18n/strings';
 import client from '../../api/client';
@@ -43,6 +44,7 @@ const FUTURE_LINES = {
   ],
 };
 const LOGIN_LOTTIE = require('../../assets/animations/login-lottie.json');
+const EMPHASIZED_EASING = Easing.bezier(...TYPOGRAPHY.motion.easing);
 
 export default function LoginScreen() {
   const {setSession} = useAuth();
@@ -70,14 +72,14 @@ export default function LoginScreen() {
     Animated.parallel([
       Animated.timing(fadeIn, {
         toValue: 1,
-        duration: 500,
-        easing: Easing.out(Easing.cubic),
+        duration: TYPOGRAPHY.motion.durationMs,
+        easing: EMPHASIZED_EASING,
         useNativeDriver: true,
       }),
       Animated.timing(liftIn, {
         toValue: 0,
-        duration: 500,
-        easing: Easing.out(Easing.cubic),
+        duration: TYPOGRAPHY.motion.durationMs,
+        easing: EMPHASIZED_EASING,
         useNativeDriver: true,
       }),
     ]).start();
@@ -120,12 +122,6 @@ export default function LoginScreen() {
         password,
         clientType: 'mobile_app',
       });
-      if (data?.user?.role === 'student' && isEmailLogin) {
-        setLoginError(
-          'Student login in app is allowed only with mobile number and password.',
-        );
-        return;
-      }
       setSession(data.token, data.user);
       await AsyncStorage.setItem(
         'ims_bound_mobile',
@@ -175,7 +171,8 @@ export default function LoginScreen() {
                     style={[
                       styles.langChip,
                       language === 'en' && styles.langChipActive,
-                    ]}>
+                    ]}
+                    android_ripple={{color: TYPOGRAPHY.motion.rippleColor}}>
                     <Text
                       style={[
                         styles.langChipText,
@@ -189,7 +186,8 @@ export default function LoginScreen() {
                     style={[
                       styles.langChip,
                       language === 'mr' && styles.langChipActive,
-                    ]}>
+                    ]}
+                    android_ripple={{color: TYPOGRAPHY.motion.rippleColor}}>
                     <Text
                       style={[
                         styles.langChipText,
@@ -221,7 +219,7 @@ export default function LoginScreen() {
 
               <View style={styles.form}>
                 <TextInput
-                  placeholder="Mobile number or email (students use mobile)"
+                  placeholder="Mobile number or email"
                   placeholderTextColor={COLORS.textMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -248,7 +246,8 @@ export default function LoginScreen() {
                     styles.button,
                     !canSubmit && styles.buttonDisabled,
                     pressed && canSubmit && styles.buttonPressed,
-                  ]}>
+                  ]}
+                  android_ripple={{color: TYPOGRAPHY.motion.rippleColor}}>
                   <Text style={styles.buttonText}>{t.sendOtp}</Text>
                 </Pressable>
               </View>
@@ -289,7 +288,7 @@ const styles = StyleSheet.create({
     height: 320,
     borderRadius: 40,
     transform: [{rotate: '-18deg'}],
-    backgroundColor: '#1f3698',
+    backgroundColor: COLORS.primary,
     top: -190,
     right: -130,
     opacity: 0.55,
@@ -300,7 +299,7 @@ const styles = StyleSheet.create({
     height: 260,
     borderRadius: 34,
     transform: [{rotate: '-14deg'}],
-    backgroundColor: '#54a57c',
+    backgroundColor: COLORS.primaryLight,
     bottom: -180,
     left: -140,
     opacity: 0.16,
@@ -311,7 +310,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     height: 170,
-    backgroundColor: '#223a92',
+    backgroundColor: COLORS.primary,
     opacity: 0.14,
   },
   card: {
@@ -321,10 +320,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#d7def4',
+    borderColor: COLORS.border,
     padding: 20,
-    shadowColor: '#162656',
-    shadowOpacity: 0.18,
+    shadowColor: COLORS.primaryLight,
+    shadowOpacity: 0.14,
     shadowRadius: 16,
     shadowOffset: {width: 0, height: 8},
     elevation: 5,
@@ -333,9 +332,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#f4f7ff',
+    backgroundColor: COLORS.light,
     borderWidth: 1,
-    borderColor: '#dfe6fa',
+    borderColor: COLORS.border,
   },
   lottie: {
     width: '100%',
@@ -349,6 +348,7 @@ const styles = StyleSheet.create({
   langLabel: {
     color: COLORS.textGray,
     fontWeight: '700',
+    fontSize: TYPOGRAPHY.android.support,
   },
   langSwitch: {
     flexDirection: 'row',
@@ -356,19 +356,20 @@ const styles = StyleSheet.create({
   },
   langChip: {
     borderWidth: 1,
-    borderColor: '#cad4f7',
-    backgroundColor: '#f8f9ff',
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
     borderRadius: 999,
     paddingVertical: 5,
     paddingHorizontal: 10,
   },
   langChipActive: {
-    borderColor: '#2944ad',
-    backgroundColor: '#e6edff',
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.info,
   },
   langChipText: {
     color: COLORS.textGray,
     fontWeight: '600',
+    fontSize: TYPOGRAPHY.android.support,
   },
   langChipTextActive: {
     color: COLORS.textDark,
@@ -378,25 +379,27 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: COLORS.textDark,
     fontWeight: '800',
-    fontSize: 28,
+    fontSize: TYPOGRAPHY.android.h1,
     lineHeight: 34,
     letterSpacing: 0.2,
   },
   title: {
     marginTop: 4,
-    fontSize: 24,
+    fontSize: TYPOGRAPHY.android.h2,
     fontWeight: '700',
     color: COLORS.textDark,
   },
   subtitle: {
     marginTop: 4,
     color: COLORS.textGray,
+    fontSize: TYPOGRAPHY.android.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
   },
   futureText: {
     marginTop: 6,
-    color: '#1c43a5',
+    color: COLORS.primary,
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: TYPOGRAPHY.android.support,
   },
   form: {
     marginTop: 14,
@@ -406,30 +409,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 13,
     borderRadius: 12,
-    borderColor: '#dbe2f7',
-    backgroundColor: '#f9fbff',
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
     color: COLORS.textDark,
+    fontSize: TYPOGRAPHY.android.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
   },
   button: {
     marginTop: 4,
-    paddingVertical: 13,
     borderRadius: 12,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
   },
   buttonDisabled: {
-    backgroundColor: '#8d98bf',
+    backgroundColor: COLORS.primaryLight,
   },
   buttonPressed: {
     transform: [{scale: 0.98}],
+    backgroundColor: COLORS.primaryLight,
   },
   buttonText: {
     color: COLORS.white,
-    fontWeight: '700',
+    fontWeight: TYPOGRAPHY.button.fontWeight,
+    fontSize: TYPOGRAPHY.android.button,
+    letterSpacing: TYPOGRAPHY.button.letterSpacing,
   },
   errorText: {
     marginTop: 4,
     color: COLORS.danger,
     fontWeight: '600',
+    fontSize: TYPOGRAPHY.android.support,
   },
 });

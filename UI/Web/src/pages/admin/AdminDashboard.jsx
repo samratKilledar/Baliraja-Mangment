@@ -21,6 +21,7 @@ import DivisionAttendanceBoard from '../../components/DivisionAttendanceBoard';
 import SharedGrid from '../../components/SharedGrid';
 import AdmissionOptionsManager from '../../components/AdmissionOptionsManager';
 import PlacedStudentsManager from '../../components/PlacedStudentsManager';
+import ReferenceCenter from '../../components/ReferenceCenter';
 import api from '../../api/client';
 
 const navItems = [
@@ -40,7 +41,8 @@ const navItems = [
   { key: 'complaints', label: 'Complaints', icon: 'alert-circle', path: '/admin/complaints' },
   { key: 'leaves', label: 'Leaves', icon: 'calendar', path: '/admin/leaves' },
   { key: 'splash', label: 'App Splash', icon: 'spark', path: '/admin/splash' },
-  { key: 'placed-students', label: 'Placed Student', icon: 'users', path: '/admin/placed-students' }
+  { key: 'placed-students', label: 'Placed Student', icon: 'users', path: '/admin/placed-students' },
+  { key: 'references', label: 'References', icon: 'users', path: '/admin/references' }
 ];
 
 const tasks = [
@@ -136,6 +138,7 @@ export default function AdminDashboard() {
     if (location.pathname.startsWith('/admin/leaves')) return 'leaves';
     if (location.pathname.startsWith('/admin/splash')) return 'splash';
     if (location.pathname.startsWith('/admin/placed-students')) return 'placed-students';
+    if (location.pathname.startsWith('/admin/references')) return 'references';
     return 'overview';
   }, [location.pathname]);
 
@@ -309,6 +312,17 @@ export default function AdminDashboard() {
     }
     if (routeKey === 'splash') {
       return <SplashManager />;
+    }
+    if (routeKey === 'references') {
+      return (
+        <article className="panel">
+          <div className="panel-head">
+            <h3>Reference Form</h3>
+            <VectorIcon name="users" size={18} />
+          </div>
+          <ReferenceCenter mode="create" />
+        </article>
+      );
     }
     return (
       <>

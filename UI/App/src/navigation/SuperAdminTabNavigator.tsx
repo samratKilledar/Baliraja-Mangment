@@ -5,17 +5,20 @@ import SuperAdminHome from '../screens/superAdmin/SuperAdminHome';
 import SuperAdminNoticePublisher from '../screens/superAdmin/SuperAdminNoticePublisher';
 import SuperAdminStudentList from '../screens/superAdmin/SuperAdminStudentList';
 import SuperAdminFinanceScreen from '../screens/superAdmin/SuperAdminFinanceScreen';
-import SuperAdminPlacedStudents from '../screens/superAdmin/SuperAdminPlacedStudents';
+import PlacedStudentsListScreen from '../screens/common/PlacedStudentsListScreen';
+import ReferenceScreen from '../screens/common/ReferenceScreen';
+import COLORS from '../config/colors';
 
 const Tab = createBottomTabNavigator();
 
 const TAB_META: Record<string, {label: string; color: string; short: string}> =
   {
-    Status: {label: 'Status', color: '#2563EB', short: 'ST'},
-    Notice: {label: 'Notice', color: '#F59E0B', short: 'N'},
-    Students: {label: 'Students', color: '#16A34A', short: 'SU'},
-    Income: {label: 'Income', color: '#0891B2', short: 'I'},
-    Placed: {label: 'Placed', color: '#9333EA', short: 'PL'},
+    Status: {label: 'Status', color: COLORS.primary, short: 'ST'},
+    Notice: {label: 'Notice', color: COLORS.primary, short: 'N'},
+    Students: {label: 'Students', color: COLORS.primary, short: 'SU'},
+    Income: {label: 'Income', color: COLORS.primary, short: 'I'},
+    Placed: {label: 'Placed', color: COLORS.primary, short: 'PL'},
+    References: {label: 'References', color: COLORS.primary, short: 'RF'},
   };
 
 function TabIcon({routeName, focused}: {routeName: string; focused: boolean}) {
@@ -58,6 +61,10 @@ function PlacedTabIcon({focused}: {focused: boolean}) {
   return <TabIcon routeName="Placed" focused={focused} />;
 }
 
+function ReferenceTabIcon({focused}: {focused: boolean}) {
+  return <TabIcon routeName="References" focused={focused} />;
+}
+
 export default function SuperAdminTabNavigator() {
   return (
     <Tab.Navigator
@@ -67,10 +74,10 @@ export default function SuperAdminTabNavigator() {
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
-        tabBarActiveTintColor: '#2563EB',
-        tabBarInactiveTintColor: '#6B7280',
-        tabBarActiveBackgroundColor: '#E7EEFF',
-        tabBarInactiveBackgroundColor: '#FFFFFF',
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textGray,
+        tabBarActiveBackgroundColor: COLORS.info,
+        tabBarInactiveBackgroundColor: COLORS.white,
       }}>
       <Tab.Screen
         name="Status"
@@ -94,8 +101,13 @@ export default function SuperAdminTabNavigator() {
       />
       <Tab.Screen
         name="Placed"
-        component={SuperAdminPlacedStudents}
+        children={() => <PlacedStudentsListScreen title="Placed Students" />}
         options={{tabBarIcon: PlacedTabIcon}}
+      />
+      <Tab.Screen
+        name="References"
+        children={() => <ReferenceScreen mode="list" />}
+        options={{tabBarIcon: ReferenceTabIcon}}
       />
     </Tab.Navigator>
   );
@@ -106,9 +118,9 @@ const styles = StyleSheet.create({
     height: 76,
     paddingTop: 4,
     paddingBottom: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.white,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: COLORS.border,
   },
   tabBarLabel: {
     fontSize: 11,
@@ -118,6 +130,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginHorizontal: 4,
     marginTop: 2,
+    minHeight: 48,
   },
   iconWrap: {
     alignItems: 'center',
@@ -133,11 +146,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconText: {
-    color: '#374151',
+    color: COLORS.textGray,
     fontSize: 14,
     fontWeight: '800',
   },
   iconTextFocused: {
-    color: '#FFFFFF',
+    color: COLORS.white,
   },
 });

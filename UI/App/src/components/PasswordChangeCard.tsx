@@ -1,6 +1,8 @@
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {
   Alert,
+  Animated,
+  Easing,
   Pressable,
   StyleSheet,
   Text,
@@ -9,6 +11,7 @@ import {
 } from 'react-native';
 import client from '../api/client';
 import COLORS from '../config/colors';
+import TYPOGRAPHY from '../config/typography';
 
 type PasswordChangeCardProps = {
   title?: string;
@@ -25,6 +28,24 @@ export default function PasswordChangeCard({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const successScale = useRef(new Animated.Value(1)).current;
+
+  function playSuccessBounce() {
+    Animated.sequence([
+      Animated.timing(successScale, {
+        toValue: 1.05,
+        duration: 140,
+        easing: Easing.bezier(...TYPOGRAPHY.motion.easing),
+        useNativeDriver: true,
+      }),
+      Animated.spring(successScale, {
+        toValue: 1,
+        tension: 90,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }
 
   async function handleSubmit() {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -52,6 +73,7 @@ export default function PasswordChangeCard({
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      playSuccessBounce();
       onSuccess?.(data?.user);
       Alert.alert('Success', 'Password updated successfully.');
     } catch (err: any) {
@@ -66,7 +88,7 @@ export default function PasswordChangeCard({
   }
 
   return (
-    <View style={styles.card}>
+    <Animated.View style={[styles.card, {transform: [{scale: successScale}]}]}>
       <Text style={styles.heading}>{title}</Text>
       <Text style={styles.subtext}>{subtitle}</Text>
 
@@ -95,12 +117,13 @@ export default function PasswordChangeCard({
       <Pressable
         style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleSubmit}
-        disabled={loading}>
+        disabled={loading}
+        android_ripple={{color: TYPOGRAPHY.motion.rippleColor}}>
         <Text style={styles.buttonText}>
           {loading ? 'Updating...' : 'Update Password'}
         </Text>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -108,44 +131,54 @@ const styles = StyleSheet.create({
   card: {
     marginTop: 16,
     padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#d7dff6',
+    borderColor: COLORS.border,
+    shadowColor: COLORS.primaryLight,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
+    elevation: 2,
   },
   heading: {
     color: COLORS.textDark,
     fontWeight: '800',
-    fontSize: 17,
+    fontSize: TYPOGRAPHY.android.h2,
   },
   subtext: {
     color: COLORS.textGray,
     marginTop: 4,
     marginBottom: 12,
+    fontSize: TYPOGRAPHY.android.support,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d7dff6',
+    borderColor: COLORS.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#f9fbff',
+    backgroundColor: COLORS.white,
     marginBottom: 10,
     color: COLORS.textDark,
+    fontSize: TYPOGRAPHY.android.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
   },
   button: {
     marginTop: 4,
-    backgroundColor: '#1f3ca8',
+    backgroundColor: COLORS.primary,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    minHeight: 48,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
   buttonText: {
     color: '#fff',
-    fontWeight: '800',
+    fontWeight: TYPOGRAPHY.button.fontWeight,
+    fontSize: TYPOGRAPHY.android.button,
+    letterSpacing: TYPOGRAPHY.button.letterSpacing,
   },
 });

@@ -193,6 +193,10 @@ function formatAdmissionNo(fullName = 'STUDENT', admissionDate) {
   return `${first}${yyyy}${mm}${dd}-${rand}`;
 }
 
+function normalizeEnrollmentNo(value = '') {
+  return String(value || '').trim().toUpperCase();
+}
+
 function formatDate(value) {
   if (!value) return '—';
   const date = new Date(value);
@@ -507,6 +511,7 @@ async function updateStudent(req, res, next) {
 
     // Prevent duplicate enrollment numbers, emails or phones
     if (payload.enrollmentNo) {
+      payload.enrollmentNo = normalizeEnrollmentNo(payload.enrollmentNo);
       const existingEnroll = await Student.findOne({ enrollmentNo: payload.enrollmentNo, _id: { $ne: studentId } });
       if (existingEnroll) return res.status(409).json({ message: 'Enrollment number already exists' });
     }

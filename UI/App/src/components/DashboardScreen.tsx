@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import ImageView from '@apexglory/react-native-image-viewing';
 import COLORS from '../config/colors';
+import TYPOGRAPHY from '../config/typography';
 import LoadingOverlay from './LoadingOverlay';
 import {Role} from '../types';
 import {useLanguage} from '../context/LanguageContext';
@@ -53,6 +54,7 @@ type SlideItem = {
 
 const defaultSlides: SlideItem[] = [];
 const SCHOOL_SCROLL_TITLE = 'बलीराजा अकॅडमी अँड इंटरनॅशनल स्कूल';
+const EMPHASIZED_EASING = Easing.bezier(...TYPOGRAPHY.motion.easing);
 
 const roleTitle: Record<Role, {en: string; mr: string}> = {
   super_admin: {en: 'Super Admin Dashboard', mr: 'सुपर अॅडमिन डॅशबोर्ड'},
@@ -147,14 +149,14 @@ export default function DashboardScreen({
     Animated.parallel([
       Animated.timing(fadeIn, {
         toValue: 1,
-        duration: 380,
-        easing: Easing.out(Easing.cubic),
+        duration: TYPOGRAPHY.motion.durationMs,
+        easing: EMPHASIZED_EASING,
         useNativeDriver: true,
       }),
       Animated.timing(slideUp, {
         toValue: 0,
-        duration: 380,
-        easing: Easing.out(Easing.cubic),
+        duration: TYPOGRAPHY.motion.durationMs,
+        easing: EMPHASIZED_EASING,
         useNativeDriver: true,
       }),
     ]).start();
@@ -255,7 +257,8 @@ export default function DashboardScreen({
                 style={[
                   styles.langChip,
                   language === 'en' && styles.langChipActive,
-                ]}>
+                ]}
+                android_ripple={{color: TYPOGRAPHY.motion.rippleColor}}>
                 <Text
                   style={[
                     styles.langChipText,
@@ -269,7 +272,8 @@ export default function DashboardScreen({
                 style={[
                   styles.langChip,
                   language === 'mr' && styles.langChipActive,
-                ]}>
+                ]}
+                android_ripple={{color: TYPOGRAPHY.motion.rippleColor}}>
                 <Text
                   style={[
                     styles.langChipText,
@@ -325,7 +329,8 @@ export default function DashboardScreen({
                     styles.menuItem,
                     pressed && styles.menuPressed,
                   ]}
-                  onPress={() => handleMenuPress(item)}>
+                  onPress={() => handleMenuPress(item)}
+                  android_ripple={{color: TYPOGRAPHY.motion.rippleColor}}>
                   <Text style={styles.menuItemText}>{item}</Text>
                 </Pressable>
               ))}
@@ -398,10 +403,14 @@ export default function DashboardScreen({
             <View style={styles.uploadActions}>
               <Pressable
                 onPress={() => setUploadVisible(false)}
-                style={styles.cancelButton}>
+                style={styles.cancelButton}
+                android_ripple={{color: TYPOGRAPHY.motion.rippleColor}}>
                 <Text style={styles.cancelButtonText}>{t.cancel}</Text>
               </Pressable>
-              <Pressable onPress={handleAddSlide} style={styles.uploadButton}>
+              <Pressable
+                onPress={handleAddSlide}
+                style={styles.uploadButton}
+                android_ripple={{color: TYPOGRAPHY.motion.rippleColor}}>
                 <Text style={styles.uploadButtonText}>{t.upload}</Text>
               </Pressable>
             </View>
@@ -424,7 +433,7 @@ export default function DashboardScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#eef2ff',
+    backgroundColor: COLORS.background,
   },
   fixedHeader: {
     width: '100%',
@@ -432,9 +441,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 0,
     paddingBottom: 4,
-    backgroundColor: '#eef2ff',
+    backgroundColor: COLORS.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#d7def7',
+    borderBottomColor: COLORS.border,
   },
   fixedHeaderStudent: {
     paddingHorizontal: 0,
@@ -452,8 +461,8 @@ const styles = StyleSheet.create({
   },
   bottomBarWrap: {
     borderTopWidth: 1,
-    borderTopColor: '#d7def7',
-    backgroundColor: '#ffffff',
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.white,
     paddingHorizontal: 10,
     paddingTop: 8,
     paddingBottom: 8,
@@ -462,10 +471,15 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#d4dcf6',
-    borderRadius: 12,
+    borderColor: COLORS.border,
+    borderRadius: 16,
     paddingVertical: 10,
     paddingHorizontal: 12,
+    shadowColor: COLORS.primaryLight,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
+    elevation: 2,
   },
   headerCardStudent: {
     borderRadius: 0,
@@ -486,7 +500,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 6,
     borderRadius: 999,
-    backgroundColor: '#8eb1ff',
+    backgroundColor: COLORS.primary,
   },
   langSwitch: {
     marginLeft: 'auto',
@@ -497,7 +511,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     maxWidth: '62%',
     color: COLORS.textDark,
-    fontSize: 12,
+    fontSize: TYPOGRAPHY.android.support,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
@@ -506,34 +520,35 @@ const styles = StyleSheet.create({
     height: 24,
     overflow: 'hidden',
     borderRadius: 999,
-    backgroundColor: '#e7eeff',
+    backgroundColor: COLORS.info,
     borderWidth: 1,
-    borderColor: '#cad7ff',
+    borderColor: COLORS.border,
     justifyContent: 'center',
   },
   marqueeText: {
     position: 'absolute',
     color: COLORS.textDark,
-    fontSize: 13,
+    fontSize: TYPOGRAPHY.android.support,
     fontWeight: '800',
     letterSpacing: 0.2,
     paddingHorizontal: 12,
   },
   langChip: {
     borderWidth: 1,
-    borderColor: '#cad4f7',
-    backgroundColor: '#f8f9ff',
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
     borderRadius: 999,
     paddingVertical: 5,
     paddingHorizontal: 10,
   },
   langChipActive: {
-    borderColor: '#2944ad',
-    backgroundColor: '#e6edff',
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.info,
   },
   langChipText: {
     color: COLORS.textGray,
     fontWeight: '600',
+    fontSize: TYPOGRAPHY.android.support,
   },
   langChipTextActive: {
     color: COLORS.textDark,
@@ -542,24 +557,26 @@ const styles = StyleSheet.create({
   title: {
     marginTop: 10,
     color: COLORS.textDark,
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: TYPOGRAPHY.android.h2,
+    fontWeight: '700',
   },
   subtitle: {
     color: COLORS.textGray,
     marginTop: 7,
+    fontSize: TYPOGRAPHY.android.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
   },
   headerMeta: {
     marginTop: 6,
     color: COLORS.textDark,
-    fontSize: 12,
+    fontSize: TYPOGRAPHY.android.support,
     fontWeight: '700',
   },
   sectionTitle: {
     color: COLORS.textDark,
     fontWeight: '700',
     marginBottom: 10,
-    fontSize: 14,
+    fontSize: TYPOGRAPHY.android.body,
   },
   sliderWrap: {
     // marginTop: 12,
@@ -567,9 +584,14 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#d4dcf6',
-    borderRadius: 14,
+    borderColor: COLORS.border,
+    borderRadius: 16,
     padding: 12,
+    shadowColor: COLORS.primaryLight,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
+    elevation: 2,
   },
   slideCard: {
     height: 240,
@@ -613,15 +635,20 @@ const styles = StyleSheet.create({
   slideDescription: {
     marginTop: 4,
     color: COLORS.textGray,
-    fontSize: 12,
+    fontSize: TYPOGRAPHY.android.support,
   },
   menuCard: {
     marginTop: 12,
     backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#d4dcf6',
-    borderRadius: 14,
+    borderColor: COLORS.border,
+    borderRadius: 16,
     padding: 12,
+    shadowColor: COLORS.primaryLight,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
+    elevation: 2,
   },
   menuGrid: {
     flexDirection: 'row',
@@ -630,10 +657,10 @@ const styles = StyleSheet.create({
   },
   menuItem: {
     width: '48%',
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#d8def1',
-    backgroundColor: '#f8faff',
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.light,
     paddingVertical: 14,
     paddingHorizontal: 10,
   },
@@ -643,25 +670,33 @@ const styles = StyleSheet.create({
   menuItemText: {
     textAlign: 'center',
     color: COLORS.textDark,
-    fontWeight: '700',
+    fontWeight: TYPOGRAPHY.button.fontWeight,
+    fontSize: TYPOGRAPHY.android.button,
+    letterSpacing: TYPOGRAPHY.button.letterSpacing,
   },
   trainingCard: {
     marginTop: 12,
     backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#d4dcf6',
-    borderRadius: 14,
+    borderColor: COLORS.border,
+    borderRadius: 16,
     padding: 12,
+    shadowColor: COLORS.primaryLight,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
+    elevation: 2,
   },
   trainingSubtitle: {
     color: COLORS.textGray,
     marginBottom: 8,
+    fontSize: TYPOGRAPHY.android.support,
   },
   trainingRow: {
     borderWidth: 1,
-    borderColor: '#dce2f7',
-    borderRadius: 10,
-    backgroundColor: '#f8faff',
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    backgroundColor: COLORS.light,
     paddingVertical: 10,
     paddingHorizontal: 10,
     marginTop: 8,
@@ -673,7 +708,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   trainingProgress: {
-    color: '#0f7d49',
+    color: COLORS.success,
     fontWeight: '700',
   },
   panel: {
@@ -681,10 +716,15 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'stretch',
     backgroundColor: COLORS.white,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#d4dcf6',
+    borderColor: COLORS.border,
     padding: 14,
+    shadowColor: COLORS.primaryLight,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: {width: 0, height: 4},
+    elevation: 2,
   },
   panelStudent: {
     marginTop: 0,
@@ -696,10 +736,13 @@ const styles = StyleSheet.create({
   panelTitle: {
     color: COLORS.textDark,
     fontWeight: '700',
+    fontSize: TYPOGRAPHY.android.body,
   },
   panelText: {
     color: COLORS.textGray,
     marginTop: 4,
+    fontSize: TYPOGRAPHY.android.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
   },
   metaRow: {
     marginTop: 10,
@@ -708,47 +751,50 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   metaPill: {
-    backgroundColor: '#e5f7ee',
+    backgroundColor: COLORS.info,
     borderRadius: 999,
     paddingVertical: 5,
     paddingHorizontal: 10,
   },
   metaPillText: {
-    color: '#0f7d49',
+    color: COLORS.primary,
     fontWeight: '700',
-    fontSize: 12,
+    fontSize: TYPOGRAPHY.android.support,
   },
   metaText: {
     color: COLORS.textGray,
-    fontSize: 12,
+    fontSize: TYPOGRAPHY.android.support,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: COLORS.modalOverlay,
     justifyContent: 'center',
     padding: 20,
   },
   modalCard: {
     backgroundColor: COLORS.white,
-    borderRadius: 16,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#d7ddf5',
+    borderColor: COLORS.border,
     padding: 16,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: TYPOGRAPHY.android.h2,
+    fontWeight: '700',
     color: COLORS.textDark,
     marginBottom: 10,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#dbe2f7',
+    borderColor: COLORS.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 11,
     marginTop: 8,
     color: COLORS.textDark,
+    backgroundColor: COLORS.white,
+    fontSize: TYPOGRAPHY.android.body,
+    lineHeight: TYPOGRAPHY.lineHeight.body,
   },
   uploadActions: {
     marginTop: 14,
@@ -760,24 +806,30 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#a8b5ed',
+    borderColor: COLORS.border,
     alignItems: 'center',
-    paddingVertical: 11,
-    backgroundColor: '#f4f6ff',
+    minHeight: 48,
+    justifyContent: 'center',
+    backgroundColor: COLORS.light,
   },
   cancelButtonText: {
     color: COLORS.textDark,
-    fontWeight: '700',
+    fontWeight: TYPOGRAPHY.button.fontWeight,
+    fontSize: TYPOGRAPHY.android.button,
+    letterSpacing: TYPOGRAPHY.button.letterSpacing,
   },
   uploadButton: {
     flex: 1,
     borderRadius: 10,
     alignItems: 'center',
-    paddingVertical: 11,
-    backgroundColor: '#1f3698',
+    minHeight: 48,
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
   },
   uploadButtonText: {
     color: COLORS.white,
-    fontWeight: '700',
+    fontWeight: TYPOGRAPHY.button.fontWeight,
+    fontSize: TYPOGRAPHY.android.button,
+    letterSpacing: TYPOGRAPHY.button.letterSpacing,
   },
 });

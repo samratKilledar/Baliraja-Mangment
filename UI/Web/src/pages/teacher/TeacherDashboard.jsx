@@ -5,10 +5,12 @@ import NoticeStrip from '../../components/NoticeStrip';
 import LectureList from '../../components/LectureList';
 import AttendanceWorkspace from '../../components/AttendanceWorkspace';
 import ChangePasswordForm from '../../components/ChangePasswordForm';
+import ReferenceCenter from '../../components/ReferenceCenter';
 
 const MENU_ITEMS = [
   { key: 'attendance', label: 'Attendance', icon: 'calendar' },
   { key: 'lectures', label: 'Lectures', icon: 'spark' },
+  { key: 'references', label: 'References', icon: 'users' },
   { key: 'password', label: 'Password', icon: 'shield' }
 ];
 
@@ -87,6 +89,14 @@ export default function TeacherDashboard() {
             <VectorIcon name="calendar" size={18} />
           </div>
           <LectureList />
+        </section>
+      ) : activeMenu === 'references' ? (
+        <section className="panel fade-up delay-2">
+          <div className="panel-head">
+            <h3>Reference Form</h3>
+            <VectorIcon name="users" size={18} />
+          </div>
+          <ReferenceCenter mode="create" />
         </section>
       ) : (
         <section className="panel fade-up delay-2">

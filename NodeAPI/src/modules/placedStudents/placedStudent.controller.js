@@ -18,20 +18,43 @@ async function createPlacedStudent(req, res, next) {
   }
 }
 
+async function updatePlacedStudent(req, res, next) {
+  try {
+    const { placedStudentId } = req.params;
+    const payload = req.body || {};
+    if (!payload.placedDate) return res.status(400).json({ message: 'placedDate is required' });
+    if (!payload.name) return res.status(400).json({ message: 'name is required' });
+
+    const updated = await PlacedStudent.findByIdAndUpdate(
+      placedStudentId,
+      {
+        ...payload,
+        createdBy: req.user?.sub,
+        createdByRole: req.user?.role
+      },
+      { new: true, runValidators: true }
+    );
+    if (!updated) return res.status(404).json({ message: 'Placed student not found' });
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function listPlacedStudents(req, res, next) {
   try {
-    const { q } = req.query;
+    const { q, field, placementType, academicYear } = req.query;
     const { page, limit, skip } = normalizePagination(req.query, 20, 200);
     const filter = {};
 
-    if (q) {
-      filter.$or = [
-        { name: { $regex: q, $options: 'i' } },
-        { mobileNo: { $regex: q, $options: 'i' } },
-        { batch: { $regex: q, $options: 'i' } },
-        { academicYear: { $regex: q, $options: 'i' } },
-      ];
+    const allowedFields = ['name', 'enrollmentNo', 'mobileNo', 'batch', 'academicYear', 'placementType', 'opinion', 'note'];
+    if (q && field && allowedFields.includes(field)) {
+      filter[field] = { $regex: q, $options: 'i' };
+    } else if (q) {
+      filter.$or = allowedFields.map((item) => ({ [item]: { $regex: q, $options: 'i' } }));
     }
+    if (placementType) filter.placementType = { $regex: placementType, $options: 'i' };
+    if (academicYear) filter.academicYear = { $regex: academicYear, $options: 'i' };
 
     const [total, items] = await Promise.all([
       PlacedStudent.countDocuments(filter),
@@ -53,7 +76,20 @@ async function listPlacedStudents(req, res, next) {
   }
 }
 
+async function deletePlacedStudent(req, res, next) {
+  try {
+    const { placedStudentId } = req.params;
+    const deleted = await PlacedStudent.findByIdAndDelete(placedStudentId);
+    if (!deleted) return res.status(404).json({ message: 'Placed student not found' });
+    res.json({ message: 'Placed student deleted' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createPlacedStudent,
-  listPlacedStudents
+  updatePlacedStudent,
+  listPlacedStudents,
+  deletePlacedStudent
 };

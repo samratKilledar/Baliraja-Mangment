@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View } from 'react-native';
 import LottieView from 'lottie-react-native';
 import StudentHome, { StudentMenu } from '../screens/student/StudentHome';
+import COLORS from '../config/colors';
 
 type TabIconProps = {
   source: any;
@@ -32,9 +33,9 @@ export default function StudentTabNavigator() {
           height: 76,
           paddingTop: 4,
           paddingBottom: 8,
-          borderTopColor: '#d7def7',
+          borderTopColor: COLORS.border,
           borderTopWidth: 1,
-          backgroundColor: '#ffffff'
+          backgroundColor: COLORS.white
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -43,12 +44,13 @@ export default function StudentTabNavigator() {
         tabBarItemStyle: {
           borderRadius: 12,
           marginHorizontal: 4,
-          marginTop: 2
+          marginTop: 2,
+          minHeight: 48
         },
-        tabBarActiveTintColor: '#1f3ca8',
-        tabBarInactiveTintColor: '#6677a6',
-        tabBarActiveBackgroundColor: '#e7eeff',
-        tabBarInactiveBackgroundColor: '#ffffff'
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textGray,
+        tabBarActiveBackgroundColor: COLORS.info,
+        tabBarInactiveBackgroundColor: COLORS.white
       }}
     >
       <Tab.Screen

@@ -1,12 +1,15 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import LottieView from 'lottie-react-native';
 import TeacherHome from '../screens/teacher/TeacherHome';
 import TeacherLectures from '../screens/teacher/TeacherLectures';
 import TeacherSalary from '../screens/teacher/TeacherSalary';
 import TeacherProfile from '../screens/teacher/TeacherProfile';
 import TeacherLeave from '../screens/teacher/TeacherLeave';
+import PlacedStudentsListScreen from '../screens/common/PlacedStudentsListScreen';
+import ReferenceScreen from '../screens/common/ReferenceScreen';
+import COLORS from '../config/colors';
 
 type TabIconProps = { source: any; focused: boolean };
 
@@ -29,16 +32,16 @@ export default function TeacherTabNavigator() {
           height: 76,
           paddingTop: 4,
           paddingBottom: 8,
-          borderTopColor: '#d7def7',
+          borderTopColor: COLORS.border,
           borderTopWidth: 1,
-          backgroundColor: '#ffffff'
+          backgroundColor: COLORS.white
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
-        tabBarItemStyle: { borderRadius: 12, marginHorizontal: 4, marginTop: 2 },
-        tabBarActiveTintColor: '#1f3ca8',
-        tabBarInactiveTintColor: '#6677a6',
-        tabBarActiveBackgroundColor: '#e7eeff',
-        tabBarInactiveBackgroundColor: '#ffffff'
+        tabBarItemStyle: { borderRadius: 12, marginHorizontal: 4, marginTop: 2, minHeight: 48 },
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textGray,
+        tabBarActiveBackgroundColor: COLORS.info,
+        tabBarInactiveBackgroundColor: COLORS.white
       }}
     >
       <Tab.Screen
@@ -80,6 +83,22 @@ export default function TeacherTabNavigator() {
           tabBarIcon: ({ focused }) => <TabIcon source={require('../assets/animations/tab-profile.json')} focused={focused} />
         }}
         component={TeacherProfile}
+      />
+      <Tab.Screen
+        name="TeachPlaced"
+        options={{
+          title: 'Placed',
+          tabBarIcon: ({ focused }) => <TabIcon source={require('../assets/animations/profile-menu.json')} focused={focused} />
+        }}
+        children={() => <PlacedStudentsListScreen title="Placed Students" />}
+      />
+      <Tab.Screen
+        name="TeachReference"
+        options={{
+          title: 'Reference',
+          tabBarIcon: ({ focused }) => <TabIcon source={require('../assets/animations/complaint-menu.json')} focused={focused} />
+        }}
+        children={() => <ReferenceScreen mode="create" />}
       />
     </Tab.Navigator>
   );

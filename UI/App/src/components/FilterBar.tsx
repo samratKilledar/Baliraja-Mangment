@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import COLORS from '../config/colors';
+import TYPOGRAPHY from '../config/typography';
 
 type FilterBarProps = {
   title?: string;
@@ -21,6 +22,7 @@ export default function FilterBar({ title = 'Filter', options, selected, onSelec
               key={option}
               style={({ pressed }) => [styles.chip, active && styles.activeChip, pressed && styles.pressedChip]}
               onPress={() => onSelect(option)}
+              android_ripple={{color: TYPOGRAPHY.motion.rippleColor}}
             >
               <Text style={[styles.chipText, active && styles.activeChipText]}>{option}</Text>
             </Pressable>
@@ -37,14 +39,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#d6def8',
-    borderRadius: 14,
+    borderColor: COLORS.border,
+    borderRadius: 16,
     padding: 12
   },
   title: {
-    color: '#4f5f96',
+    color: COLORS.textGray,
     fontWeight: '600',
-    marginBottom: 8
+    marginBottom: 8,
+    fontSize: TYPOGRAPHY.android.support
   },
   row: {
     flexDirection: 'row',
@@ -56,22 +59,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#d8def1',
-    backgroundColor: '#f8faff'
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.info
   },
   activeChip: {
-    borderColor: '#2944ad',
-    backgroundColor: '#e6edff'
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight
   },
   pressedChip: {
     transform: [{ scale: 0.97 }]
   },
   chipText: {
-    color: '#374266',
-    textTransform: 'capitalize'
+    color: COLORS.primary,
+    textTransform: 'capitalize',
+    fontSize: TYPOGRAPHY.android.support
   },
   activeChipText: {
-    color: '#1f3698',
+    color: COLORS.textDark,
     fontWeight: '700'
   }
 });

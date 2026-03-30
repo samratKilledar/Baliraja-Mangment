@@ -1,8 +1,11 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View, StyleSheet, ScrollView } from 'react-native';
+import { Text, StyleSheet, ScrollView } from 'react-native';
 import AdminHome from '../screens/admin/AdminHome';
 import NoticeCarousel from '../components/NoticeCarousel';
+import PlacedStudentsListScreen from '../screens/common/PlacedStudentsListScreen';
+import ReferenceScreen from '../screens/common/ReferenceScreen';
+import COLORS from '../config/colors';
 
 const Tab = createBottomTabNavigator();
 
@@ -36,10 +39,22 @@ function NoticesScreen() {
 
 export default function AdminTabNavigator() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: styles.tabBar,
+        tabBarLabelStyle: styles.tabLabel,
+        tabBarItemStyle: styles.tabItem,
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textGray,
+        tabBarActiveBackgroundColor: COLORS.info,
+        tabBarInactiveBackgroundColor: COLORS.white,
+      }}>
       <Tab.Screen name="Analytics" component={AdminHome} />
       <Tab.Screen name="Students" component={StudentsScreen} />
       <Tab.Screen name="Notices" component={NoticesScreen} />
+      <Tab.Screen name="Placed" children={() => <PlacedStudentsListScreen title="Placed Students" />} />
+      <Tab.Screen name="Reference" children={() => <ReferenceScreen mode="create" />} />
     </Tab.Navigator>
   );
 }
@@ -50,9 +65,27 @@ const styles = StyleSheet.create({
     padding: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f7f9fd'
+    backgroundColor: COLORS.background
   },
-  title: { fontSize: 20, fontWeight: '800', color: '#1f2f75', textAlign: 'center' },
-  desc: { marginTop: 10, fontSize: 14, color: '#4b5774', textAlign: 'center' },
-  noticeWrap: { flexGrow: 1, padding: 16, backgroundColor: '#f7f9fd' }
+  title: { fontSize: 20, fontWeight: '800', color: COLORS.textDark, textAlign: 'center' },
+  desc: { marginTop: 10, fontSize: 14, color: COLORS.textGray, textAlign: 'center' },
+  noticeWrap: { flexGrow: 1, padding: 16, backgroundColor: COLORS.background },
+  tabBar: {
+    height: 76,
+    paddingTop: 4,
+    paddingBottom: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  tabItem: {
+    borderRadius: 12,
+    marginHorizontal: 4,
+    marginTop: 2,
+    minHeight: 48,
+  },
 });

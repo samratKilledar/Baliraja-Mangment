@@ -237,6 +237,75 @@ function startEdit(s) {
     }
   }
 
+  async function shareStudentCredentials(student, nextPassword) {
+    const studentName = student?.userId?.fullName || 'Student';
+    const studentId = student?.enrollmentNo || 'N/A';
+    const loginId = student?.userId?.phone || student?.userId?.email || '';
+    const message =
+      `Student Login Credentials\n` +
+      `Name: ${studentName}\n` +
+      `ID: ${studentId}\n` +
+      `Login: ${loginId}\n` +
+      `Password: ${nextPassword}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({ text: message });
+        return;
+      }
+    } catch (err) {
+      // fallback to clipboard below
+    }
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(message);
+        alert('New password created and credentials copied. Share with student.');
+      } else {
+        alert(`New password created. Share this with student:\n\n${message}`);
+      }
+    } catch (err) {
+      alert(`New password created. Share this with student:\n\n${message}`);
+    }
+  }
+
+  async function resetStudentPassword(student) {
+    const userId = student?.userId?._id || student?.userId;
+    if (!userId) {
+      setError('Unable to reset password: student user id missing.');
+      return;
+    }
+    const busyKey = `password-reset-${student._id}`;
+    setActionBusy(busyKey);
+    try {
+      const { data } = await api.post(`/users/${userId}/password/auto`, { length: 8 });
+      const nextPassword = data?.tempPassword || '';
+      if (!nextPassword) {
+        setError('Password reset failed: temp password not returned.');
+        return;
+      }
+      setStudents((prev) =>
+        prev.map((item) =>
+          item._id === student._id
+            ? {
+                ...item,
+                userId: {
+                  ...item.userId,
+                  passwordVisible: nextPassword
+                }
+              }
+            : item
+        )
+      );
+      setError('');
+      await shareStudentCredentials(student, nextPassword);
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Unable to reset student password');
+    } finally {
+      setActionBusy('');
+    }
+  }
+
   async function downloadPdf(id) {
     const token = localStorage.getItem('ims_token') || localStorage.getItem('token');
     const url = `${resolveApiBaseUrl()}/students/${id}/pdf`;
@@ -627,6 +696,16 @@ function startEdit(s) {
                           >
                             Submit Fees
                           </button>
+                          {(user?.role === 'super_admin' || user?.role === 'admin') && (
+                            <button
+                              className="ghost-btn action-chip"
+                              style={{ padding: '6px 10px', fontSize: 13 }}
+                              onClick={()=>resetStudentPassword(student)}
+                              disabled={actionBusy === `password-reset-${student._id}`}
+                            >
+                              {actionBusy === `password-reset-${student._id}` ? 'Resetting...' : 'Reset Password'}
+                            </button>
+                          )}
                           <button
                             className={`ghost-btn action-chip ${isSelectedAction(student._id, 'master') ? 'active' : ''}`}
                             style={{ padding: '6px 10px', fontSize: 13 }}
