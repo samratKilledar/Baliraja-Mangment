@@ -26,11 +26,23 @@ const loginSchema = z
     path: ['identifier']
   });
 
-const forgotSuperAdminPasswordSchema = z
-  .object({
-    email: z.string().email(),
-    recoveryKey: z.string().min(4),
-    newPassword: z.string().min(6)
-  });
+const forgotPasswordSchema = z.object({
+  email: z.string().email()
+});
 
-module.exports = { registerSchema, loginSchema, forgotSuperAdminPasswordSchema };
+const resetPasswordSchema = z.object({
+  token: z.string().min(20),
+  newPassword: z.string().min(6)
+});
+
+const forgotSuperAdminPasswordSchema = z.object({
+  email: z.string().email().optional()
+});
+
+module.exports = {
+  registerSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  forgotSuperAdminPasswordSchema
+};

@@ -17,13 +17,21 @@ const FUTURE_LINES = [
   'Every login is a step toward a brighter future.'
 ];
 
+const SUPER_ADMIN_EMAIL = import.meta.env.VITE_SUPER_EMAIL || 'superadmin@cognitix.tech';
+const SUPER_ADMIN_DEFAULT_PASSWORD = import.meta.env.VITE_SUPER_PASSWORD || '123456';
+const SUPER_ADMIN_RECOVERY_EMAIL = 'hrinfocognitix@gmail.com';
+const SMTP_CONFIG_ERROR_TEXT =
+  'Email service is not configured. Set RESET_EMAIL_USER and RESET_EMAIL_APP_PASSWORD, or SMTP_HOST with SMTP_USER/SMTP_PASS, or SMTP_HOST with SMTP_NO_AUTH=true.';
+
 export default function LoginPage() {
   const { login } = useAuth();
-  const [identifier, setIdentifier] = useState(import.meta.env.VITE_SUPER_EMAIL || 'superadmin@cognitix.tech');
-  const [password, setPassword] = useState(import.meta.env.VITE_SUPER_PASSWORD || '123456');
+  const [identifier, setIdentifier] = useState(SUPER_ADMIN_EMAIL);
+  const [password, setPassword] = useState(SUPER_ADMIN_DEFAULT_PASSWORD);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [resetPreviewPassword, setResetPreviewPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
   const [futureIndex, setFutureIndex] = useState(0);
 
@@ -54,9 +62,22 @@ export default function LoginPage() {
     [identifier, password]
   );
 
+  function mapForgotPasswordError(message) {
+    if (!message) return 'Unable to send reset password email.';
+    if (message.includes('Email service is not configured')) {
+      return 'Reset password email service is temporarily unavailable. Please contact support/admin.';
+    }
+    if (message === SMTP_CONFIG_ERROR_TEXT) {
+      return 'Reset password email service is temporarily unavailable. Please contact support/admin.';
+    }
+    return message;
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     setError('');
+    setNotice('');
+    setResetPreviewPassword('');
 
     if (!canSubmit) {
       setError('Enter valid mobile/email and password to continue.');
@@ -79,6 +100,33 @@ export default function LoginPage() {
       setError(msg);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function onForgotSuperAdminPassword() {
+    setError('');
+    setNotice('');
+    setResetPreviewPassword('');
+
+    if (identifier.trim().toLowerCase() !== SUPER_ADMIN_EMAIL) {
+      setError(`Forgot flow is only for ${SUPER_ADMIN_EMAIL}.`);
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+      const { data } = await api.post('/auth/forgot-super-admin-password', {
+        email: SUPER_ADMIN_EMAIL
+      });
+      setNotice(data?.message || `Reset password sent to ${SUPER_ADMIN_RECOVERY_EMAIL}.`);
+      if (data?.tempPassword) {
+        setResetPreviewPassword(data.tempPassword);
+      }
+    } catch (err) {
+      const rawMessage = err?.response?.data?.message || '';
+      setError(mapForgotPasswordError(rawMessage));
+    } finally {
+      setResetLoading(false);
     }
   }
 
@@ -141,7 +189,22 @@ export default function LoginPage() {
             <button className="primary-btn btn btn-primary btn-lg w-100" type="submit" disabled={!canSubmit || loading}>
               {loading ? 'Signing in...' : 'Login'}
             </button>
-            <p className="login-help-line">Contact admin support if you forgot credentials.</p>
+            <button
+              type="button"
+              className="ghost-btn"
+              style={{ marginTop: 10, width: '100%' }}
+              onClick={onForgotSuperAdminPassword}
+              disabled={resetLoading}
+            >
+              {resetLoading ? 'Sending Reset...' : 'Reset Super Admin Password'}
+            </button>
+            {resetPreviewPassword ? (
+              <p className="login-help-line" style={{ wordBreak: 'break-all', marginTop: 10 }}>
+                Sent Password (demo): <strong>{resetPreviewPassword}</strong>
+              </p>
+            ) : (
+              <p className="login-help-line">Contact admin support if you forgot credentials.</p>
+            )}
           </form>
         </div>
       </div>

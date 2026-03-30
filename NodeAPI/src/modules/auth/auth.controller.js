@@ -1,9 +1,12 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const User = require('../users/user.model');
 const { registerSchema, loginSchema, forgotSuperAdminPasswordSchema } = require('./auth.validation');
 const { ROLES } = require('../../utils/constants');
 const { encryptPassword } = require('../../utils/passwordVault');
+
+let cachedTransporter = null;
 
 function signToken(user) {
   return jwt.sign(
@@ -11,6 +14,71 @@ function signToken(user) {
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
   );
+}
+
+function getMailerConfig() {
+  const user = process.env.RESET_EMAIL_USER || process.env.SMTP_USER;
+  const pass = process.env.RESET_EMAIL_APP_PASSWORD || process.env.SMTP_PASS;
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT || 0) || undefined;
+  const smtpNoAuth = String(process.env.SMTP_NO_AUTH || '').toLowerCase() === 'true';
+  const from = process.env.RESET_EMAIL_FROM || user || process.env.SUPER_ADMIN_EMAIL || 'no-reply@localhost';
+
+  if (host && user && pass) {
+    return {
+      host,
+      port: port || 587,
+      secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
+      auth: { user, pass },
+      from
+    };
+  }
+
+  if (host && smtpNoAuth) {
+    return {
+      host,
+      port: port || 25,
+      secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
+      noAuth: true,
+      from
+    };
+  }
+
+  if (user && pass) {
+    return {
+      service: 'gmail',
+      auth: { user, pass },
+      from
+    };
+  }
+
+  return null;
+}
+
+function getMailerTransporter() {
+  if (cachedTransporter) return cachedTransporter;
+  const config = getMailerConfig();
+  if (!config) return null;
+  const transport = nodemailer.createTransport(
+    config.service
+      ? { service: config.service, auth: config.auth }
+      : {
+          host: config.host,
+          port: config.port,
+          secure: config.secure,
+          auth: config.noAuth ? undefined : config.auth
+        }
+  );
+  cachedTransporter = { transport, from: config.from };
+  return cachedTransporter;
+}
+
+function generateNumericPassword(length = 6) {
+  let next = '';
+  for (let i = 0; i < length; i += 1) {
+    next += String(Math.floor(Math.random() * 10));
+  }
+  return next;
 }
 
 async function register(req, res, next) {
@@ -113,32 +181,81 @@ async function bootstrapSuperAdmin(req, res, next) {
 
 async function forgotSuperAdminPassword(req, res, next) {
   try {
-    const payload = forgotSuperAdminPasswordSchema.parse(req.body);
-    const configuredRecoveryKey = process.env.SUPER_ADMIN_RECOVERY_KEY || process.env.BOOTSTRAP_KEY;
+    const payload = forgotSuperAdminPasswordSchema.parse(req.body || {});
+    const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'superadmin@cognitix.tech').toLowerCase();
+    const recoveryEmail = (process.env.SUPER_ADMIN_RECOVERY_EMAIL || 'hrinfocognitix@gmail.com').toLowerCase();
 
-    if (!configuredRecoveryKey) {
-      return res.status(503).json({ message: 'Recovery is not configured on server' });
-    }
-
-    if (payload.recoveryKey !== configuredRecoveryKey) {
-      return res.status(401).json({ message: 'Invalid recovery key' });
+    if (payload.email && payload.email.toLowerCase() !== superAdminEmail) {
+      return res.status(400).json({ message: `Only ${superAdminEmail} is allowed for super admin recovery.` });
     }
 
     const user = await User.findOne({
-      email: payload.email.toLowerCase(),
+      email: superAdminEmail,
       role: ROLES.SUPER_ADMIN
     });
     if (!user) {
-      return res.status(404).json({ message: 'Super admin account not found for this email' });
+      return res.status(404).json({ message: 'Super admin account not found.' });
     }
 
-    user.passwordHash = await bcrypt.hash(payload.newPassword, 10);
-    user.passwordCipher = encryptPassword(payload.newPassword);
+    const mailer = getMailerTransporter();
+    if (!mailer) {
+      return res.status(503).json({
+        message:
+          'Email service is not configured. Set RESET_EMAIL_USER and RESET_EMAIL_APP_PASSWORD, or SMTP_HOST with SMTP_USER/SMTP_PASS, or SMTP_HOST with SMTP_NO_AUTH=true.'
+      });
+    }
+
+    const temporaryPassword = generateNumericPassword(6);
+    user.passwordHash = await bcrypt.hash(temporaryPassword, 10);
+    user.passwordCipher = encryptPassword(temporaryPassword);
     user.mustChangePassword = false;
     user.passwordChangedAt = new Date();
     await user.save();
 
-    return res.json({ message: 'Super admin password reset successful. Please login now.' });
+    const subject = 'Super Admin Password Reset';
+    const text = [
+      'Super admin password has been reset.',
+      `Login email: ${superAdminEmail}`,
+      `Temporary password: ${temporaryPassword}`,
+      'Please login and change password immediately.'
+    ].join('\n');
+
+    try {
+      await mailer.transport.sendMail({
+        from: mailer.from,
+        to: recoveryEmail,
+        subject,
+        text
+      });
+    } catch (mailErr) {
+      console.error('Super admin reset email failed', {
+        message: mailErr?.message,
+        code: mailErr?.code,
+        command: mailErr?.command,
+        response: mailErr?.response
+      });
+      const payload = {
+        message: 'Password reset generated, but email delivery failed. Please verify SMTP credentials and try again.'
+      };
+      if ((process.env.NODE_ENV || '').toLowerCase() !== 'production') {
+        payload.debug = {
+          code: mailErr?.code || '',
+          command: mailErr?.command || '',
+          providerMessage: mailErr?.response || mailErr?.message || ''
+        };
+      }
+      return res.status(502).json(payload);
+    }
+
+    const response = {
+      message: `Reset password has been sent to ${recoveryEmail}.`
+    };
+
+    if ((process.env.NODE_ENV || '').toLowerCase() !== 'production') {
+      response.tempPassword = temporaryPassword;
+    }
+
+    return res.json(response);
   } catch (err) {
     return next(err);
   }

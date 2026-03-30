@@ -53,6 +53,16 @@ const userSchema = new mongoose.Schema(
     lastLoginAt: {
       type: Date
     },
+    passwordResetTokenHash: {
+      type: String,
+      default: ''
+    },
+    passwordResetExpiresAt: {
+      type: Date
+    },
+    passwordResetRequestedAt: {
+      type: Date
+    },
 
     profileRef: {
       type: mongoose.Schema.Types.ObjectId,

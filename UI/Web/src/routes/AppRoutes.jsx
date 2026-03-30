@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import LoginPage from '../pages/common/LoginPage';
+import SuperAdminResetPage from '../pages/common/SuperAdminResetPage';
 import SuperAdminDashboard from '../pages/superAdmin/SuperAdminDashboard';
 import AdminDashboard from '../pages/admin/AdminDashboard';
 import TeacherDashboard from '../pages/teacher/TeacherDashboard';
@@ -72,6 +73,7 @@ export default function AppRoutes() {
         >
           <Routes location={location}>
             <Route path="/login" element={hasAllowedUser ? <Navigate to="/" replace /> : <LoginPage />} />
+            <Route path="/super-admin/reset-password" element={<SuperAdminResetPage />} />
             <Route
               path="/super-admin/*"
               element={
