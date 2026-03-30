@@ -3,11 +3,13 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useAuth} from '../context/AuthContext';
 
 export default function SuperAdminTopBar() {
-  const {clearSession} = useAuth();
+  const {clearSession, user} = useAuth();
 
   return (
     <View style={styles.row}>
-      <Text style={styles.roleText}>Super Admin</Text>
+      <Text style={styles.roleText}>
+        Super Admin: {user?.fullName || 'Super Admin'}
+      </Text>
       <Pressable
         onPress={clearSession}
         style={({pressed}) => [

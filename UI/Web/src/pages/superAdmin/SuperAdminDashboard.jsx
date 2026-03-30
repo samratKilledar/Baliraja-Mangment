@@ -122,6 +122,7 @@ export default function SuperAdminDashboard() {
   const [feesError, setFeesError] = useState('');
   const [feesPage, setFeesPage] = useState(1);
   const [feesMeta, setFeesMeta] = useState({ page: 1, totalPages: 1 });
+  const [feeReminderMessage, setFeeReminderMessage] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const lastLoginLabel = useMemo(() => {
     if (!user?.lastLoginAt) return '';
@@ -245,10 +246,16 @@ export default function SuperAdminDashboard() {
     }
   }
 
-  async function sendReminder(phone, studentId) {
-    if (!phone) return alert('No mobile number found');
+  async function sendReminder(student) {
+    const uuid = student?.userId?.pushUuid || '';
+    if (!uuid) return alert('UUID not found for this student. Notification not sent.');
+    const studentId = student?._id;
+    if (!studentId) return alert('Student ID missing');
     try {
-      await api.post('/notifications/fee-reminder', { phone, studentId });
+      await api.post('/notifications/fee-reminder', {
+        studentId,
+        customMessage: feeReminderMessage.trim() || undefined
+      });
       alert('Reminder sent');
     } catch (err) {
       alert(err?.response?.data?.message || 'Unable to send notification');
@@ -403,6 +410,28 @@ if (currentModule === 'admission-options') {
               {loadingSummary ? 'Checking...' : 'Show Revenue'}
             </button>
           </div>
+          <div className="analytics-password-box">
+            <input
+              placeholder="Custom reminder message (optional)"
+              value={feeReminderMessage}
+              onChange={(e) => setFeeReminderMessage(e.target.value)}
+            />
+            <button
+              className="ghost-btn analytics-inline-btn"
+              onClick={async () => {
+                try {
+                  const { data } = await api.post('/notifications/fee-reminder/daily', {
+                    customMessage: feeReminderMessage.trim() || undefined
+                  });
+                  alert(`Daily reminder run complete. Sent: ${data?.sentCount || 0}`);
+                } catch (err) {
+                  alert(err?.response?.data?.message || 'Unable to run daily reminders');
+                }
+              }}
+            >
+              Run Daily Reminder Filter
+            </button>
+          </div>
           <div className="snapshot-box">
             <div><small>Pending Money</small><strong>{formatMaskedCurrency(summary.fees?.totalExpected, revenueMasked)}</strong></div>
             <div><small>Collected Money</small><strong>{formatMaskedCurrency(summary.fees?.totalCollected, revenueMasked)}</strong></div>
@@ -447,6 +476,7 @@ if (currentModule === 'admission-options') {
                 const rangeSignal = getFeeRangeSignal(fee);
                 const due = fee.dueAmount ?? Math.max((fee.totalAmount || 0) - (fee.paidAmount || 0), 0);
                 const student = fee.studentId || {};
+                const studentUuid = student?.userId?.pushUuid || '';
                 const guardian = student.details?.parent || {};
                 const parentName =
                   guardian.fullName ||
@@ -482,6 +512,9 @@ if (currentModule === 'admission-options') {
                         Parent: {parentName} · {parentPhone || '—'}
                         </div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>Admission: {admissionDate} → Due: {dueDate}</div>
+                        <div style={{ color: studentUuid ? '#1f2f75' : '#b91c1c', fontSize: 12, fontWeight: 600 }}>
+                          UUID: {studentUuid || 'Not Available'}
+                        </div>
                         <div style={{ color: rangeSignal.isCritical ? '#b91c1c' : '#4b5774', fontSize: 12, fontWeight: rangeSignal.isCritical ? 700 : 500 }}>
                           Fee Range End: {fee.feeEndDate ? new Date(fee.feeEndDate).toLocaleDateString() : '—'} {rangeSignal.label ? `(${rangeSignal.label})` : ''}
                         </div>
@@ -489,7 +522,9 @@ if (currentModule === 'admission-options') {
                     <div><small>Total</small><div style={{ fontWeight: 700 }}>{formatMaskedCurrency(fee.totalAmount, revenueMasked)}</div></div>
                     <div><small>Paid</small><div style={{ fontWeight: 700, color: '#0f7d49' }}>{formatMaskedCurrency(fee.paidAmount, revenueMasked)}</div></div>
                     <div><small>Due</small><div style={{ fontWeight: 800, color: status === 'danger' ? '#c0392b' : '#c27b20' }}>{formatMaskedCurrency(due, revenueMasked)}</div></div>
-                    <button className="ghost-btn" onClick={() => sendReminder(guardian.guardianMobile || student.userId?.phone, student._id)}>Send Notification</button>
+                    <button className="ghost-btn" disabled={!studentUuid} onClick={() => sendReminder(student)}>
+                      {studentUuid ? 'Send Notification' : 'UUID Missing'}
+                    </button>
                   </div>
                 );
               })}
@@ -765,7 +800,7 @@ if (currentModule === 'admission-options') {
         </SharedGrid>
       </>
     );
-  }, [activeModule, feeCategorySummary, feesError, feesList, feesLoading, feesMeta.page, feesMeta.totalPages, loadingSummary, menuItems, redRangeFees, revenueMasked, revenuePass, routeModule, summary]);
+  }, [activeModule, feeCategorySummary, feeReminderMessage, feesError, feesList, feesLoading, feesMeta.page, feesMeta.totalPages, loadingSummary, menuItems, redRangeFees, revenueMasked, revenuePass, routeModule, summary]);
 
   return (
     <div className="dashboard-shell container-fluid px-2 px-md-3 px-xl-4">

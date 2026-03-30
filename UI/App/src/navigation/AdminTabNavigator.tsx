@@ -1,6 +1,6 @@
-import React from 'react';
+import React, {useCallback, useState} from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, StyleSheet, ScrollView } from 'react-native';
+import { Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import AdminHome from '../screens/admin/AdminHome';
 import NoticeCarousel from '../components/NoticeCarousel';
 import PlacedStudentsListScreen from '../screens/common/PlacedStudentsListScreen';
@@ -10,8 +10,16 @@ import COLORS from '../config/colors';
 const Tab = createBottomTabNavigator();
 
 function Placeholder({ title, description }: { title: string; description: string }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 500);
+  }, []);
+
   return (
-    <ScrollView contentContainerStyle={styles.placeholder}>
+    <ScrollView
+      contentContainerStyle={styles.placeholder}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.desc}>{description}</Text>
     </ScrollView>
@@ -28,8 +36,16 @@ function StudentsScreen() {
 }
 
 function NoticesScreen() {
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 500);
+  }, []);
+
   return (
-    <ScrollView contentContainerStyle={styles.noticeWrap}>
+    <ScrollView
+      contentContainerStyle={styles.noticeWrap}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       <Text style={styles.title}>Notice Publisher</Text>
       <Text style={styles.desc}>View recent notices. Publishing is available on web for now.</Text>
       <NoticeCarousel />

@@ -7,6 +7,7 @@ import client from '../../api/client';
 export default function TeacherSalary() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [record, setRecord] = useState<any | null>(null);
   const [error, setError] = useState('');
 
@@ -31,6 +32,15 @@ export default function TeacherSalary() {
 
   const payments = record?.payments || [];
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await fetchSalary();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <DashboardScreen
       title="Salary & Contract"
@@ -38,6 +48,8 @@ export default function TeacherSalary() {
       role="teacher"
       loading={loading}
       loadingLabel="Loading salary..."
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
       filter=""
       filters={[]}
       onFilterChange={() => {}}

@@ -1,5 +1,6 @@
 const Fee = require('./fee.model');
 const Student = require('../students/student.model');
+const DeviceToken = require('../notifications/deviceToken.model');
 const { ROLES } = require('../../utils/constants');
 const { normalizePagination, buildPaginationMeta } = require('../../utils/pagination');
 
@@ -191,8 +192,32 @@ async function listFees(req, res, next) {
       .limit(limit)
     ]);
     const normalized = await Promise.all(fees.map((f)=>recalcFee(f)));
+    const feeObjects = normalized.map((f) => f.toObject());
+    const studentUserIds = feeObjects
+      .map((item) => item?.studentId?.userId?._id)
+      .filter(Boolean)
+      .map((id) => String(id));
+
+    const tokenRows = studentUserIds.length
+      ? await DeviceToken.find({ userId: { $in: studentUserIds }, app: 'student' })
+          .sort({ lastSeen: -1 })
+          .select('userId deviceUuid lastSeen')
+          .lean()
+      : [];
+    const tokenMap = tokenRows.reduce((acc, row) => {
+      const key = String(row.userId);
+      if (!acc[key]) acc[key] = row;
+      return acc;
+    }, {});
+
+    feeObjects.forEach((item) => {
+      const userId = item?.studentId?.userId?._id ? String(item.studentId.userId._id) : '';
+      if (!userId || !tokenMap[userId]) return;
+      item.studentId.userId.pushUuid = tokenMap[userId].deviceUuid || '';
+      item.studentId.userId.pushLastSeen = tokenMap[userId].lastSeen || null;
+    });
     res.json({
-      items: normalized.map((f)=>f.toObject()),
+      items: feeObjects,
       meta: buildPaginationMeta({ total, page, limit })
     });
   } catch (err) {

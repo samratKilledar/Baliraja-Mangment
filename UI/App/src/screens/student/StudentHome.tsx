@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, Dimensions, Platform, PermissionsAndroid, KeyboardAvoidingView } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View, Dimensions, Platform, KeyboardAvoidingView } from 'react-native';
 import DatePicker from 'react-native-date-picker';
-import Geolocation from '@react-native-community/geolocation';
 import PushNotification from 'react-native-push-notification';
 import LottieView from 'lottie-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -56,6 +55,7 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
   const { user, token } = useAuth();
   const [loginPhone, setLoginPhone] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [fee, setFee] = useState<any | null>(null);
   const [student, setStudent] = useState<any | null>(null);
   const [cached, setCached] = useState<{ student: any | null; fee: any | null }>({ student: null, fee: null });
@@ -101,57 +101,6 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
   function pickToday(list: any[]) {
     const todayStr = new Date().toDateString();
     return list.find((a) => new Date(a.date).toDateString() === todayStr) || null;
-  }
-
-  async function getLocation() {
-    try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) return null;
-      }
-      return await new Promise<{ lat: number; lng: number } | null>((resolve) => {
-        Geolocation.getCurrentPosition(
-          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => resolve(null),
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
-        );
-      });
-    } catch {
-      return null;
-    }
-  }
-
-  async function postAttendance(action: 'check-in' | 'check-out') {
-    const phone = loginPhone || user?.phone || (user?.id || '').replace('demo-', '');
-    const loc = await getLocation();
-    // prevent multiple marks in same day
-    const todayRec = attendance || pickToday(attendanceList);
-    if (action === 'check-in' && todayRec?.checkInAt) {
-      setError('Already checked in today.');
-      return;
-    }
-    if (action === 'check-out' && todayRec?.checkOutAt) {
-      setError('Already checked out today.');
-      return;
-    }
-    try {
-      const hasJwt = token && !token.startsWith('public-');
-      if (hasJwt) {
-        const endpoint = action === 'check-in' ? '/attendance/check-in' : '/attendance/check-out';
-        const { data } = await client.post(endpoint, { location: loc }, { headers: { Authorization: `Bearer ${token}` } });
-        setAttendance(data);
-        await refreshAttendance(phone);
-      } else if (phone) {
-        const endpoint = action === 'check-in' ? '/attendance/public/check-in' : '/attendance/public/check-out';
-        const { data } = await client.post(endpoint, { phone, location: loc });
-        setAttendance(data);
-        await refreshAttendance(phone);
-      } else {
-        setError('No mobile number available to mark attendance.');
-      }
-    } catch (err) {
-      setError('Unable to mark attendance. Please try again.');
-    }
   }
 
   useEffect(() => {
@@ -476,6 +425,21 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
     }
     return styles.feeSafe;
   }
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    const phone = loginPhone || user?.phone || (user?.id || '').replace('demo-', '');
+    try {
+      await Promise.all([
+        fetchStudentAndFee(phone),
+        refreshAttendance(phone),
+        loadMyComplaints(),
+        loadMyLeaves()
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
   function parseDateTime(value: string) {
     const normalized = value.replace(' ', 'T');
     const parsed = new Date(normalized);
@@ -501,8 +465,14 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
   const totalLabel = fee?.totalAmount ?? 0;
   const paidLabel = fee?.paidAmount ?? 0;
   const dueLabel = fee?.dueAmount ?? (totalLabel - paidLabel);
+  const paymentHistory = Array.isArray(fee?.transactions)
+    ? [...fee.transactions].sort((a, b) => {
+        const aTime = a?.paidOn ? new Date(a.paidOn).getTime() : 0;
+        const bTime = b?.paidOn ? new Date(b.paidOn).getTime() : 0;
+        return bTime - aTime;
+      })
+    : [];
   const profileImage = student?.details?.photoUrl || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-  const todayAttendance = attendance || pickToday(attendanceList);
   const handleScroll = (event: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = event?.nativeEvent || {};
     if (!contentOffset || !contentSize || !layoutMeasurement) return;
@@ -516,28 +486,10 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
       <View style={styles.attTopRow}>
         <FastImage source={{ uri: profileImage }} style={styles.avatarSmall} />
           <View style={{ }}>
-            {/* <Text style={styles.studentName}>{studentName}</Text>
-            <Text style={styles.studentId}>ID: {studentEnrollment}</Text> */}
-            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
-              <Text style={styles.timeLabel}>IN:</Text>
-            <Text style={[styles.timeValue, !todayAttendance?.checkInAt && styles.timeMissing]}>
-              {todayAttendance?.checkInAt ? new Date(todayAttendance.checkInAt).toLocaleTimeString() : "Not Yet"}
-            </Text>
-            <Text style={[styles.timeLabel, { marginLeft: 12 }]}>OUT:</Text>
-            <Text style={[styles.timeValue, !todayAttendance?.checkOutAt && styles.timeMissing]}>
-              {todayAttendance?.checkOutAt ? new Date(todayAttendance.checkOutAt).toLocaleTimeString() : "Not Yet"}
-            </Text>
-            </View>
+            <Text style={styles.studentName}>{studentName}</Text>
+            <Text style={styles.studentId}>ID: {studentEnrollment}</Text>
           </View>
         </View>
-      <View style={[styles.attRow, { marginTop: 6 }]}>
-        <Pressable style={[styles.attBtn, { backgroundColor: "#e3f7ff" }]} onPress={() => postAttendance("check-in")}>
-          <Text style={styles.attBtnText}>📍 Check In</Text>
-        </Pressable>
-        <Pressable style={[styles.attBtn, { backgroundColor: "#ffe9e3" }]} onPress={() => postAttendance("check-out")}>
-          <Text style={styles.attBtnText}>🏁 Check Out</Text>
-        </Pressable>
-      </View>
       {/* <View style={{ width: 90, height: 90, marginTop: 8 }}>
         <LottieView source={ATT_LOTTIE} autoPlay loop />
       </View> */}
@@ -546,12 +498,14 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
 
   return (
     <DashboardScreen
-      title="Student Dashboard"
-      subtitle="Recruitment training profile, fees, performance and campus attendance."
-      headerMeta={`Student: ${studentName}   ID: ${studentEnrollment}`}
+      title=""
+      subtitle=""
+      headerMeta={`Student: ${studentName || user?.fullName || 'Student'}   ID: ${studentEnrollment}`}
       role="student"
       loading={loading}
       loadingLabel="Loading student summary..."
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
       filter={filter}
       filters={filters}
       onFilterChange={setFilter}
@@ -587,35 +541,49 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
               {fee?.feeEndDate && <Text style={styles.feeMetaText}>To {new Date(fee.feeEndDate).toLocaleDateString()}</Text>}
               {fee?.dueDate && <Text style={[styles.feeMetaText, { color: '#cf2d2d', fontWeight: '700' }]}>Due {new Date(fee.dueDate).toLocaleDateString()}</Text>}
             </View>
-            {fee?.transactions?.length ? (
-              <View style={{ marginTop: 14 }}>
-                <Text style={styles.feeSectionLabel}>Payments</Text>
-                {fee.transactions.map((p, idx) => (
-                  <View key={idx} style={styles.payCard}>
+            <View style={{ marginTop: 14 }}>
+              <Text style={styles.feeSectionLabel}>Payment History</Text>
+              {paymentHistory.length ? (
+                paymentHistory.map((p, idx) => (
+                  <View key={p?._id || idx} style={styles.payCard}>
                     <View style={styles.payLine}>
                       <Text style={styles.payLabel}>Date</Text>
-                      <Text style={styles.payValue}>{new Date(p.paidOn).toLocaleDateString()}</Text>
+                      <Text style={styles.payValue}>
+                        {p?.paidOn ? new Date(p.paidOn).toLocaleDateString() : '—'}
+                      </Text>
                     </View>
                     <View style={styles.payLine}>
                       <Text style={styles.payLabel}>Amount</Text>
-                      <Text style={[styles.payValue, { fontWeight: '800' }]}>₹{p.amount}</Text>
+                      <Text style={[styles.payValue, { fontWeight: '800' }]}>
+                        ₹{Number(p?.amount || 0)}
+                      </Text>
                     </View>
                     <View style={styles.payLine}>
                       <Text style={styles.payLabel}>Mode</Text>
-                      <Text style={styles.payChip}>{p.mode}</Text>
+                      <Text style={styles.payChip}>{p?.mode || '—'}</Text>
                     </View>
-                    {(p.note || p.transactionRef) ? (
+                    {p?.transactionRef ? (
                       <View style={styles.payLine}>
-                        <Text style={styles.payLabel}>Note / Ref</Text>
+                        <Text style={styles.payLabel}>Reference</Text>
                         <Text style={[styles.payValue, { flexShrink: 1 }]} numberOfLines={2}>
-                          {p.note || p.transactionRef}
+                          {p.transactionRef}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {p?.note ? (
+                      <View style={styles.payLine}>
+                        <Text style={styles.payLabel}>Note</Text>
+                        <Text style={[styles.payValue, { flexShrink: 1 }]} numberOfLines={2}>
+                          {p.note}
                         </Text>
                       </View>
                     ) : null}
                   </View>
-                ))}
-              </View>
-            ) : null}
+                ))
+              ) : (
+                <Text style={styles.subtext}>No payments recorded.</Text>
+              )}
+            </View>
           </View>
           
         ) : null}

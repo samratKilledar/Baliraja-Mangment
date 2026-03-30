@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View, PermissionsAndroid, Platform, ToastAndroid } from 'react-native';
-import Geolocation from '@react-native-community/geolocation';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import DashboardScreen from '../../components/DashboardScreen';
 import { useAuth } from '../../context/AuthContext';
 import client from '../../api/client';
@@ -8,8 +7,8 @@ import client from '../../api/client';
 export default function TeacherHome() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [attendance, setAttendance] = useState<any[]>([]);
-  const [today, setToday] = useState<any | null>(null);
   const [error, setError] = useState('');
   const [calendarDays, setCalendarDays] = useState<{ date: Date; status: 'present' | 'absent' | 'leave' }[]>([]);
 
@@ -24,16 +23,12 @@ export default function TeacherHome() {
       const { data } = await client.get(`/attendance/public/by-phone/${user.phone}`);
       const list = data?.attendance || data || [];
       setAttendance(list);
-      const todayStr = new Date().toDateString();
-      setToday(list.find((r: any) => new Date(r.date).toDateString() === todayStr) || null);
       setCalendarDays(buildCalendar(list));
       setError('');
     } catch (err: any) {
       setAttendance([]);
       setCalendarDays([]);
-      const msg = err?.response?.data?.message || 'Unable to load attendance';
-      setError(msg);
-      notify(msg);
+      setError(err?.response?.data?.message || 'Unable to load attendance');
     } finally {
       setLoading(false);
     }
@@ -55,77 +50,28 @@ export default function TeacherHome() {
     return days.reverse(); // oldest to newest for grid ordering
   }
 
-  async function getLocation() {
+  async function handleRefresh() {
+    setRefreshing(true);
     try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) return null;
-      }
-      return await new Promise<{ lat: number; lng: number } | null>((resolve) => {
-        Geolocation.getCurrentPosition(
-          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => resolve(null),
-          { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
-        );
-      });
-    } catch {
-      return null;
+      await fetchAttendance();
+    } finally {
+      setRefreshing(false);
     }
   }
-
-  async function mark(action: 'check-in' | 'check-out') {
-    try {
-      const loc = await getLocation();
-      await client.post(`/attendance/public/${action === 'check-in' ? 'check-in' : 'check-out'}`, { phone: user?.phone, location: loc });
-      fetchAttendance();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Unable to update attendance';
-      setError(msg);
-      notify(msg);
-    }
-  }
-
-  function notify(message: string) {
-    if (Platform.OS === 'android') {
-      ToastAndroid.show(`Teacher: ${message}`, ToastAndroid.LONG);
-    }
-  }
-
-  const headerExtra = (
-    <View style={styles.headerBox}>
-      <Text style={styles.heading}>Attendance (Today)</Text>
-      <View style={styles.headerRow}>
-        <Text style={styles.timeLabel}>IN:</Text>
-        <Text style={[styles.timeValue, !today?.checkInAt && styles.timeMissing]}>
-          {today?.checkInAt ? new Date(today.checkInAt).toLocaleTimeString() : 'Not Yet'}
-        </Text>
-        <Text style={[styles.timeLabel, { marginLeft: 12 }]}>OUT:</Text>
-        <Text style={[styles.timeValue, !today?.checkOutAt && styles.timeMissing]}>
-          {today?.checkOutAt ? new Date(today.checkOutAt).toLocaleTimeString() : 'Not Yet'}
-        </Text>
-      </View>
-      <View style={styles.row}>
-        <Pressable style={[styles.actionBtn, { backgroundColor: '#e3f7ff' }]} onPress={() => mark('check-in')}>
-          <Text style={styles.actionBtnText}>📍 Check In</Text>
-        </Pressable>
-        <Pressable style={[styles.actionBtn, { backgroundColor: '#ffe9e3' }]} onPress={() => mark('check-out')}>
-          <Text style={styles.actionBtnText}>🏁 Check Out</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
 
   return (
     <DashboardScreen
       title="Teacher Attendance"
-      subtitle="Mark your in/out and review recent logs"
+      subtitle="Review recent attendance logs"
+      headerMeta={`Teacher: ${user?.fullName || 'Teacher'}`}
       role="teacher"
       loading={loading}
       loadingLabel="Syncing attendance..."
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
       filter=""
       filters={[]}
       onFilterChange={() => {}}
-      extraHeader={headerExtra}
     >
       <View style={styles.box}>
         <Text style={styles.heading}>Recent Attendance</Text>
@@ -189,35 +135,7 @@ const styles = StyleSheet.create({
   heading: { color: '#1f2f75', fontWeight: '800' },
   subtext: { marginTop: 5, color: '#5e688f' },
   error: { color: '#c0392b', marginTop: 4 },
-  row: { marginTop: 10, flexDirection: 'row', gap: 8 },
-  actionBtn: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#cad6fb',
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-    backgroundColor: '#edf2ff'
-  },
-  actionBtnText: { color: '#1f3ca8', fontWeight: '700' },
   rowItem: { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#eef2fb' },
-  headerBox: {
-    marginTop: 4,
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e4e8f3',
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 3
-  },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
-  timeLabel: { fontSize: 13, fontWeight: '700', color: '#5e688f' },
-  timeValue: { marginLeft: 4, fontSize: 14, fontWeight: '800', color: '#1f2f75' },
-  timeMissing: { color: '#e53935' },
   legendRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
   calendarGrid: {
     marginTop: 10,

@@ -40,6 +40,7 @@ export default function SuperAdminStudentList() {
   const [error, setError] = useState('');
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
   const [freshPasswords, setFreshPasswords] = useState<Record<string, string>>({});
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
 
   const loadStudents = useCallback(async (query = '', isRefresh = false) => {
     if (isRefresh) {
@@ -159,12 +160,28 @@ export default function SuperAdminStudentList() {
               <Text style={styles.meta}>
                 Age: {student.age ?? '—'} Gender: {student.gender || '—'}
               </Text>
-              <Text style={styles.password}>
-                Password:{' '}
-                {freshPasswords[student.userId?._id || ''] ||
-                  student.userId?.passwordVisible ||
-                  '123456'}
-              </Text>
+              <View style={styles.passwordRow}>
+                <Text style={styles.password}>
+                  Password:{' '}
+                  {showPasswords[student.userId?._id || '']
+                    ? (freshPasswords[student.userId?._id || ''] ||
+                      student.userId?.passwordVisible ||
+                      '123456')
+                    : '••••••••'}
+                </Text>
+                <Pressable
+                  onPress={() =>
+                    setShowPasswords(prev => ({
+                      ...prev,
+                      [student.userId?._id || '']: !prev[student.userId?._id || ''],
+                    }))
+                  }
+                  style={styles.eyeBtn}>
+                  <Text style={styles.eyeBtnText}>
+                    {showPasswords[student.userId?._id || ''] ? 'Hide' : 'Show'}
+                  </Text>
+                </Pressable>
+              </View>
               <Pressable
                 style={[
                   styles.resetBtn,
@@ -276,10 +293,29 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   password: {
-    marginTop: 6,
     color: '#2563EB',
     fontSize: 13,
     fontWeight: '700',
+  },
+  passwordRow: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  eyeBtn: {
+    borderWidth: 1,
+    borderColor: '#B7A8CF',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: '#F2ECFA',
+  },
+  eyeBtnText: {
+    color: '#1F1233',
+    fontWeight: '700',
+    fontSize: 12,
   },
   resetBtn: {
     marginTop: 10,

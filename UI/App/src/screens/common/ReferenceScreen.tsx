@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -35,6 +36,7 @@ export default function ReferenceScreen({ mode = 'create' as ReferenceMode }) {
   const [items, setItems] = useState<ReferenceItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -94,9 +96,28 @@ export default function ReferenceScreen({ mode = 'create' as ReferenceMode }) {
     }
   }
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      if (mode === 'list') {
+        await loadReferences(query);
+      } else {
+        setError('');
+        setSuccess('');
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }>
         <View style={styles.card}>
           <Text style={styles.title}>{mode === 'create' ? 'Reference Form' : 'Reference Inbox'}</Text>
           {mode === 'create' ? (

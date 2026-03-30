@@ -10,6 +10,7 @@ import {
   NativeSyntheticEvent,
   Platform,
   Pressable,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   Share,
@@ -43,6 +44,8 @@ type DashboardScreenProps = {
   bottomBar?: ReactNode;
   onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   scrollEventThrottle?: number;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 type SlideItem = {
@@ -79,6 +82,8 @@ export default function DashboardScreen({
   bottomBar,
   onScroll,
   scrollEventThrottle,
+  refreshing = false,
+  onRefresh,
 }: DashboardScreenProps) {
   const {language, setLanguage} = useLanguage();
   const t = tx(language);
@@ -99,9 +104,14 @@ export default function DashboardScreen({
   const canManageSlides = role === 'super_admin' || role === 'admin';
   const isStudent = role === 'student';
   const isTeacher = role === 'teacher';
-  const localizedTitle = language === 'mr' ? roleTitle[role].mr : title;
-  const localizedSubtitle =
-    language === 'mr' ? `${subtitle} (मराठी)` : subtitle;
+  const hasTitle = Boolean(title?.trim());
+  const hasSubtitle = Boolean(subtitle?.trim());
+  const localizedTitle = hasTitle
+    ? (language === 'mr' ? roleTitle[role].mr : title)
+    : '';
+  const localizedSubtitle = hasSubtitle
+    ? (language === 'mr' ? `${subtitle} (मराठी)` : subtitle)
+    : '';
   const slideCardWidth = Math.max(240, width - 56);
   const imageViewerData = useMemo(
     () => slides.map(slide => ({uri: slide.uri})),
@@ -296,8 +306,8 @@ export default function DashboardScreen({
               {SCHOOL_SCROLL_TITLE}
             </Animated.Text>
           </View>
-          <Text style={styles.title}>{localizedTitle}</Text>
-          <Text style={styles.subtitle}>{localizedSubtitle}</Text>
+          {localizedTitle ? <Text style={styles.title}>{localizedTitle}</Text> : null}
+          {localizedSubtitle ? <Text style={styles.subtitle}>{localizedSubtitle}</Text> : null}
           {headerMeta ? (
             <Text style={styles.headerMeta}>{headerMeta}</Text>
           ) : null}
@@ -311,6 +321,11 @@ export default function DashboardScreen({
           bottomBar ? styles.scrollWithBottomBar : null,
         ]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          ) : undefined
+        }
         onScroll={onScroll}
         scrollEventThrottle={scrollEventThrottle}>
         <View style={styles.sliderWrap}>

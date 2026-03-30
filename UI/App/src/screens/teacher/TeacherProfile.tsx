@@ -1,11 +1,32 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import DashboardScreen from '../../components/DashboardScreen';
 import {useAuth} from '../../context/AuthContext';
 import PasswordChangeCard from '../../components/PasswordChangeCard';
+import client from '../../api/client';
 
 export default function TeacherProfile() {
   const {user, updateUser} = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      if (!user) return;
+      const {data} = await client.get('/users/me');
+      if (data) {
+        updateUser({
+          ...(user || {}),
+          ...data,
+        });
+      }
+    } catch {
+      // silent refresh fail
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <DashboardScreen
       title="Profile"
@@ -13,6 +34,8 @@ export default function TeacherProfile() {
       role="teacher"
       loading={false}
       loadingLabel=""
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
       filter=""
       filters={[]}
       onFilterChange={() => {}}>

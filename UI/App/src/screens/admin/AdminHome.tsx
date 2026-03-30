@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import DashboardScreen from '../../components/DashboardScreen';
+import { useAuth } from '../../context/AuthContext';
 import {
   approveLeaveByAdmin,
   Complaint,
@@ -15,7 +16,9 @@ import {
 const filters = ['today', 'pending admissions', 'fees due'];
 
 export default function AdminHome() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState(filters[0]);
   const [complaints, setComplaints] = useState<Complaint[]>(getAllComplaints());
   const [studentAttendanceRows, setStudentAttendanceRows] = useState(getAdminAttendanceRows());
@@ -38,13 +41,28 @@ export default function AdminHome() {
     return () => unsub();
   }, []);
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      setComplaints([...getAllComplaints()]);
+      setStudentAttendanceRows(getAdminAttendanceRows());
+      setStaffAttendanceRows(getAdminStaffAttendanceRows());
+      setLeaveRequests([...getLeaveRequests()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <DashboardScreen
       title="Admin Dashboard"
       subtitle="Admissions, students, fees, teachers, course batches."
+      headerMeta={`Admin: ${user?.fullName || 'Admin'}`}
       role="admin"
       loading={loading}
       loadingLabel="Loading admin operations..."
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
       filter={filter}
       filters={filters}
       onFilterChange={setFilter}

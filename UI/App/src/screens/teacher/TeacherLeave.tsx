@@ -29,6 +29,7 @@ export default function TeacherLeave() {
   const [openFrom, setOpenFrom] = useState(false);
   const [openTo, setOpenTo] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [leaves, setLeaves] = useState<LeaveItem[]>([]);
   const [error, setError] = useState('');
 
@@ -93,6 +94,15 @@ export default function TeacherLeave() {
     }
   }
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await loadLeaves();
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <DashboardScreen
       title="Leave"
@@ -100,6 +110,8 @@ export default function TeacherLeave() {
       role="teacher"
       loading={loading}
       loadingLabel="Loading leave data..."
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
       filter=""
       filters={[]}
       onFilterChange={() => {}}

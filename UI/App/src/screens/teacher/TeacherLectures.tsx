@@ -8,6 +8,7 @@ import client from '../../api/client';
 export default function TeacherLectures() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [lectures, setLectures] = useState<any[]>([]);
   const [page, setPage] = useState(0);
   const [error, setError] = useState('');
@@ -107,6 +108,15 @@ export default function TeacherLectures() {
     return '--';
   }
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await fetchLectures(true);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   return (
     <DashboardScreen
       title={`Lectures — ${user?.fullName || 'Teacher'}`}
@@ -114,6 +124,8 @@ export default function TeacherLectures() {
       role="teacher"
       loading={loading}
       loadingLabel="Loading lectures..."
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
       filter=""
       filters={[]}
       onFilterChange={() => {}}
