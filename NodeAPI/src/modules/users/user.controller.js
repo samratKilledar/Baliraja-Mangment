@@ -39,6 +39,8 @@ function shapeStudentDetails(raw = {}) {
   };
   const education = {
     admissionType: raw.admissionType,
+    batchYear: raw.batchYear,
+    batchMonth: raw.batchMonth,
     previousSchool: raw.previousSchool,
     currentClass: raw.currentClass,
     division: raw.division,
@@ -265,7 +267,7 @@ async function createUser(req, res, next) {
         userId: user._id,
         enrollmentNo,
         batchId: payload.batchId || null,
-        status: 'active',
+        status: payload.status || 'inactive',
         dateOfBirth: payload.dateOfBirth,
         age,
         gender: payload.gender,

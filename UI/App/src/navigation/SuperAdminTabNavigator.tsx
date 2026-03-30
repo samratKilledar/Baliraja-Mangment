@@ -5,6 +5,7 @@ import SuperAdminHome from '../screens/superAdmin/SuperAdminHome';
 import SuperAdminNoticePublisher from '../screens/superAdmin/SuperAdminNoticePublisher';
 import SuperAdminStudentList from '../screens/superAdmin/SuperAdminStudentList';
 import SuperAdminFinanceScreen from '../screens/superAdmin/SuperAdminFinanceScreen';
+import SuperAdminPlacedStudents from '../screens/superAdmin/SuperAdminPlacedStudents';
 
 const Tab = createBottomTabNavigator();
 
@@ -14,6 +15,7 @@ const TAB_META: Record<string, {label: string; color: string; short: string}> =
     Notice: {label: 'Notice', color: '#F59E0B', short: 'N'},
     Students: {label: 'Students', color: '#16A34A', short: 'SU'},
     Income: {label: 'Income', color: '#0891B2', short: 'I'},
+    Placed: {label: 'Placed', color: '#9333EA', short: 'PL'},
   };
 
 function TabIcon({routeName, focused}: {routeName: string; focused: boolean}) {
@@ -52,6 +54,10 @@ function IncomeTabIcon({focused}: {focused: boolean}) {
   return <TabIcon routeName="Income" focused={focused} />;
 }
 
+function PlacedTabIcon({focused}: {focused: boolean}) {
+  return <TabIcon routeName="Placed" focused={focused} />;
+}
+
 export default function SuperAdminTabNavigator() {
   return (
     <Tab.Navigator
@@ -85,6 +91,11 @@ export default function SuperAdminTabNavigator() {
         name="Income"
         component={SuperAdminFinanceScreen}
         options={{tabBarIcon: IncomeTabIcon}}
+      />
+      <Tab.Screen
+        name="Placed"
+        component={SuperAdminPlacedStudents}
+        options={{tabBarIcon: PlacedTabIcon}}
       />
     </Tab.Navigator>
   );

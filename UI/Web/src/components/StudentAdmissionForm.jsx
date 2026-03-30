@@ -5,6 +5,24 @@ import api from '../api/client';
 
 const DEFAULT_CLASS_OPTIONS = ['11th Std', '12th Std', 'Police Batch', 'Army Batch', 'Summer Camp'];
 const DEFAULT_ADMISSION_TYPE_OPTIONS = ['11th', '12th', 'Police', 'Army', 'Summer Camp'];
+const BATCH_YEAR_OPTIONS = Array.from({ length: 21 }, (_, idx) => String(2010 + idx));
+const BATCH_MONTH_OPTIONS = [
+  { value: '1', label: 'January' },
+  { value: '2', label: 'February' },
+  { value: '3', label: 'March' },
+  { value: '4', label: 'April' },
+  { value: '5', label: 'May' },
+  { value: '6', label: 'June' },
+  { value: '7', label: 'July' },
+  { value: '8', label: 'August' },
+  { value: '9', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' }
+];
+const now = new Date();
+const CURRENT_BATCH_YEAR = String(now.getFullYear());
+const CURRENT_BATCH_MONTH = String(now.getMonth() + 1);
 
 const initialForm = {
   admissionNo: '',
@@ -15,7 +33,9 @@ const initialForm = {
   dob: '',
   age: '',
   gender: '',
-  status: 'active',
+  status: 'inactive',
+  batchYear: CURRENT_BATCH_YEAR,
+  batchMonth: CURRENT_BATCH_MONTH,
   bloodGroup: '',
   aadhaarNo: '',
   mobileNo: '',
@@ -199,7 +219,9 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
         aadhaarNo: d.personal?.aadhaarNo || '',
         mobileNo: sanitizeNumeric(st.userId?.phone || ''),
         email: st.userId?.email || '',
-        status: st.status || 'active',
+        status: st.status || 'inactive',
+        batchYear: d.education?.batchYear || (st.admissionDate ? String(new Date(st.admissionDate).getFullYear()) : CURRENT_BATCH_YEAR),
+        batchMonth: d.education?.batchMonth || (st.admissionDate ? String(new Date(st.admissionDate).getMonth() + 1) : CURRENT_BATCH_MONTH),
         admissionType: d.education?.admissionType || DEFAULT_ADMISSION_TYPE_OPTIONS[0],
         admissionPurposes: Array.isArray(d.education?.admissionPurposes) && d.education.admissionPurposes.length
           ? d.education.admissionPurposes
@@ -493,6 +515,20 @@ export default function StudentAdmissionForm({ editId = null, onSaved }) {
                   </option>
                 );
               })}
+            </select>
+          </label>
+          <label><span>Batch Year</span>
+            <select value={form.batchYear} onChange={(e)=>setField('batchYear', e.target.value)}>
+              {BATCH_YEAR_OPTIONS.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </label>
+          <label><span>Batch Month</span>
+            <select value={form.batchMonth} onChange={(e)=>setField('batchMonth', e.target.value)}>
+              {BATCH_MONTH_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
             </select>
           </label>
           <label><span>First Name</span><input value={form.firstName} onChange={(e) => setField('firstName', e.target.value)} /></label>

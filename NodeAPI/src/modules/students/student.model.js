@@ -16,7 +16,7 @@ const studentSchema = new mongoose.Schema(
     admissionDate: { type: Date },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     createdByEmail: { type: String },
-    status: { type: String, enum: ['active', 'inactive', 'graduated'], default: 'active' },
+    status: { type: String, enum: ['active', 'inactive', 'graduated'], default: 'inactive' },
     details: {
       type: mongoose.Schema.Types.Mixed,
       default: {}

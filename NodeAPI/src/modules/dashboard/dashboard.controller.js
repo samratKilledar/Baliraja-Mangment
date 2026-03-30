@@ -15,6 +15,8 @@ function normalizeDate(value) {
 async function superAdminDashboard(req, res, next) {
   try {
     const now = new Date();
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+    const nextYearStart = new Date(now.getFullYear() + 1, 0, 1);
     const sixMonthsAgo = new Date(now);
     sixMonthsAgo.setMonth(now.getMonth() - 5);
     const eightWeeksAgo = new Date(now);
@@ -24,7 +26,7 @@ async function superAdminDashboard(req, res, next) {
 
     const today = normalizeDate();
 
-    const [totalUsers, studentCount, teacherCount, workerCount, feeSummary, monthAdmissions, weekAdmissions, dayAdmissions, classStudents, todayAttendance] = await Promise.all([
+    const [totalUsers, studentCount, teacherCount, workerCount, feeSummary, yearRevenueStats, monthAdmissions, weekAdmissions, dayAdmissions, classStudents, todayAttendance] = await Promise.all([
       User.countDocuments(),
       Student.countDocuments(),
       Teacher.countDocuments(),
@@ -36,6 +38,23 @@ async function superAdminDashboard(req, res, next) {
             totalExpected: { $sum: '$totalAmount' },
             totalCollected: { $sum: '$paidAmount' },
             totalDue: { $sum: '$dueAmount' }
+          }
+        }
+      ]),
+      Fee.aggregate([
+        { $unwind: '$transactions' },
+        {
+          $match: {
+            'transactions.paidOn': {
+              $gte: yearStart,
+              $lt: nextYearStart
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalCollected: { $sum: '$transactions.amount' }
           }
         }
       ]),
@@ -89,6 +108,7 @@ async function superAdminDashboard(req, res, next) {
       label: d._id.d,
       count: d.count
     }));
+    const yearCollected = yearRevenueStats[0]?.totalCollected || 0;
 
     const rawRevenuePass = req.query.revenuePass ?? req.headers['x-revenue-pass'];
     const revenuePass = typeof rawRevenuePass === 'string' ? rawRevenuePass : '';
@@ -139,7 +159,8 @@ async function superAdminDashboard(req, res, next) {
       workerCount,
       fees: feeSummary[0] || { totalExpected: 0, totalCollected: 0, totalDue: 0 },
       revenueLocked: !revenueAllowed,
-      revenue: revenueAllowed ? (feeSummary[0]?.totalCollected || 0) : undefined,
+      revenue: revenueAllowed ? yearCollected : undefined,
+      revenueYear: now.getFullYear(),
       classCapacitySummary: Array.from(classCapacityMap.values()).sort((left, right) =>
         `${left.currentClass}-${left.division}`.localeCompare(`${right.currentClass}-${right.division}`)
       ),

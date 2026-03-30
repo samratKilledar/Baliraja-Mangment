@@ -20,7 +20,7 @@ export default function StudentList() {
   });
   const [pendingFees, setPendingFees] = useState({});
   const [feeMeta, setFeeMeta] = useState({});
-  const [collectionRange, setCollectionRange] = useState('month');
+  const [collectionRange, setCollectionRange] = useState('year');
   const [collection, setCollection] = useState(null);
   const [feeEdit, setFeeEdit] = useState(null);
   const [feeReason, setFeeReason] = useState('');
@@ -403,6 +403,27 @@ function startEdit(s) {
     }
   }
 
+  async function deletePaymentEntry(feeId, paymentId) {
+    if (!feeId || !paymentId) return;
+    if (!window.confirm('Delete this payment entry?')) return;
+    const busyKey = `payment-delete-${feeId}-${paymentId}`;
+    setActionBusy(busyKey);
+    try {
+      await api.delete(`/fees/${feeId}/payments/${paymentId}`);
+      if (feeEdit?.studentId) {
+        await openFeeEditor(feeEdit.studentId);
+      } else if (payNow?.studentId) {
+        await openPayNow(payNow.studentId);
+      }
+      await load(search.trim(), page);
+      setError('');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Unable to delete payment');
+    } finally {
+      setActionBusy('');
+    }
+  }
+
   async function deleteFeeRecord(studentId) {
     const fee = pendingFees[studentId];
     if (!fee?._id) {
@@ -442,10 +463,7 @@ function startEdit(s) {
       <div className="card" style={{ marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center' }}>
         <span style={{ fontWeight: 700 }}>Collections</span>
         <select value={collectionRange} onChange={(e)=>setCollectionRange(e.target.value)}>
-          <option value="week">This week</option>
-          <option value="month">This month</option>
-            <option value="year">This year</option>
-            <option value="all">All time</option>
+          <option value="year">This year</option>
           </select>
           {collection && (
             <span style={{ color: '#0f7d49', fontWeight: 700 }}>
@@ -453,7 +471,7 @@ function startEdit(s) {
             </span>
           )}
           <span style={{ marginLeft: 'auto', fontWeight: 700, color: '#1f2f75' }}>
-            Year Collected: ₹{yearlyTotals.collected} | Pending: ₹{yearlyTotals.pending}
+            Year Collected: ₹{collection?.collected || 0} | Pending: ₹{yearlyTotals.pending}
           </span>
         </div>
       )}
@@ -886,6 +904,16 @@ function startEdit(s) {
                                     <div className="pill-line"><span>Ref</span><strong>{t.transactionRef || '—'}</strong></div>
                                     <div className="pill-line"><span>Note</span><strong>{t.note || '—'}</strong></div>
                                     <div className="pill-line"><span>Mobile</span><strong>{t.studentPhone || student.userId?.phone || '—'}</strong></div>
+                                    <div style={{ marginTop: 6 }}>
+                                      <button
+                                        className="danger-btn"
+                                        onClick={() => deletePaymentEntry(payNow._id, t._id)}
+                                        disabled={actionBusy === `payment-delete-${payNow._id}-${t._id}`}
+                                        style={{ padding: '6px 10px', fontSize: 12 }}
+                                      >
+                                        {actionBusy === `payment-delete-${payNow._id}-${t._id}` ? 'Deleting...' : 'Delete Payment'}
+                                      </button>
+                                    </div>
                                   </div>
                                 ))}
                               </div>

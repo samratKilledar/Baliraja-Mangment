@@ -2,6 +2,7 @@ const express = require('express');
 const {
   createFeeRecord,
   addPayment,
+  deletePayment,
   updateFeeRecord,
   feeSummary,
   pendingFees,
@@ -20,6 +21,7 @@ const router = express.Router();
 router.use(authenticate);
 router.post('/', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), createFeeRecord);
 router.post('/:feeId/payments', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), addPayment);
+router.delete('/:feeId/payments/:paymentId', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), deletePayment);
 router.put('/:feeId', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), updateFeeRecord);
 router.delete('/:feeId', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), deleteFeeRecord);
 router.get('/summary', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), feeSummary);

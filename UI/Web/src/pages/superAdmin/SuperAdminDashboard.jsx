@@ -22,6 +22,7 @@ import AttendanceWorkspace from '../../components/AttendanceWorkspace';
 import ChangePasswordForm from '../../components/ChangePasswordForm';
 import SharedGrid from '../../components/SharedGrid';
 import AdmissionOptionsManager from '../../components/AdmissionOptionsManager';
+import PlacedStudentsManager from '../../components/PlacedStudentsManager';
 const baseMenus = [
   { key: 'analytics', label: 'Analytics Hub', icon: 'chart', path: '/super-admin' },
   { key: 'student-form', label: 'Student Master Form', icon: 'users', path: '/super-admin/student-form' },
@@ -40,7 +41,8 @@ const baseMenus = [
   { key: 'workers', label: 'Workers', icon: 'users', path: '/super-admin/workers' },
   { key: 'complaints', label: 'Complaints', icon: 'alert-circle', path: '/super-admin/complaints' },
   { key: 'leaves', label: 'Leaves', icon: 'calendar', path: '/super-admin/leaves' },
-  { key: 'data', label: 'Data Cleanup', icon: 'trash', path: '/super-admin/data' }
+  { key: 'data', label: 'Data Cleanup', icon: 'trash', path: '/super-admin/data' },
+  { key: 'placed-students', label: 'Placed Student', icon: 'users', path: '/super-admin/placed-students' }
 
 ];
 
@@ -151,6 +153,7 @@ export default function SuperAdminDashboard() {
     if (location.pathname.startsWith('/super-admin/complaints')) return 'complaints';
     if (location.pathname.startsWith('/super-admin/leaves')) return 'leaves';
     if (location.pathname.startsWith('/super-admin/data')) return 'data';
+    if (location.pathname.startsWith('/super-admin/placed-students')) return 'placed-students';
     return 'analytics';
   }, [location.pathname]);
 
@@ -541,6 +544,17 @@ if (currentModule === 'admission-options') {
         </article>
       );
     }
+    if (currentModule === 'placed-students') {
+      return (
+        <article className="panel">
+          <div className="panel-head">
+            <h3>Placed Student</h3>
+            <VectorIcon name="users" size={18} />
+          </div>
+          <PlacedStudentsManager />
+        </article>
+      );
+    }
     if (currentModule === 'leaves') {
       return (
         <article className="panel">
@@ -634,7 +648,7 @@ if (currentModule === 'admission-options') {
                   <strong>{formatMaskedCurrency(summary.fees?.totalDue, revenueMasked)}</strong>
                 </div>
                 <div className="analytics-money-card tone-primary">
-                  <small>Revenue MTD</small>
+                  <small>Revenue (This Year)</small>
                   <strong>{formatMaskedCurrency(summary.revenue, revenueMasked)}</strong>
                 </div>
               </div>

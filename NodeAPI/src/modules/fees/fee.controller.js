@@ -64,6 +64,29 @@ async function addPayment(req, res, next) {
   }
 }
 
+async function deletePayment(req, res, next) {
+  try {
+    const { feeId, paymentId } = req.params;
+    const fee = await Fee.findById(feeId);
+    if (!fee) return res.status(404).json({ message: 'Fee record not found' });
+
+    const txIndex = (fee.transactions || []).findIndex((tx) => String(tx._id) === String(paymentId));
+    if (txIndex < 0) return res.status(404).json({ message: 'Payment entry not found' });
+
+    fee.transactions.splice(txIndex, 1);
+
+    const paidFromTransactions = (fee.transactions || []).reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+    fee.paidAmount = paidFromTransactions;
+    fee.dueAmount = Math.max(0, (Number(fee.totalAmount) || 0) - paidFromTransactions);
+    fee.paymentStatus = fee.dueAmount === 0 ? 'paid' : fee.paidAmount > 0 ? 'partial' : 'pending';
+
+    await fee.save();
+    res.json(fee);
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function updateFeeRecord(req, res, next) {
   try {
     const { feeId } = req.params;
@@ -334,6 +357,7 @@ async function feeCategorySummary(req, res, next) {
 module.exports = {
   createFeeRecord,
   addPayment,
+  deletePayment,
   updateFeeRecord,
   feeSummary,
   pendingFees,

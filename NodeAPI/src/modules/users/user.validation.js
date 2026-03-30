@@ -31,6 +31,7 @@ const createUserSchema = z.object({
   admissionDate: z.string().optional(),
   feeFrom: z.string().optional(),
   feeTo: z.string().optional(),
+  status: z.enum(['active', 'inactive', 'graduated']).optional(),
 
   // Teacher specific
   specialization: z.array(z.string()).optional(),

@@ -20,6 +20,7 @@ import DivisionAllocationManager from '../../components/DivisionAllocationManage
 import DivisionAttendanceBoard from '../../components/DivisionAttendanceBoard';
 import SharedGrid from '../../components/SharedGrid';
 import AdmissionOptionsManager from '../../components/AdmissionOptionsManager';
+import PlacedStudentsManager from '../../components/PlacedStudentsManager';
 import api from '../../api/client';
 
 const navItems = [
@@ -38,7 +39,8 @@ const navItems = [
   { key: 'password', label: 'Change Password', icon: 'shield', path: '/admin/password' },
   { key: 'complaints', label: 'Complaints', icon: 'alert-circle', path: '/admin/complaints' },
   { key: 'leaves', label: 'Leaves', icon: 'calendar', path: '/admin/leaves' },
-  { key: 'splash', label: 'App Splash', icon: 'spark', path: '/admin/splash' }
+  { key: 'splash', label: 'App Splash', icon: 'spark', path: '/admin/splash' },
+  { key: 'placed-students', label: 'Placed Student', icon: 'users', path: '/admin/placed-students' }
 ];
 
 const tasks = [
@@ -133,6 +135,7 @@ export default function AdminDashboard() {
     if (location.pathname.startsWith('/admin/complaints')) return 'complaints';
     if (location.pathname.startsWith('/admin/leaves')) return 'leaves';
     if (location.pathname.startsWith('/admin/splash')) return 'splash';
+    if (location.pathname.startsWith('/admin/placed-students')) return 'placed-students';
     return 'overview';
   }, [location.pathname]);
 
@@ -290,6 +293,17 @@ export default function AdminDashboard() {
             <VectorIcon name="calendar" size={18} />
           </div>
           <LeaveCenter />
+        </article>
+      );
+    }
+    if (routeKey === 'placed-students') {
+      return (
+        <article className="panel">
+          <div className="panel-head">
+            <h3>Placed Student</h3>
+            <VectorIcon name="users" size={18} />
+          </div>
+          <PlacedStudentsManager />
         </article>
       );
     }

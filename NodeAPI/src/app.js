@@ -21,6 +21,7 @@ const complaintRoutes = require('./modules/complaints/complaint.routes');
 const brandingRoutes = require('./modules/branding/branding.routes');
 const subjectRoutes = require('./modules/subjects/subject.routes');
 const admissionOptionsRoutes = require('./modules/admissionOptions/admissionOptions.routes');
+const placedStudentRoutes = require('./modules/placedStudents/placedStudent.routes');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -101,6 +102,7 @@ app.use('/api/v1/complaints', complaintRoutes);
 app.use('/api/v1/branding', brandingRoutes);
 app.use('/api/v1/subjects', subjectRoutes);
 app.use('/api/v1/admission-options', admissionOptionsRoutes);
+app.use('/api/v1/placed-students', placedStudentRoutes);
 
 app.use(errorHandler);
 
