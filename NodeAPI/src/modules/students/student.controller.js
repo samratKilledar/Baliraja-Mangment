@@ -586,7 +586,6 @@ async function exportStudentPdf(req, res, next) {
     const rightX = doc.page.width - doc.page.margins.right;
     const details = student.details || {};
     const personal = details.personal || details;
-    const education = details.education || details.educ || details;
     const physical = details.physical || details;
     const parent = details.parent || details;
     const address = details.address || details;
@@ -611,20 +610,20 @@ async function exportStudentPdf(req, res, next) {
     }
 
     function drawSectionTitle(titleEnglish) {
-      ensureSpace(20);
-      setFont(10.5, '#1f2f75').text(titleEnglish, leftX, doc.y);
+      ensureSpace(15);
+      setFont(9.6, '#1f2f75').text(titleEnglish, leftX, doc.y);
       doc
         .moveTo(leftX, doc.y + 1)
         .lineTo(rightX, doc.y + 1)
         .strokeColor('#d6dce8')
         .lineWidth(0.8)
         .stroke();
-      doc.moveDown(0.2);
+      doc.moveDown(0.05);
     }
 
     function drawInfoTable(rows) {
       const cellGap = 4;
-      const basePadding = 5;
+      const basePadding = 3.2;
       const twoColWidth = (pageWidth - cellGap) / 2;
       rows.forEach((cells) => {
         const normalized = cells.length === 1
@@ -646,10 +645,10 @@ async function exportStudentPdf(req, res, next) {
           doc
             .rect(x, y, cell.width, rowHeight)
             .fillAndStroke('#ffffff', '#d6dce8');
-          setFont(7.2, '#4b5774').text(pdfValue(cell.label), x + 5, y + 4, { width: cell.width - 10 });
+          setFont(7.2, '#4b5774').text(pdfValue(cell.label), x + 4, y + 3, { width: cell.width - 8 });
           const labelBottom = doc.y;
-          setFont(8.2, '#15213d').text(pdfValue(cell.value), x + 5, labelBottom + 2, {
-            width: cell.width - 10,
+          setFont(8, '#15213d').text(pdfValue(cell.value), x + 4, labelBottom + 1, {
+            width: cell.width - 8,
             align: 'left'
           });
           currentX += cell.width + (index < normalized.length - 1 ? cellGap : 0);
@@ -706,6 +705,27 @@ async function exportStudentPdf(req, res, next) {
       });
     }
 
+    function drawPhysicalMedicalCompactTable() {
+      drawSectionTitle('Physical / Medical Details');
+      const colGap = 4;
+      const colWidth = (pageWidth - colGap * 2) / 3;
+
+      drawInfoTable([
+        [
+          { label: 'Height', value: physical.height ? `${physical.height} cm` : '—', width: colWidth },
+          { label: 'Weight', value: physical.weight ? `${physical.weight} kg` : '—', width: colWidth },
+          { label: 'Vision', value: physical.vision || '—', width: colWidth }
+        ],
+        [
+          { label: 'Disability', value: physical.disability || '—' },
+          { label: 'Allergy / Notes', value: physical.allergy || '—' }
+        ]
+      ]);
+
+      // Keep this section readable while still compacting page height.
+      setFont(8.8, '#15213d');
+    }
+
     doc
       .rect(leftX, doc.y, pageWidth, 56)
       .fill('#f3f6ff');
@@ -727,7 +747,7 @@ async function exportStudentPdf(req, res, next) {
         });
       }
     }
-    doc.moveDown(1.1);
+    doc.moveDown(0.5);
     setFont(7.6, '#4a4a4a').text(`Generated On: ${formatDateTime(new Date())}`, { align: 'left' });
     setFont(7.6, '#4a4a4a').text(`Enrollment No: ${student.enrollmentNo || '—'}`, { align: 'left' });
     doc.moveDown(0.15);
@@ -803,36 +823,7 @@ async function exportStudentPdf(req, res, next) {
       ]
     ]);
 
-    drawSectionTitle('Education Details');
-    drawInfoTable([
-      [
-        { label: 'Previous School', value: education.previousSchool || '—' },
-        { label: 'Current Class', value: education.currentClass || '—' }
-      ],
-      [
-        { label: 'Medium', value: education.medium || '—' },
-        { label: 'Board', value: education.board || '—' }
-      ],
-      [
-        { label: 'Passing Year', value: education.passingYear || '—' },
-        { label: 'Percentage', value: education.percentage || '—' }
-      ]
-    ]);
-
-    drawSectionTitle('Physical / Medical Details');
-    drawInfoTable([
-      [
-        { label: 'Height', value: physical.height ? `${physical.height} cm` : '—' },
-        { label: 'Weight', value: physical.weight ? `${physical.weight} kg` : '—' }
-      ],
-      [
-        { label: 'Vision', value: physical.vision || '—' },
-        { label: 'Disability', value: physical.disability || '—' }
-      ],
-      [
-        { label: 'Allergy / Notes', value: physical.allergy || '—', width: pageWidth }
-      ]
-    ]);
+    drawPhysicalMedicalCompactTable();
 
     drawSectionTitle('Fee Details');
     drawInfoTable([
@@ -857,7 +848,7 @@ async function exportStudentPdf(req, res, next) {
       ]
     ]);
 
-    drawPaymentTable(fee?.transactions || []);
+    // Keep the report on a single page by skipping transaction history table.
 
     ensureSpace(46);
     doc.moveDown(0.6);

@@ -331,33 +331,6 @@ export default function AdminDashboard() {
         </section>
 
         <SharedGrid columns={1} className="dash-grid fade-up delay-2">
-          <article className="panel analytics-panel analytics-finance-panel">
-            <div className="panel-head">
-              <h3>Finance Monitor (Live)</h3>
-              <VectorIcon name="money" size={18} />
-            </div>
-            <div className="analytics-scroll-area">
-              <div className="analytics-finance-grid">
-                <div className="analytics-money-card tone-warn">
-                  <small>Total Fees</small>
-                  <strong>{formatCurrency(summary.fees?.totalExpected)}</strong>
-                </div>
-                <div className="analytics-money-card tone-good">
-                  <small>Collected</small>
-                  <strong>{formatCurrency(summary.fees?.totalCollected)}</strong>
-                </div>
-                <div className="analytics-money-card tone-danger">
-                  <small>Remaining</small>
-                  <strong>{formatCurrency(summary.fees?.totalDue)}</strong>
-                </div>
-                <div className="analytics-money-card tone-primary">
-                  <small>Revenue MTD</small>
-                  <strong>{formatCurrency(summary.revenue)}</strong>
-                </div>
-              </div>
-            </div>
-          </article>
-
           <article className="panel analytics-panel analytics-signal-panel">
             <div className="panel-head">
               <h3>System Signals</h3>
