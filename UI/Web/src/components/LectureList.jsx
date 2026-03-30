@@ -8,6 +8,7 @@ export default function LectureList({ days = 365, pageSize = 200 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
+  const showIndex = records.length > 10;
 
   useEffect(() => {
     load(true);
@@ -60,6 +61,7 @@ export default function LectureList({ days = 365, pageSize = 200 }) {
         <table className="data-table">
           <thead>
             <tr>
+              {showIndex ? <th>#</th> : null}
               <th>Date</th>
               <th>Teacher</th>
               <th>Subject</th>
@@ -70,12 +72,13 @@ export default function LectureList({ days = 365, pageSize = 200 }) {
             </tr>
           </thead>
           <tbody>
-            {records.map((rec) => {
+            {records.map((rec, idx) => {
               const start = rec.startTime ? new Date(rec.startTime) : null;
               const end = rec.endTime ? new Date(rec.endTime) : null;
               const derivedHours = rec.hours ?? (start && end ? (end - start) / 3600000 : null);
               return (
                 <tr key={`${rec.teacherId}-${rec.date}-${rec.subject}-${rec.startTime || ''}`}>
+                  {showIndex ? <td>{idx + 1}</td> : null}
                   <td>{rec.date ? new Date(rec.date).toLocaleDateString() : '—'}</td>
                   <td>{rec.teacherName || '—'}<br /><small>{rec.phone || ''}</small></td>
                   <td>{rec.subject || '—'}</td>
@@ -89,7 +92,7 @@ export default function LectureList({ days = 365, pageSize = 200 }) {
               );
             })}
             {!records.length && !loading ? (
-              <tr><td colSpan={7}>No lectures found.</td></tr>
+              <tr><td colSpan={showIndex ? 8 : 7}>No lectures found.</td></tr>
             ) : null}
           </tbody>
         </table>

@@ -58,10 +58,14 @@ const passwordUpdateSchema = z.object({
 const resetUserPasswordSchema = z.object({
   newPassword: z.string().min(6)
 });
+const autoResetUserPasswordSchema = z.object({
+  length: z.coerce.number().int().min(6).max(10).optional()
+});
 
 module.exports = {
   createUserSchema,
   listUserSchema,
   passwordUpdateSchema,
-  resetUserPasswordSchema
+  resetUserPasswordSchema,
+  autoResetUserPasswordSchema
 };

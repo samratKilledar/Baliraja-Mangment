@@ -88,6 +88,19 @@ function formatMaskedCurrency(value, locked) {
   return `₹${(Number(value) || 0).toLocaleString('en-IN')}`;
 }
 
+function getFeeRangeSignal(fee) {
+  const endRaw = fee?.feeEndDate || fee?.feeTo;
+  if (!endRaw) return { isCritical: false, daysLeft: null, label: '' };
+  const endDate = new Date(endRaw);
+  if (Number.isNaN(endDate.getTime())) return { isCritical: false, daysLeft: null, label: '' };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  endDate.setHours(0, 0, 0, 0);
+  const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const label = daysLeft < 0 ? `${Math.abs(daysLeft)} days overdue` : `${daysLeft} days left`;
+  return { isCritical: daysLeft <= 30, daysLeft, label };
+}
+
 export default function SuperAdminDashboard() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
@@ -184,6 +197,12 @@ export default function SuperAdminDashboard() {
   }, []);
 
   const revenueMasked = !revenueUnlocked || summary.revenueLocked;
+  const redRangeFees = useMemo(
+    () => (feesList || [])
+      .map((fee) => ({ fee, signal: getFeeRangeSignal(fee) }))
+      .filter((item) => item.signal.isCritical),
+    [feesList]
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -192,9 +211,8 @@ export default function SuperAdminDashboard() {
   }, [loadSummary, routeModule, user]);
 
   useEffect(() => {
-    if (routeModule === 'fees') {
-      loadFees(feesPage);
-    }
+    if (!['analytics', 'fees'].includes(routeModule)) return;
+    loadFees(routeModule === 'fees' ? feesPage : 1);
   }, [routeModule, feesPage]);
 
   useEffect(() => {
@@ -353,6 +371,21 @@ if (currentModule === 'admission-options') {
             <h3>Finance Monitor</h3>
             <VectorIcon name="money" size={18} />
           </div>
+          {redRangeFees.length ? (
+            <div className="finance-red-alert finance-red-alert-bounce">
+              <strong>Range Alert: {redRangeFees.length} fee range(s) ending within 30 days</strong>
+              <div className="finance-red-alert-list">
+                {redRangeFees.slice(0, 4).map(({ fee, signal }) => {
+                  const student = fee.studentId || {};
+                  return (
+                    <span key={fee._id || student._id || fee.id}>
+                      {student.userId?.fullName || student.enrollmentNo || 'Student'} ({signal.label})
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <div className="analytics-password-box">
             <input
               placeholder="Enter revenue password"
@@ -405,6 +438,7 @@ if (currentModule === 'admission-options') {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {feesList.map((fee) => {
                 const status = feeStatusColor(fee);
+                const rangeSignal = getFeeRangeSignal(fee);
                 const due = fee.dueAmount ?? Math.max((fee.totalAmount || 0) - (fee.paidAmount || 0), 0);
                 const student = fee.studentId || {};
                 const guardian = student.details?.parent || {};
@@ -424,6 +458,7 @@ if (currentModule === 'admission-options') {
                 return (
                   <div
                     key={fee._id || student._id || fee.id}
+                    className={rangeSignal.isCritical ? 'finance-fee-card-danger-bounce' : ''}
                     style={{
                       border: `1px solid ${borderColor}`,
                       background: statusColor,
@@ -441,6 +476,9 @@ if (currentModule === 'admission-options') {
                         Parent: {parentName} · {parentPhone || '—'}
                         </div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>Admission: {admissionDate} → Due: {dueDate}</div>
+                        <div style={{ color: rangeSignal.isCritical ? '#b91c1c' : '#4b5774', fontSize: 12, fontWeight: rangeSignal.isCritical ? 700 : 500 }}>
+                          Fee Range End: {fee.feeEndDate ? new Date(fee.feeEndDate).toLocaleDateString() : '—'} {rangeSignal.label ? `(${rangeSignal.label})` : ''}
+                        </div>
                       </div>
                     <div><small>Total</small><div style={{ fontWeight: 700 }}>{formatMaskedCurrency(fee.totalAmount, revenueMasked)}</div></div>
                     <div><small>Paid</small><div style={{ fontWeight: 700, color: '#0f7d49' }}>{formatMaskedCurrency(fee.paidAmount, revenueMasked)}</div></div>
@@ -566,6 +604,21 @@ if (currentModule === 'admission-options') {
               <h3>Finance Monitor (Live)</h3>
               <VectorIcon name="money" size={18} />
             </div>
+            {redRangeFees.length ? (
+              <div className="finance-red-alert finance-red-alert-bounce">
+                <strong>Range Alert: {redRangeFees.length} fee range(s) ending within 30 days</strong>
+                <div className="finance-red-alert-list">
+                  {redRangeFees.slice(0, 4).map(({ fee, signal }) => {
+                    const student = fee.studentId || {};
+                    return (
+                      <span key={fee._id || student._id || fee.id}>
+                        {student.userId?.fullName || student.enrollmentNo || 'Student'} ({signal.label})
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <div className="analytics-scroll-area">
               <div className="analytics-finance-grid">
                 <div className="analytics-money-card tone-warn">
@@ -684,7 +737,7 @@ if (currentModule === 'admission-options') {
         </SharedGrid>
       </>
     );
-  }, [activeModule, feeCategorySummary, feesError, feesList, feesLoading, feesMeta.page, feesMeta.totalPages, loadingSummary, menuItems, revenueMasked, revenuePass, routeModule, summary]);
+  }, [activeModule, feeCategorySummary, feesError, feesList, feesLoading, feesMeta.page, feesMeta.totalPages, loadingSummary, menuItems, redRangeFees, revenueMasked, revenuePass, routeModule, summary]);
 
   return (
     <div className="dashboard-shell container-fluid px-2 px-md-3 px-xl-4">

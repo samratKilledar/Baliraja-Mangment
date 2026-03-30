@@ -76,7 +76,8 @@ export default function SplashGate({ appReady, minimumMs = 1200, children }: Pro
   useEffect(() => {
     if (hidden) return;
     const elapsed = Date.now() - startedAt.current;
-    const requiredDuration = videoUrl ? 4000 : minimumMs;
+    const hasCustomImage = Boolean(imageUrl);
+    const requiredDuration = videoUrl ? 10000 : hasCustomImage ? 3000 : Math.max(minimumMs, 3000);
     const hideNow = appReady && fetched && elapsed >= requiredDuration;
     if (hideNow) {
       Animated.timing(fade, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => setHidden(true));
@@ -88,7 +89,7 @@ export default function SplashGate({ appReady, minimumMs = 1200, children }: Pro
       }, Math.max(requiredDuration - elapsed, 0));
       return () => clearTimeout(timer);
     }
-  }, [appReady, fetched, hidden, fade, minimumMs, videoUrl]);
+  }, [appReady, fetched, hidden, fade, imageUrl, minimumMs, videoUrl]);
 
   const source = useMemo(() => {
     if (videoUrl) return null;
@@ -119,8 +120,9 @@ export default function SplashGate({ appReady, minimumMs = 1200, children }: Pro
               <View style={styles.scrim} />
               {showDefaultCaption && (
                 <View style={styles.captionBox}>
-                  <Text style={styles.title}>Career Academy</Text>
-                  <Text style={styles.subtitle}>Preparing your experience...</Text>
+                  <Text style={styles.title}>Baliraja Academy</Text>
+                  <Text style={styles.subtitle}>Baliraja Academy Management App</Text>
+                  <Text style={styles.note}>Empowering students, teachers, and administrators together.</Text>
                 </View>
               )}
             </ImageBackground>
@@ -137,10 +139,12 @@ const styles = StyleSheet.create({
   captionBox: {
     position: 'absolute',
     bottom: 80,
+    paddingHorizontal: 16,
     left: 0,
     right: 0,
     alignItems: 'center'
   },
-  title: { color: '#f8fafc', fontSize: 22, fontWeight: '800', letterSpacing: 0.5 },
-  subtitle: { color: '#dbeafe', marginTop: 6, fontSize: 14 }
+  title: { color: '#f8fafc', fontSize: 24, fontWeight: '800', letterSpacing: 0.5, textAlign: 'center' },
+  subtitle: { color: '#dbeafe', marginTop: 8, fontSize: 15, fontWeight: '700', textAlign: 'center' },
+  note: { color: '#dbeafe', marginTop: 6, fontSize: 13, textAlign: 'center' }
 });

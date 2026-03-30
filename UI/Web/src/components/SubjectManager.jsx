@@ -15,6 +15,7 @@ export default function SubjectManager() {
     currentClasses: ['11th Std', '12th Std', 'Summer Camp', 'Trainning'],
     teacherId: ''
   });
+  const showIndex = subjects.length > 10;
 
   useEffect(() => {
     loadTeachers();
@@ -119,6 +120,7 @@ export default function SubjectManager() {
         <table className="data-table">
           <thead>
             <tr>
+              {showIndex ? <th>#</th> : null}
               <th>Subject</th>
               <th>Code</th>
               <th>Teacher</th>
@@ -126,8 +128,9 @@ export default function SubjectManager() {
             </tr>
           </thead>
           <tbody>
-            {subjects.map((subject) => (
+            {subjects.map((subject, idx) => (
               <tr key={subject._id}>
+                {showIndex ? <td>{idx + 1}</td> : null}
                 <td>{subject.name}</td>
                 <td>{subject.code || '—'}</td>
                 <td>{subject.teacherName || subject.teacherId?.userId?.fullName || '—'}</td>
@@ -136,7 +139,7 @@ export default function SubjectManager() {
             ))}
             {!subjects.length && (
               <tr>
-                <td colSpan={4}>{loading ? 'Loading subjects...' : 'No subjects added yet.'}</td>
+                <td colSpan={showIndex ? 5 : 4}>{loading ? 'Loading subjects...' : 'No subjects added yet.'}</td>
               </tr>
             )}
           </tbody>

@@ -1,6 +1,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Pressable,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -22,6 +24,7 @@ type StudentRow = {
     batchName?: string;
   };
   userId?: {
+    _id?: string;
     fullName?: string;
     phone?: string;
     email?: string;
@@ -35,6 +38,8 @@ export default function SuperAdminStudentList() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [resettingUserId, setResettingUserId] = useState<string | null>(null);
+  const [freshPasswords, setFreshPasswords] = useState<Record<string, string>>({});
 
   const loadStudents = useCallback(async (query = '', isRefresh = false) => {
     if (isRefresh) {
@@ -68,6 +73,29 @@ export default function SuperAdminStudentList() {
     }, 350);
     return () => clearTimeout(handler);
   }, [loadStudents, search]);
+
+  async function resetAutoPassword(userId?: string) {
+    if (!userId) return;
+    try {
+      setResettingUserId(userId);
+      const {data} = await client.post(`/users/${userId}/password/auto`);
+      const generated = data?.tempPassword || '';
+      if (generated) {
+        setFreshPasswords(prev => ({...prev, [userId]: generated}));
+        Alert.alert('Password Reset', `New password: ${generated}`);
+      } else {
+        Alert.alert('Password Reset', data?.message || 'Password reset successful.');
+      }
+      await loadStudents(search.trim(), true);
+    } catch (err: any) {
+      Alert.alert(
+        'Reset failed',
+        err?.response?.data?.message || 'Unable to reset student password.',
+      );
+    } finally {
+      setResettingUserId(null);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -132,8 +160,24 @@ export default function SuperAdminStudentList() {
                 Age: {student.age ?? '—'} Gender: {student.gender || '—'}
               </Text>
               <Text style={styles.password}>
-                Password: {student.userId?.passwordVisible || '123456'}
+                Password:{' '}
+                {freshPasswords[student.userId?._id || ''] ||
+                  student.userId?.passwordVisible ||
+                  '123456'}
               </Text>
+              <Pressable
+                style={[
+                  styles.resetBtn,
+                  resettingUserId === student.userId?._id && styles.resetBtnDisabled,
+                ]}
+                disabled={resettingUserId === student.userId?._id}
+                onPress={() => resetAutoPassword(student.userId?._id)}>
+                <Text style={styles.resetBtnText}>
+                  {resettingUserId === student.userId?._id
+                    ? 'Resetting...'
+                    : 'Reset Password (Auto)'}
+                </Text>
+              </Pressable>
             </View>
           </View>
         ))}
@@ -236,5 +280,21 @@ const styles = StyleSheet.create({
     color: '#2563EB',
     fontSize: 13,
     fontWeight: '700',
+  },
+  resetBtn: {
+    marginTop: 10,
+    backgroundColor: '#1f3ca8',
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetBtnDisabled: {
+    opacity: 0.7,
+  },
+  resetBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
   },
 });

@@ -58,6 +58,7 @@ export default function LeaveCenter() {
       return statusOk && searchOk;
     });
   }, [leaves, statusFilter, search]);
+  const showIndex = filteredLeaves.length > 10;
 
   return (
     <div className="card" style={{ marginTop: 8 }}>
@@ -85,7 +86,7 @@ export default function LeaveCenter() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>#</th>
+                {showIndex ? <th>#</th> : null}
                 <th>Role</th>
                 <th>Enrollment</th>
                 <th>Name</th>
@@ -118,9 +119,9 @@ export default function LeaveCenter() {
                 const dayCount = fromDate && toDate ? Math.round((toDate - fromDate) / (1000*60*60*24)) + 1 : 1;
                 const user = l.studentId?.userId || l.userId;
                 const role = l.studentId ? 'Student' : (user?.role || 'Teacher');
-                return (
+                  return (
                   <tr key={l._id} style={{ background: rowBg }}>
-                    <td>{idx + 1}</td>
+                    {showIndex ? <td>{idx + 1}</td> : null}
                     <td>{role}</td>
                     <td>{l.studentId?.enrollmentNo || '—'}</td>
                     <td>{user?.fullName || '—'}</td>

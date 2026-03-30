@@ -61,10 +61,7 @@ export default function LoginScreen() {
   const trimmedIdentifier = identifier.trim();
   const mobileDigits = trimmedIdentifier.replace(/\D/g, '');
   const isEmailLogin = trimmedIdentifier.includes('@');
-  const canSubmit =
-    (mobileDigits.length === 10 || isEmailLogin) &&
-    password.length >= 6 &&
-    !loading;
+  const canSubmit = (mobileDigits.length === 10 || isEmailLogin) && password.length >= 6 && !loading;
   const lottieHeight = Math.max(160, Math.min(240, width * 0.45));
   const futureTextList = FUTURE_LINES[language] || FUTURE_LINES.en;
   const futureText = futureTextList[futureIndex];
@@ -121,7 +118,14 @@ export default function LoginScreen() {
           ? trimmedIdentifier.toLowerCase()
           : mobileDigits,
         password,
+        clientType: 'mobile_app',
       });
+      if (data?.user?.role === 'student' && isEmailLogin) {
+        setLoginError(
+          'Student login in app is allowed only with mobile number and password.',
+        );
+        return;
+      }
       setSession(data.token, data.user);
       await AsyncStorage.setItem(
         'ims_bound_mobile',
@@ -217,7 +221,7 @@ export default function LoginScreen() {
 
               <View style={styles.form}>
                 <TextInput
-                  placeholder="Mobile number or email"
+                  placeholder="Mobile number or email (students use mobile)"
                   placeholderTextColor={COLORS.textMuted}
                   keyboardType="email-address"
                   autoCapitalize="none"

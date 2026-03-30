@@ -80,53 +80,58 @@ export default function DivisionAttendanceBoard() {
         {error ? <p className="error">{error}</p> : null}
       </section>
 
-      {grouped.map(([division, students]) => (
-        <section key={division} className="panel">
-          <div className="panel-head">
-            <h3>Division {division}</h3>
-            <small style={{ color: '#6b7280', fontWeight: 700 }}>{students.length} students</small>
-          </div>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Enrollment</th>
-                  <th>Mobile</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((student) => {
-                  const status = student.attendance?.status || 'not marked';
-                  const tone = statusTone(status);
-                  return (
-                    <tr key={student.studentId}>
-                      <td>{student.studentName}</td>
-                      <td>{student.enrollmentNo || '—'}</td>
-                      <td>{student.mobileNo || '—'}</td>
-                      <td>
-                        <span
-                          style={{
-                            textTransform: 'capitalize',
-                            padding: '4px 10px',
-                            borderRadius: 999,
-                            background: tone.bg,
-                            color: tone.color,
-                            fontWeight: 700
-                          }}
-                        >
-                          {status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ))}
+      {grouped.map(([division, students]) => {
+        const showIndex = students.length > 10;
+        return (
+          <section key={division} className="panel">
+            <div className="panel-head">
+              <h3>Division {division}</h3>
+              <small style={{ color: '#6b7280', fontWeight: 700 }}>{students.length} students</small>
+            </div>
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    {showIndex ? <th>#</th> : null}
+                    <th>Student</th>
+                    <th>Enrollment</th>
+                    <th>Mobile</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student, idx) => {
+                    const status = student.attendance?.status || 'not marked';
+                    const tone = statusTone(status);
+                    return (
+                      <tr key={student.studentId}>
+                        {showIndex ? <td>{idx + 1}</td> : null}
+                        <td>{student.studentName}</td>
+                        <td>{student.enrollmentNo || '—'}</td>
+                        <td>{student.mobileNo || '—'}</td>
+                        <td>
+                          <span
+                            style={{
+                              textTransform: 'capitalize',
+                              padding: '4px 10px',
+                              borderRadius: 999,
+                              background: tone.bg,
+                              color: tone.color,
+                              fontWeight: 700
+                            }}
+                          >
+                            {status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        );
+      })}
 
       {!grouped.length && !loading ? (
         <section className="panel">

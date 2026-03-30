@@ -578,7 +578,11 @@ async function exportStudentPdf(req, res, next) {
     const doc = new PDFDocument({ margin: 26, size: 'A4' });
     const pdfFontName = initPdfFont(doc);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename=student-${student.enrollmentNo}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=student-${student.enrollmentNo}-v2.pdf`);
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     doc.pipe(res);
 
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
@@ -586,13 +590,15 @@ async function exportStudentPdf(req, res, next) {
     const rightX = doc.page.width - doc.page.margins.right;
     const details = student.details || {};
     const personal = details.personal || details;
-    const physical = details.physical || details;
-    const parent = details.parent || details;
-    const address = details.address || details;
     const total = fee?.totalAmount || 0;
     const paid = fee?.paidAmount || 0;
     const due = fee?.dueAmount || Math.max(total - paid, 0);
     const feeDays = calculateFeeDays(fee?.feeStartDate || fee?.feeFrom, fee?.feeEndDate || fee?.feeTo);
+    const installments = Array.isArray(fee?.transactions)
+      ? fee.transactions
+        .slice()
+        .sort((a, b) => new Date(a?.paidOn || 0) - new Date(b?.paidOn || 0))
+      : [];
 
     function setFont(size = 9, color = '#15213d') {
       if (pdfFontName) {
@@ -611,7 +617,7 @@ async function exportStudentPdf(req, res, next) {
 
     function drawSectionTitle(titleEnglish) {
       ensureSpace(15);
-      setFont(9.6, '#1f2f75').text(titleEnglish, leftX, doc.y);
+      setFont(10.2, '#1f2f75').text(titleEnglish, leftX, doc.y);
       doc
         .moveTo(leftX, doc.y + 1)
         .lineTo(rightX, doc.y + 1)
@@ -622,8 +628,8 @@ async function exportStudentPdf(req, res, next) {
     }
 
     function drawInfoTable(rows) {
-      const cellGap = 4;
-      const basePadding = 3.2;
+      const cellGap = 10;
+      const basePadding = 4.2;
       const twoColWidth = (pageWidth - cellGap) / 2;
       rows.forEach((cells) => {
         const normalized = cells.length === 1
@@ -644,93 +650,101 @@ async function exportStudentPdf(req, res, next) {
           const x = currentX;
           doc
             .rect(x, y, cell.width, rowHeight)
-            .fillAndStroke('#ffffff', '#d6dce8');
-          setFont(7.2, '#4b5774').text(pdfValue(cell.label), x + 4, y + 3, { width: cell.width - 8 });
+            .fill(index % 2 === 0 ? '#f8faff' : '#ffffff');
+          setFont(8.1, '#4b5774').text(pdfValue(cell.label), x + 4, y + 3, { width: cell.width - 8 });
           const labelBottom = doc.y;
-          setFont(8, '#15213d').text(pdfValue(cell.value), x + 4, labelBottom + 1, {
+          setFont(9.2, '#15213d').text(pdfValue(cell.value), x + 4, labelBottom + 1, {
             width: cell.width - 8,
             align: 'left'
           });
           currentX += cell.width + (index < normalized.length - 1 ? cellGap : 0);
         });
 
-        doc.y = y + rowHeight + 2;
+        doc.y = y + rowHeight + 3;
       });
     }
 
-    function drawPaymentTable(transactions = []) {
-      drawSectionTitle('Fee Payment Details');
-      const cols = [58, 72, 62, 88, pageWidth - (58 + 72 + 62 + 88)];
-      const headers = ['Date', 'Amount', 'Mode', 'Reference', 'Note'];
+    function formatPaymentMode(mode) {
+      if (!mode) return '—';
+      if (mode === 'bank_transfer') return 'Bank Transfer';
+      return String(mode).charAt(0).toUpperCase() + String(mode).slice(1);
+    }
 
-      const drawPaymentRow = (cells, header = false) => {
-        const rowPadding = header ? 5 : 4;
-        const heights = cells.map((cell, index) =>
-          doc.heightOfString(pdfValue(cell), { width: cols[index] - 8 })
-        );
-        const rowHeight = Math.max(...heights) + rowPadding * 2;
-        ensureSpace(rowHeight + 2);
-        let x = leftX;
-        const y = doc.y;
-
-        cells.forEach((cell, index) => {
-          doc
-            .rect(x, y, cols[index], rowHeight)
-            .fillAndStroke(header ? '#eef3ff' : '#ffffff', '#d6dce8');
-          setFont(header ? 7.2 : 7.8, header ? '#1f2f75' : '#15213d').text(pdfValue(cell), x + 4, y + rowPadding, {
-            width: cols[index] - 8,
-            align: index === 1 ? 'right' : 'left'
-          });
-          x += cols[index];
-        });
-
-        doc.y = y + rowHeight + 2;
-      };
-
-      drawPaymentRow(headers, true);
-
-      if (!transactions.length) {
-        drawPaymentRow(['—', '—', '—', '—', 'No payment records available'], false);
+    function drawInstallmentsTable(list) {
+      if (!list.length) {
+        drawInfoTable([[{ label: 'Installments', value: 'No installments recorded yet.', width: pageWidth }]]);
         return;
       }
 
-      transactions.forEach((entry) => {
-        drawPaymentRow([
-          formatDate(entry.paidOn),
-          formatCurrency(entry.amount),
-          entry.mode || '—',
-          entry.transactionRef || '—',
-          entry.note || '—'
-        ]);
+      const headers = ['Date', 'Amount', 'Mode', 'Reference', 'Note', 'Mobile'];
+      const columns = [
+        { key: 'date', width: 68 },
+        { key: 'amount', width: 66 },
+        { key: 'mode', width: 72 },
+        { key: 'ref', width: 80 },
+        { key: 'note', width: 130 },
+        { key: 'mobile', width: pageWidth - (68 + 66 + 72 + 80 + 130 + 5 * 6) }
+      ];
+      const gap = 6;
+      const cellPaddingX = 4;
+      const cellPaddingY = 3;
+
+      function drawRow(values, isHeader = false, index = 0) {
+        const rowHeight = 20;
+        ensureSpace(rowHeight + 2);
+        const y = doc.y;
+        let x = leftX;
+
+        columns.forEach((col, colIndex) => {
+          doc
+            .rect(x, y, col.width, rowHeight)
+            .fill(isHeader ? '#eaf0ff' : (index % 2 === 0 ? '#f8faff' : '#ffffff'));
+          setFont(isHeader ? 8.2 : 7.8, isHeader ? '#1f2f75' : '#15213d')
+            .text(pdfValue(values[colIndex]), x + cellPaddingX, y + cellPaddingY, {
+              width: col.width - (cellPaddingX * 2),
+              height: rowHeight - (cellPaddingY * 2),
+              ellipsis: true
+            });
+          x += col.width + (colIndex < columns.length - 1 ? gap : 0);
+        });
+        doc.y = y + rowHeight + 2;
+      }
+
+      drawRow(headers, true);
+      list.forEach((tx, idx) => {
+        const row = [
+          formatDate(tx?.paidOn),
+          formatCurrency(tx?.amount || 0),
+          formatPaymentMode(tx?.mode),
+          tx?.transactionRef || '—',
+          tx?.note || '—',
+          tx?.studentPhone || student.userId?.phone || '—'
+        ];
+        drawRow(row, false, idx);
       });
     }
 
-    function drawPhysicalMedicalCompactTable() {
-      drawSectionTitle('Physical / Medical Details');
-      const colGap = 4;
-      const colWidth = (pageWidth - colGap * 2) / 3;
+    function drawPageFrame() {
+      const frameX = leftX - 8;
+      const frameY = doc.page.margins.top - 8;
+      const frameW = pageWidth + 16;
+      const frameH = doc.page.height - doc.page.margins.top - doc.page.margins.bottom + 16;
 
-      drawInfoTable([
-        [
-          { label: 'Height', value: physical.height ? `${physical.height} cm` : '—', width: colWidth },
-          { label: 'Weight', value: physical.weight ? `${physical.weight} kg` : '—', width: colWidth },
-          { label: 'Vision', value: physical.vision || '—', width: colWidth }
-        ],
-        [
-          { label: 'Disability', value: physical.disability || '—' },
-          { label: 'Allergy / Notes', value: physical.allergy || '—' }
-        ]
-      ]);
+      doc
+        .rect(frameX, frameY, frameW, frameH)
+        .lineWidth(1.2)
+        .strokeColor('#20398d')
+        .stroke();
 
-      // Keep this section readable while still compacting page height.
-      setFont(8.8, '#15213d');
+      doc
+        .rect(frameX + 1, frameY + 1, frameW - 2, 44)
+        .fill('#ecf1ff');
+      setFont(16, '#1f2f75').text('Baliraja Academy', leftX, frameY + 12);
+      setFont(9.2, '#1f2f75').text('Student Information & Fees Report', leftX, frameY + 30);
+      doc.y = frameY + 52;
     }
 
-    doc
-      .rect(leftX, doc.y, pageWidth, 56)
-      .fill('#f3f6ff');
-    setFont(16, '#1f2f75').text('Baliraja Academy', leftX + 10, doc.y + 8);
-    setFont(10.5, '#1f2f75').text('Student Information Report', leftX + 10, doc.y + 28);
+    drawPageFrame();
 
     const photoCandidate = student.details?.photoPath || student.details?.photo || student.details?.photoUrl;
     if (photoCandidate) {
@@ -747,7 +761,7 @@ async function exportStudentPdf(req, res, next) {
         });
       }
     }
-    doc.moveDown(0.5);
+    doc.moveDown(0.2);
     setFont(7.6, '#4a4a4a').text(`Generated On: ${formatDateTime(new Date())}`, { align: 'left' });
     setFont(7.6, '#4a4a4a').text(`Enrollment No: ${student.enrollmentNo || '—'}`, { align: 'left' });
     doc.moveDown(0.15);
@@ -759,7 +773,7 @@ async function exportStudentPdf(req, res, next) {
       .stroke();
     doc.moveDown(0.2);
 
-    drawSectionTitle('Admission Details');
+    drawSectionTitle('Student Information');
     drawInfoTable([
       [
         { label: 'Student Name', value: student.userId?.fullName || '—' },
@@ -778,52 +792,10 @@ async function exportStudentPdf(req, res, next) {
         { label: 'Mobile No', value: student.userId?.phone || '—' }
       ],
       [
-        { label: 'Year / Batch', value: student.batchId?.batchName || '—' },
+        { label: 'Batch', value: student.batchId?.batchName || '—' },
         { label: 'Status', value: student.status || '—' }
       ]
     ]);
-
-    drawSectionTitle('Address Details');
-    drawInfoTable([
-      [
-        { label: 'Address Line 1', value: address.addressLine1 || student.address || '—' },
-        { label: 'Address Line 2', value: address.addressLine2 || '—' }
-      ],
-      [
-        { label: 'City / Village', value: address.city || '—' },
-        { label: 'District', value: address.district || '—' }
-      ],
-      [
-        { label: 'State', value: address.state || '—' },
-        { label: 'PIN Code', value: address.pinCode || '—' }
-      ]
-    ]);
-
-    drawSectionTitle('Parent / Guardian Details');
-    drawInfoTable([
-      [
-        { label: 'Father Name', value: parent.fatherName || details.fatherName || '—' },
-        { label: 'Father Job', value: parent.fatherJob || details.fatherJob || '—' }
-      ],
-      [
-        { label: 'Father Mobile', value: parent.fatherMobile || details.fatherMobile || '—' },
-        { label: 'Mother Name', value: parent.motherName || details.motherName || '—' }
-      ],
-      [
-        { label: 'Mother Job', value: parent.motherJob || details.motherJob || '—' },
-        { label: 'Mother Mobile', value: parent.motherMobile || details.motherMobile || '—' }
-      ],
-      [
-        { label: 'Referance Name', value: parent.guardianName || details.guardianName || '—' },
-        { label: 'Relation', value: parent.guardianRelation || details.guardianRelation || '—' }
-      ],
-      [
-        { label: 'Guardian Mobile', value: parent.guardianMobile || details.guardianMobile || '—' },
-        { label: 'Emergency Contact', value: student.emergencyContact || '—' }
-      ]
-    ]);
-
-    drawPhysicalMedicalCompactTable();
 
     drawSectionTitle('Fee Details');
     drawInfoTable([
@@ -848,7 +820,8 @@ async function exportStudentPdf(req, res, next) {
       ]
     ]);
 
-    // Keep the report on a single page by skipping transaction history table.
+    drawSectionTitle('Payment Installments');
+    drawInstallmentsTable(installments);
 
     ensureSpace(46);
     doc.moveDown(0.6);

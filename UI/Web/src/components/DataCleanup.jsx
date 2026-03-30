@@ -64,6 +64,7 @@ export default function DataCleanup() {
   const [error, setError] = useState('');
 
   const resource = useMemo(() => RESOURCES[resourceKey], [resourceKey]);
+  const showIndex = rows.length > 10;
 
   async function load() {
     setLoading(true);
@@ -134,7 +135,7 @@ export default function DataCleanup() {
           <table style={styles.table}>
             <thead>
               <tr>
-                <th style={styles.th}>#</th>
+                {showIndex ? <th style={styles.th}>#</th> : null}
                 {resource.columns.map((c) => (
                   <th key={c} style={styles.th}>{c}</th>
                 ))}
@@ -146,7 +147,7 @@ export default function DataCleanup() {
                 const id = row._id || row.id;
                 return (
                   <tr key={id}>
-                    <td style={styles.td}>{idx + 1}</td>
+                    {showIndex ? <td style={styles.td}>{idx + 1}</td> : null}
                     {resource.columns.map((c) => (
                       <td key={c} style={styles.td}>{pick(row, c)}</td>
                     ))}

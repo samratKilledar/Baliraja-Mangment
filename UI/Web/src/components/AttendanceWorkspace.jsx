@@ -53,6 +53,8 @@ export default function AttendanceWorkspace({ role = 'admin' }) {
     () => subjects.find((subject) => subject._id === selectedSubjectId) || null,
     [selectedSubjectId, subjects]
   );
+  const showDailyIndex = dailyRows.length > 10;
+  const showReportIndex = reportRows.length > 10;
 
   const loadSubjects = useCallback(async () => {
     try {
@@ -200,6 +202,7 @@ export default function AttendanceWorkspace({ role = 'admin' }) {
           <table className="data-table">
             <thead>
               <tr>
+                {showDailyIndex ? <th>#</th> : null}
                 <th>Student</th>
                 <th>Enrollment</th>
                 <th>Division</th>
@@ -208,8 +211,9 @@ export default function AttendanceWorkspace({ role = 'admin' }) {
               </tr>
             </thead>
             <tbody>
-              {dailyRows.map((student) => (
+              {dailyRows.map((student, idx) => (
                 <tr key={student.studentId}>
+                  {showDailyIndex ? <td>{idx + 1}</td> : null}
                   <td>{student.studentName}</td>
                   <td>{student.enrollmentNo || '—'}</td>
                   <td>{student.division || student.batchName || '—'}</td>
@@ -237,7 +241,7 @@ export default function AttendanceWorkspace({ role = 'admin' }) {
               ))}
               {!dailyRows.length && (
                 <tr>
-                  <td colSpan={5}>{loadingDaily ? 'Loading attendance...' : 'No students found for this class/subject.'}</td>
+                  <td colSpan={showDailyIndex ? 6 : 5}>{loadingDaily ? 'Loading attendance...' : 'No students found for this class/subject.'}</td>
                 </tr>
               )}
             </tbody>
@@ -266,6 +270,7 @@ export default function AttendanceWorkspace({ role = 'admin' }) {
           <table className="data-table">
             <thead>
               <tr>
+                {showReportIndex ? <th>#</th> : null}
                 <th>Student</th>
                 <th>Division</th>
                 <th>Total Lectures</th>
@@ -276,8 +281,9 @@ export default function AttendanceWorkspace({ role = 'admin' }) {
               </tr>
             </thead>
             <tbody>
-              {reportRows.map((row) => (
+              {reportRows.map((row, idx) => (
                 <tr key={row.studentId}>
+                  {showReportIndex ? <td>{idx + 1}</td> : null}
                   <td>{row.studentName}</td>
                   <td>{row.division || row.batchName || '—'}</td>
                   <td>{row.totalLectures}</td>
@@ -289,7 +295,7 @@ export default function AttendanceWorkspace({ role = 'admin' }) {
               ))}
               {!reportRows.length && (
                 <tr>
-                  <td colSpan={7}>{loadingReport ? 'Building report...' : 'No report data in this date range.'}</td>
+                  <td colSpan={showReportIndex ? 8 : 7}>{loadingReport ? 'Building report...' : 'No report data in this date range.'}</td>
                 </tr>
               )}
             </tbody>

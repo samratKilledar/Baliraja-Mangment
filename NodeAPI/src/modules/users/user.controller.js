@@ -11,7 +11,8 @@ const {
   createUserSchema,
   listUserSchema,
   passwordUpdateSchema,
-  resetUserPasswordSchema
+  resetUserPasswordSchema,
+  autoResetUserPasswordSchema
 } = require('./user.validation');
 
 function shapeStudentDetails(raw = {}) {
@@ -114,6 +115,14 @@ function generatePassword() {
   return Math.random().toString(36).slice(-10);
 }
 
+function generateNumericPassword(length = 6) {
+  let out = '';
+  for (let i = 0; i < length; i += 1) {
+    out += String(Math.floor(Math.random() * 10));
+  }
+  return out;
+}
+
 function getDefaultPasswordForRole(role) {
   if (role === ROLES.ADMIN) {
     return process.env.DEFAULT_ADMIN_PASSWORD || '123456';
@@ -187,7 +196,12 @@ function canManageUser(requestor, targetUser) {
 
 function serializeUser(userDoc) {
   const user = userDoc.toObject ? userDoc.toObject() : userDoc;
-  const { passwordHash, passwordCipher, ...rest } = user;
+  const {
+    passwordHash,
+    passwordCipher,
+    mobileAppSessionKey,
+    ...rest
+  } = user;
   return {
     ...rest,
     passwordVisible: passwordCipher ? decryptPassword(passwordCipher) : ''
@@ -404,6 +418,11 @@ async function updateMyPassword(req, res, next) {
     const user = await User.findById(req.user.sub);
 
     if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.role === ROLES.STUDENT) {
+      return res.status(403).json({
+        message: 'Students cannot change password from app. Please contact admin/super admin.'
+      });
+    }
 
     const valid = await bcrypt.compare(payload.currentPassword, user.passwordHash);
     if (!valid) return res.status(401).json({ message: 'Current password incorrect' });
@@ -435,10 +454,49 @@ async function resetUserPassword(req, res, next) {
     user.passwordCipher = encryptPassword(payload.newPassword);
     user.mustChangePassword = user.role === ROLES.TEACHER;
     user.passwordChangedAt = user.role === ROLES.TEACHER ? undefined : new Date();
+    if (user.role === ROLES.STUDENT) {
+      user.mobileAppSessionActive = false;
+      user.mobileAppSessionKey = '';
+      user.mobileAppSessionStartedAt = undefined;
+    }
     await user.save();
 
     res.json({
       message: 'Password updated successfully',
+      user: serializeUser(user)
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function autoResetUserPassword(req, res, next) {
+  try {
+    const { userId } = req.params;
+    const payload = autoResetUserPasswordSchema.parse(req.body || {});
+    const user = await User.findById(userId);
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!canManageUser(req.user, user)) {
+      return res.status(403).json({ message: 'Forbidden: cannot update this password' });
+    }
+    if (user.role !== ROLES.STUDENT) {
+      return res.status(400).json({ message: 'Auto reset is only available for student users.' });
+    }
+
+    const nextPassword = generateNumericPassword(payload.length || 6);
+    user.passwordHash = await bcrypt.hash(nextPassword, 10);
+    user.passwordCipher = encryptPassword(nextPassword);
+    user.mustChangePassword = false;
+    user.passwordChangedAt = new Date();
+    user.mobileAppSessionActive = false;
+    user.mobileAppSessionKey = '';
+    user.mobileAppSessionStartedAt = undefined;
+    await user.save();
+
+    return res.json({
+      message: 'Student password reset successfully.',
+      tempPassword: nextPassword,
       user: serializeUser(user)
     });
   } catch (error) {
@@ -464,5 +522,6 @@ module.exports = {
   deleteUser,
   updateMyPassword,
   resetUserPassword,
+  autoResetUserPassword,
   publicUserByPhone
 };

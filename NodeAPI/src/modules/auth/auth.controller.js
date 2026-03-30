@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const User = require('../users/user.model');
@@ -8,9 +9,9 @@ const { encryptPassword } = require('../../utils/passwordVault');
 
 let cachedTransporter = null;
 
-function signToken(user) {
+function signToken(user, extraClaims = {}) {
   return jwt.sign(
-    { sub: user._id.toString(), role: user.role, email: user.email },
+    { sub: user._id.toString(), role: user.role, email: user.email, ...extraClaims },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
   );
@@ -128,10 +129,30 @@ async function login(req, res, next) {
 
     if ([ROLES.SUPER_ADMIN, ROLES.ADMIN].includes(user.role)) {
       user.lastLoginAt = new Date();
-      await user.save();
+    }
+    const isMobileAppLogin = payload.clientType === 'mobile_app';
+    let tokenExtraClaims = {};
+
+    if (isMobileAppLogin && user.role === ROLES.STUDENT) {
+      if (user.mobileAppSessionActive && user.mobileAppSessionKey) {
+        return res.status(409).json({
+          message:
+            'Student account is already logged in on another app session. Contact admin/super admin to reset password.'
+        });
+      }
+      const nextSessionKey = crypto.randomBytes(24).toString('hex');
+      user.mobileAppSessionActive = true;
+      user.mobileAppSessionKey = nextSessionKey;
+      user.mobileAppSessionStartedAt = new Date();
+      tokenExtraClaims = {
+        clientType: 'mobile_app',
+        appSessionKey: nextSessionKey
+      };
     }
 
-    const token = signToken(user);
+    await user.save();
+
+    const token = signToken(user, tokenExtraClaims);
     return res.json({
       token,
       user: {

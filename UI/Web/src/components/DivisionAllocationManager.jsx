@@ -17,6 +17,7 @@ export default function DivisionAllocationManager() {
   const [error, setError] = useState('');
 
   const selectedCount = selectedIds.length;
+  const showIndex = (roster.items || []).length > 10;
 
   useEffect(() => {
     loadBatches();
@@ -169,6 +170,7 @@ export default function DivisionAllocationManager() {
         <table className="data-table">
           <thead>
             <tr>
+              {showIndex ? <th>#</th> : null}
               <th>Select</th>
               <th>Student</th>
               <th>Enrollment</th>
@@ -178,8 +180,9 @@ export default function DivisionAllocationManager() {
             </tr>
           </thead>
           <tbody>
-            {(roster.items || []).map((student) => (
+            {(roster.items || []).map((student, idx) => (
               <tr key={student.studentId}>
+                {showIndex ? <td>{idx + 1}</td> : null}
                 <td>
                   <input
                     type="checkbox"
@@ -196,7 +199,7 @@ export default function DivisionAllocationManager() {
             ))}
             {!roster.items?.length && (
               <tr>
-                <td colSpan={6}>{loading ? 'Loading students...' : 'No students found for division allocation.'}</td>
+                <td colSpan={showIndex ? 7 : 6}>{loading ? 'Loading students...' : 'No students found for division allocation.'}</td>
               </tr>
             )}
           </tbody>

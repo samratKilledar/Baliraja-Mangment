@@ -32,6 +32,7 @@ export default function NoticeCenter() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
+  const showIndex = notices.length > 10;
 
   useEffect(() => {
     loadNotices();
@@ -173,6 +174,7 @@ export default function NoticeCenter() {
         <table className="data-table">
           <thead>
             <tr>
+              {showIndex ? <th>#</th> : null}
               <th>Title</th>
               <th>Audience</th>
               <th>Date</th>
@@ -180,8 +182,9 @@ export default function NoticeCenter() {
             </tr>
           </thead>
           <tbody>
-            {notices.map((notice) => (
+            {notices.map((notice, idx) => (
               <tr key={notice._id}>
+                {showIndex ? <td>{idx + 1}</td> : null}
                 <td>{notice.title}</td>
                 <td>{Array.isArray(notice.audience) ? notice.audience.join(', ') : notice.audience}</td>
                 <td>{new Date(notice.publishedAt).toLocaleDateString()}</td>

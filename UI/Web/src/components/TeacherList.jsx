@@ -55,6 +55,8 @@ export default function TeacherList() {
       .toLowerCase();
     return haystack.includes(term);
   });
+  const showIndex = visibleTeachers.length > 10;
+  const totalColumns = showIndex ? 7 : 6;
 
   function startEdit(t) {
     setActiveAction({ type: null, teacherId: null });
@@ -173,7 +175,7 @@ export default function TeacherList() {
           <table className="data-table">
             <thead>
               <tr>
-                <th className="teacher-index-col">#</th>
+                {showIndex ? <th className="teacher-index-col">#</th> : null}
                 <th>Teacher</th>
                 <th>Contact</th>
                 <th>Contract & Payments</th>
@@ -199,7 +201,7 @@ export default function TeacherList() {
                 return (
                   <Fragment key={t._id}>
                     <tr style={{ background: rowBg }}>
-                      <td className="teacher-index-col">{idx + 1}</td>
+                      {showIndex ? <td className="teacher-index-col">{idx + 1}</td> : null}
                       <td>
                         <div style={{ fontWeight: 700 }}>{t.userId?.fullName || 'Teacher'}</div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>
@@ -259,7 +261,7 @@ export default function TeacherList() {
                     </tr>
 
                     <tr>
-                      <td colSpan={7} style={{ paddingTop: 0 }}>
+                      <td colSpan={totalColumns} style={{ paddingTop: 0 }}>
                         <div
                           style={{
                             display: 'flex',
@@ -323,7 +325,7 @@ export default function TeacherList() {
 
                     {editing === t._id && (
                       <tr>
-                        <td colSpan={7}>
+                        <td colSpan={totalColumns}>
                           <div className="card form-card" style={{ marginTop: 6 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <h4>Edit Teacher</h4>
@@ -354,7 +356,7 @@ export default function TeacherList() {
 
                     {isActive('payment') && (
                       <tr>
-                        <td colSpan={7}>
+                        <td colSpan={totalColumns}>
                           <div className="card form-card" style={{ marginTop: 6 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <h4>Payments</h4>
@@ -415,7 +417,7 @@ export default function TeacherList() {
 
                     {isActive('attendance') && (
                       <tr>
-                        <td colSpan={7}>
+                        <td colSpan={totalColumns}>
                           <div className="card" style={{ marginTop: 6 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <h4>Attendance (day wise)</h4>
@@ -455,7 +457,7 @@ export default function TeacherList() {
 
                     {isActive('lectures') && (
                       <tr>
-                        <td colSpan={7}>
+                        <td colSpan={totalColumns}>
                           <div className="card" style={{ marginTop: 6 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <h4>Lectures Logged</h4>
@@ -486,7 +488,7 @@ export default function TeacherList() {
 
                     {isActive('notes') && (
                       <tr>
-                        <td colSpan={7}>
+                        <td colSpan={totalColumns}>
                           <div className="card" style={{ marginTop: 6 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <h4>Payment Notes</h4>
@@ -516,7 +518,7 @@ export default function TeacherList() {
               })}
               {!visibleTeachers.length && (
                 <tr>
-                  <td colSpan={7} style={{ padding: 16 }}>No teachers found for this search.</td>
+                  <td colSpan={totalColumns} style={{ padding: 16 }}>No teachers found for this search.</td>
                 </tr>
               )}
             </tbody>

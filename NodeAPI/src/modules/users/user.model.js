@@ -63,6 +63,17 @@ const userSchema = new mongoose.Schema(
     passwordResetRequestedAt: {
       type: Date
     },
+    mobileAppSessionActive: {
+      type: Boolean,
+      default: false
+    },
+    mobileAppSessionKey: {
+      type: String,
+      default: ''
+    },
+    mobileAppSessionStartedAt: {
+      type: Date
+    },
 
     profileRef: {
       type: mongoose.Schema.Types.ObjectId,

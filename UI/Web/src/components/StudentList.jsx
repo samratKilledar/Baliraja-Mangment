@@ -521,6 +521,7 @@ function startEdit(s) {
               {!loading && filteredStudents.map((student, idx) => {
                 const feeInfo = feeMeta[student._id];
                 const due = pendingFees[student._id]?.dueAmount ?? 0;
+                const feeRangeAlert = getFeeRangeAlert(feeInfo?.end);
                 const highlightBg =
                   due > 0 && (pendingFees[student._id]?.paidAmount || feeInfo?.paid)
                     ? '#f4cf7a'
@@ -562,8 +563,12 @@ function startEdit(s) {
                               <div>₹{feeInfo.total || 0} total</div>
                               <div>Paid ₹{feeInfo.paid || 0}</div>
                               <div>Due ₹{due}</div>
-                              <div style={{ color: '#4b5774', fontSize: 12 }}>
+                              <div
+                                className={`fee-range-text ${feeRangeAlert.isCritical ? 'danger' : ''}`}
+                                style={{ fontSize: 12 }}
+                              >
                                 Range: {feeInfo.start ? new Date(feeInfo.start).toLocaleDateString() : '—'} - {feeInfo.end ? new Date(feeInfo.end).toLocaleDateString() : '—'}
+                                {feeRangeAlert.daysLeft !== null ? ` (${feeRangeAlert.daysLeft} days left)` : ''}
                               </div>
                               <div style={{ color: '#c0392b', fontSize: 12 }}>
                                 Due date: {pendingFees[student._id]?.dueDate ? new Date(pendingFees[student._id].dueDate).toLocaleDateString() : '—'}
@@ -994,6 +999,17 @@ function calculateAge(dateOfBirth) {
   return age >= 0 ? age : null;
 }
 
+function getFeeRangeAlert(endDate) {
+  if (!endDate) return { isCritical: false, daysLeft: null };
+  const end = new Date(endDate);
+  if (Number.isNaN(end.getTime())) return { isCritical: false, daysLeft: null };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  const daysLeft = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return { isCritical: daysLeft <= 30, daysLeft };
+}
+
 // calendar helper
 function renderAttendanceCalendar(data) {
   const now = new Date();
@@ -1078,6 +1094,19 @@ const css = `
   border-right: 1px solid rgba(148, 163, 184, 0.25);
   border-top-right-radius: 10px;
   border-bottom-right-radius: 10px;
+}
+.student-list-modern .fee-range-text {
+  color: #4b5774;
+}
+.student-list-modern .fee-range-text.danger {
+  color: #b91c1c;
+  font-weight: 700;
+  animation: feeRangeBounce 1.1s ease-in-out infinite;
+}
+@keyframes feeRangeBounce {
+  0%, 100% { transform: translateY(0); }
+  35% { transform: translateY(-2px); }
+  70% { transform: translateY(1px); }
 }
 .card-grid {
   display: grid;
