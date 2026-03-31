@@ -455,25 +455,29 @@ async function listUsers(req, res, next) {
 async function deleteUser(req, res, next) {
   try {
     const { userId } = req.params;
-  const user = await User.findById(userId);
-  if (!user) return res.status(404).json({ message: 'User not found' });
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (user.role === ROLES.SUPER_ADMIN) {
+      return res.status(403).json({ message: 'Super admin account cannot be deleted.' });
+    }
 
     if (!roleGuard(req.user.role, user.role)) {
       return res.status(403).json({ message: 'Forbidden: cannot delete this role' });
     }
 
-  await User.findByIdAndDelete(userId);
+    await User.findByIdAndDelete(userId);
 
-  // Clean up linked profiles
-  if (user.role === ROLES.STUDENT) {
-    const st = await Student.findOne({ userId });
-    if (st) {
-      await Fee.deleteMany({ studentId: st._id });
+    // Clean up linked profiles
+    if (user.role === ROLES.STUDENT) {
+      const st = await Student.findOne({ userId });
+      if (st) {
+        await Fee.deleteMany({ studentId: st._id });
+      }
+      await Student.deleteOne({ userId });
+    } else if (user.role === ROLES.TEACHER) {
+      await Teacher.deleteOne({ userId });
     }
-    await Student.deleteOne({ userId });
-  } else if (user.role === ROLES.TEACHER) {
-    await Teacher.deleteOne({ userId });
-  }
 
     res.json({ message: 'User deleted' });
   } catch (error) {

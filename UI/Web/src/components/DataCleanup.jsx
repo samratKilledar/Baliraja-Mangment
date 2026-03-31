@@ -169,6 +169,7 @@ export default function DataCleanup() {
                 const rowKey = rowKeyFor(id);
                 const isPendingDelete = pendingDeleteKeys.includes(rowKey);
                 const isBusy = actionBusyKey === rowKey;
+                const isProtectedUser = resourceKey === 'users' && String(row.role || '').toLowerCase() === 'super_admin';
                 return (
                   <tr key={id}>
                     {showIndex ? <td style={styles.td}>{idx + 1}</td> : null}
@@ -177,7 +178,9 @@ export default function DataCleanup() {
                     ))}
                     <td style={styles.td}>
                       <div style={styles.actionRow}>
-                        {!isPendingDelete ? (
+                        {isProtectedUser ? (
+                          <span style={styles.protectedTag}>Protected</span>
+                        ) : !isPendingDelete ? (
                           <button
                             style={styles.deleteBtn}
                             onClick={() => markDeletePending(id)}
@@ -319,6 +322,14 @@ const styles = {
     color: '#d93025',
     cursor: 'pointer',
     whiteSpace: 'nowrap'
+  },
+  protectedTag: {
+    padding: '4px 8px',
+    borderRadius: 999,
+    border: '1px solid #c5d1e8',
+    color: '#4c5a77',
+    fontSize: 12,
+    background: '#f5f8ff'
   },
   muted: { color: '#77819a', fontSize: 13 },
   error: { color: '#d93025', marginBottom: 8 }

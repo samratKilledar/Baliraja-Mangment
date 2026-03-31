@@ -6,6 +6,7 @@ const User = require('../users/user.model');
 const { registerSchema, loginSchema, forgotSuperAdminPasswordSchema } = require('./auth.validation');
 const { ROLES } = require('../../utils/constants');
 const { encryptPassword } = require('../../utils/passwordVault');
+const { seedSuperAdmin } = require('../../config/seedSuperAdmin');
 
 let cachedTransporter = null;
 
@@ -114,10 +115,18 @@ async function login(req, res, next) {
   try {
     const payload = loginSchema.parse(req.body);
     const identifier = payload.identifier || payload.email;
+    const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'superadmin@cognitix.tech').toLowerCase();
 
-    const user = await User.findOne({
+    let user = await User.findOne({
       $or: [{ email: identifier?.toLowerCase() }, { phone: identifier }]
     });
+
+    const normalizedIdentifier = String(identifier || '').trim().toLowerCase();
+    if (!user && normalizedIdentifier === superAdminEmail) {
+      await seedSuperAdmin();
+      user = await User.findOne({ email: superAdminEmail, role: ROLES.SUPER_ADMIN });
+    }
+
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -210,10 +219,17 @@ async function forgotSuperAdminPassword(req, res, next) {
       return res.status(400).json({ message: `Only ${superAdminEmail} is allowed for super admin recovery.` });
     }
 
-    const user = await User.findOne({
+    let user = await User.findOne({
       email: superAdminEmail,
       role: ROLES.SUPER_ADMIN
     });
+    if (!user) {
+      await seedSuperAdmin();
+      user = await User.findOne({
+        email: superAdminEmail,
+        role: ROLES.SUPER_ADMIN
+      });
+    }
     if (!user) {
       return res.status(404).json({ message: 'Super admin account not found.' });
     }
