@@ -32,7 +32,7 @@ router.get('/my', optionalAuthenticate, myComplaints);
 
 // Protected routes (require JWT)
 router.use(authenticate);
-router.get('/', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), listComplaints);
-router.put('/:complaintId/status', authorize(ROLES.SUPER_ADMIN, ROLES.ADMIN), updateComplaintStatus);
+router.get('/', authorize(ROLES.ADMIN), listComplaints);
+router.put('/:complaintId/status', authorize(ROLES.ADMIN), updateComplaintStatus);
 
 module.exports = router;

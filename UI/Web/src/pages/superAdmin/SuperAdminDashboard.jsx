@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/client';
+import { motion } from 'framer-motion';
 import VectorIcon from '../../components/VectorIcon';
 import StudentAdmissionForm from '../../components/StudentAdmissionForm';
 import StudentList from '../../components/StudentList';
@@ -9,13 +10,12 @@ import NoticeCenter from '../../components/NoticeCenter';
 import AdminManagement from '../../components/AdminManagement';
 import WorkerList from '../../components/WorkerList';
 import NoticeStrip from '../../components/NoticeStrip';
-import ComplaintCenter from '../../components/ComplaintCenter';
 import TeacherForm from '../../components/TeacherForm';
 import TeacherList from '../../components/TeacherList';
 import LectureList from '../../components/LectureList';
 import LeaveCenter from '../../components/LeaveCenter';
 import DataCleanup from '../../components/DataCleanup';
-import CheckinConfigCard from '../../components/CheckinConfigCard';
+// import CheckinConfigCard from '../../components/CheckinConfigCard';
 import SplashManager from '../../components/SplashManager';
 import SubjectManager from '../../components/SubjectManager';
 import AttendanceWorkspace from '../../components/AttendanceWorkspace';
@@ -31,17 +31,16 @@ const baseMenus = [
   { key: 'teacher-form', label: 'Add Teacher', icon: 'users', path: '/super-admin/teacher-form' },
   { key: 'teachers-list', label: 'Teacher List', icon: 'users', path: '/super-admin/teachers-list' },
   { key: 'subjects', label: 'Subjects', icon: 'spark', path: '/super-admin/subjects' },
-  { key: 'attendance', label: 'Attendance', icon: 'calendar', path: '/super-admin/attendance' },
+  // { key: 'attendance', label: 'Attendance', icon: 'calendar', path: '/super-admin/attendance' },
   { key: 'admission-options', label: 'Admission Setup', icon: 'spark', path: '/super-admin/admission-options' },
   { key: 'password', label: 'Change Password', icon: 'shield', path: '/super-admin/password' },
-  { key: 'lectures', label: 'Lectures Logged', icon: 'calendar', path: '/super-admin/lectures' },
+  // { key: 'lectures', label: 'Lectures Logged', icon: 'calendar', path: '/super-admin/lectures' },
   { key: 'fees', label: 'Finance Monitor', icon: 'money', path: '/super-admin/fees' },
   { key: 'notice', label: 'Notice Publisher', icon: 'bell', path: '/super-admin/notice' },
   { key: 'splash', label: 'App Splash', icon: 'spark', path: '/super-admin/splash' },
   { key: 'admins', label: 'Admin Management', icon: 'shield', path: '/super-admin/admins' },
   { key: 'workers', label: 'Workers', icon: 'users', path: '/super-admin/workers' },
-  { key: 'complaints', label: 'Complaints', icon: 'alert-circle', path: '/super-admin/complaints' },
-  { key: 'leaves', label: 'Leaves', icon: 'calendar', path: '/super-admin/leaves' },
+  // { key: 'leaves', label: 'Leaves', icon: 'calendar', path: '/super-admin/leaves' },
   { key: 'data', label: 'Data Cleanup', icon: 'trash', path: '/super-admin/data' },
   { key: 'placed-students', label: 'Placed Student', icon: 'users', path: '/super-admin/placed-students' },
   { key: 'references', label: 'References', icon: 'users', path: '/super-admin/references' }
@@ -105,6 +104,32 @@ function getFeeRangeSignal(fee) {
   return { isCritical: daysLeft <= 30, daysLeft, label };
 }
 
+function resolveYearFromMonthLabel(label, fallbackYear) {
+  const match = String(label || '').match(/(20\d{2})/);
+  return match ? Number(match[1]) : fallbackYear;
+}
+
+function formatWeekLabelWithMonth(rawLabel) {
+  const label = String(rawLabel || '').trim();
+  const match = label.match(/W?\s*(\d{1,2})\s*(20\d{2})?/i);
+  if (!match) return label;
+
+  const week = Number(match[1]);
+  const year = Number(match[2]) || new Date().getFullYear();
+  if (!week || week < 1 || week > 53) return label;
+
+  // ISO week start (Monday) -> derive month name
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7; // Sunday=7
+  const firstIsoMonday = new Date(jan4);
+  firstIsoMonday.setUTCDate(jan4.getUTCDate() - (jan4Day - 1));
+  const weekDate = new Date(firstIsoMonday);
+  weekDate.setUTCDate(firstIsoMonday.getUTCDate() + (week - 1) * 7);
+
+  const month = weekDate.toLocaleString('en-IN', { month: 'long', timeZone: 'UTC' });
+  return `${month} (W${week}) ${year}`;
+}
+
 export default function SuperAdminDashboard() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
@@ -123,6 +148,9 @@ export default function SuperAdminDashboard() {
   const [feesPage, setFeesPage] = useState(1);
   const [feesMeta, setFeesMeta] = useState({ page: 1, totalPages: 1 });
   const [feeReminderMessage, setFeeReminderMessage] = useState('');
+  const [feeSearch, setFeeSearch] = useState('');
+  const [admissionView, setAdmissionView] = useState('month');
+  const [admissionYear, setAdmissionYear] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const lastLoginLabel = useMemo(() => {
     if (!user?.lastLoginAt) return '';
@@ -137,7 +165,13 @@ export default function SuperAdminDashboard() {
     });
   }, [user?.lastLoginAt]);
 
-  const menuItems = useMemo(() => [...baseMenus, ...extraMenus], [extraMenus]);
+  const menuItems = useMemo(
+    () =>
+      [...baseMenus, ...extraMenus].sort((a, b) =>
+        (a.label || '').localeCompare(b.label || '', 'en', { sensitivity: 'base' })
+      ),
+    [extraMenus]
+  );
   const routeModule = useMemo(() => {
     if (location.pathname.startsWith('/super-admin/students-list')) return 'students-list';
     if (location.pathname.startsWith('/super-admin/student-form')) return 'student-form';
@@ -153,7 +187,6 @@ export default function SuperAdminDashboard() {
     if (location.pathname.startsWith('/super-admin/splash')) return 'splash';
     if (location.pathname.startsWith('/super-admin/admins')) return 'admins';
     if (location.pathname.startsWith('/super-admin/workers')) return 'workers';
-    if (location.pathname.startsWith('/super-admin/complaints')) return 'complaints';
     if (location.pathname.startsWith('/super-admin/leaves')) return 'leaves';
     if (location.pathname.startsWith('/super-admin/data')) return 'data';
     if (location.pathname.startsWith('/super-admin/placed-students')) return 'placed-students';
@@ -210,6 +243,74 @@ export default function SuperAdminDashboard() {
       .filter((item) => item.signal.isCritical),
     [feesList]
   );
+  const prioritizedFeesList = useMemo(() => {
+    const toPriority = (fee) => {
+      const rangeSignal = getFeeRangeSignal(fee);
+      const status = feeStatusColor(fee);
+      const total = fee.totalAmount || 0;
+      const paid = fee.paidAmount || 0;
+      const due = fee.dueAmount ?? Math.max(total - paid, 0);
+      if (rangeSignal.isCritical || status === 'danger') return 3;
+      if (status === 'warn' && due > 0) return 2;
+      if (due > 0) return 1;
+      return 0;
+    };
+    return [...(feesList || [])].sort((a, b) => toPriority(b) - toPriority(a));
+  }, [feesList]);
+  const filteredFeesList = useMemo(() => {
+    const term = feeSearch.trim().toLowerCase();
+    if (!term) return prioritizedFeesList;
+    return prioritizedFeesList.filter((fee) => {
+      const student = fee?.studentId || {};
+      const name = student?.userId?.fullName || '';
+      const enrollmentNo = student?.enrollmentNo || '';
+      return name.toLowerCase().includes(term) || enrollmentNo.toLowerCase().includes(term);
+    });
+  }, [prioritizedFeesList, feeSearch]);
+  const admissionMonthSeries = useMemo(() => {
+    const fallbackYear = new Date().getFullYear();
+    return (summary.admissions?.month || []).map((item, idx) => ({
+      label: item.label || `Month ${idx + 1}`,
+      count: Number(item.count) || 0,
+      year: resolveYearFromMonthLabel(item.label, fallbackYear),
+      idx
+    }));
+  }, [summary.admissions?.month]);
+  const admissionYearOptions = useMemo(
+    () => Array.from(new Set(admissionMonthSeries.map((item) => item.year))).sort((a, b) => a - b),
+    [admissionMonthSeries]
+  );
+  useEffect(() => {
+    if (!admissionYearOptions.length) return;
+    const latestYear = admissionYearOptions[admissionYearOptions.length - 1];
+    if (!admissionYear || !admissionYearOptions.includes(Number(admissionYear))) {
+      setAdmissionYear(String(latestYear));
+    }
+  }, [admissionYearOptions, admissionYear]);
+  const admissionChartData = useMemo(() => {
+    if (admissionView === 'year') {
+      return admissionYearOptions.map((year) => ({
+        label: String(year),
+        count: admissionMonthSeries
+          .filter((item) => item.year === year)
+          .reduce((sum, item) => sum + item.count, 0)
+      }));
+    }
+    if (admissionView === 'month') {
+      return admissionMonthSeries
+        .filter((item) => String(item.year) === String(admissionYear))
+        .sort((a, b) => a.idx - b.idx)
+        .map((item) => ({ label: item.label, count: item.count }));
+    }
+    return (summary.admissions?.week || []).map((item, idx) => ({
+      label: formatWeekLabelWithMonth(item.label || `Week ${idx + 1}`),
+      count: Number(item.count) || 0
+    }));
+  }, [admissionView, admissionYearOptions, admissionMonthSeries, admissionYear, summary.admissions?.week]);
+  const maxAdmissionCount = useMemo(
+    () => Math.max(...admissionChartData.map((item) => item.count || 0), 1),
+    [admissionChartData]
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -225,6 +326,12 @@ export default function SuperAdminDashboard() {
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (routeModule !== 'fees') {
+      setFeeSearch('');
+    }
+  }, [routeModule]);
 
   async function loadFees(nextPage = 1) {
     setFeesLoading(true);
@@ -441,11 +548,11 @@ if (currentModule === 'admission-options') {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Admission Category</th>
-                  <th>Students</th>
-                  <th>Total Fees</th>
-                  <th>Collected</th>
-                  <th>Remaining</th>
+                  <th>Admission Type</th>
+                  <th>Total Students</th>
+                  <th>Pending Fees Students</th>
+                  <th>Pending Amount (Due ₹)</th>
+                  <th>Total Expected (₹)</th>
                 </tr>
               </thead>
               <tbody>
@@ -453,9 +560,9 @@ if (currentModule === 'admission-options') {
                   <tr key={item.category}>
                     <td>{item.category}</td>
                     <td>{item.studentCount}</td>
-                    <td>{formatMaskedCurrency(item.totalExpected, revenueMasked)}</td>
-                    <td>{formatMaskedCurrency(item.totalCollected, revenueMasked)}</td>
+                    <td>{item.pendingStudentCount || 0}</td>
                     <td>{formatMaskedCurrency(item.totalDue, revenueMasked)}</td>
+                    <td>{formatMaskedCurrency(item.totalExpected, revenueMasked)}</td>
                   </tr>
                 ))}
                 {!feeCategorySummary.length && (
@@ -467,11 +574,29 @@ if (currentModule === 'admission-options') {
             </table>
           </div>
           <div style={{ marginTop: 12 }}>
+            <div style={{ marginBottom: 10 }}>
+              <input
+                value={feeSearch}
+                onChange={(e) => setFeeSearch(e.target.value)}
+                placeholder="Search by student name or enrollment ID"
+                style={{
+                  width: '100%',
+                  maxWidth: 420,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  border: '1px solid #d7dff6',
+                  outline: 'none'
+                }}
+              />
+            </div>
             {feesLoading && <p className="graph-note">Loading fee records...</p>}
             {feesError && <p className="graph-note" style={{ color: '#c0392b' }}>{feesError}</p>}
             {!feesLoading && !feesList.length && !feesError && <p className="graph-note">No finance data available.</p>}
+            {!feesLoading && !!feesList.length && !filteredFeesList.length && !feesError && (
+              <p className="graph-note">No student matched this name/ID.</p>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {feesList.map((fee) => {
+              {filteredFeesList.map((fee) => {
                 const status = feeStatusColor(fee);
                 const rangeSignal = getFeeRangeSignal(fee);
                 const due = fee.dueAmount ?? Math.max((fee.totalAmount || 0) - (fee.paidAmount || 0), 0);
@@ -559,17 +684,6 @@ if (currentModule === 'admission-options') {
     }
     if (currentModule === 'splash') {
       return <SplashManager />;
-    }
-    if (currentModule === 'complaints') {
-      return (
-        <article className="panel">
-          <div className="panel-head">
-            <h3>Complaint Inbox</h3>
-            <VectorIcon name="alert-circle" size={18} />
-          </div>
-          <ComplaintCenter />
-        </article>
-      );
     }
     if (currentModule === 'data') {
       return (
@@ -717,80 +831,106 @@ if (currentModule === 'admission-options') {
 
           <article className="panel analytics-panel analytics-signal-panel">
             <div className="panel-head">
-              <h3>System Signals</h3>
+              <h3>Admission Signals</h3>
               <VectorIcon name="chart" size={18} />
             </div>
-            <div className="analytics-signal-grid">
-              <div className="analytics-signal-card">
-                <small>Admissions by Month</small>
-                <div className="analytics-scroll-area analytics-scroll-area-inline">
-                  <div className="mini-chart-row">
-                    {summary.admissions.month.map((item) => (
-                      <div key={item.label} className="mini-bar">
-                        <div className="mini-track">
-                          <div className="mini-fill" style={{ height: `${Math.min(item.count * 10, 100)}%` }} />
-                        </div>
-                        <small>{item.label}</small>
-                        <strong>{item.count}</strong>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+              <select
+                value={admissionView}
+                onChange={(e) => setAdmissionView(e.target.value)}
+                style={{ minWidth: 180 }}
+              >
+                <option value="year">Year wise</option>
+                <option value="month">Month wise</option>
+                <option value="week">Week wise</option>
+              </select>
+              {admissionView === 'month' && (
+                <select
+                  value={admissionYear}
+                  onChange={(e) => setAdmissionYear(e.target.value)}
+                  style={{ minWidth: 180 }}
+                >
+                  {admissionYearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <div className="analytics-scroll-area analytics-scroll-area-inline">
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'end',
+                  gap: 12,
+                  minHeight: 260,
+                  padding: '8px 2px 6px'
+                }}
+              >
+                {admissionChartData.map((item, idx) => {
+                  const normalizedHeight = Math.max(10, Math.round((item.count / maxAdmissionCount) * 180));
+                  return (
+                    <div
+                      key={`${item.label}-${idx}`}
+                      style={{ minWidth: 72, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}
+                    >
+                      <div
+                        style={{
+                          width: 48,
+                          height: 190,
+                          borderRadius: 14,
+                          background: 'linear-gradient(180deg, #edf2ff 0%, #dbe4ff 100%)',
+                          border: '1px solid #c9d6ff',
+                          display: 'flex',
+                          alignItems: 'end',
+                          justifyContent: 'center',
+                          padding: 4
+                        }}
+                      >
+                        <motion.div
+                          initial={{ height: 0, opacity: 0.35 }}
+                          animate={{ height: normalizedHeight, opacity: 1 }}
+                          transition={{ duration: 0.55, delay: idx * 0.05, ease: 'easeOut' }}
+                          style={{
+                            width: '100%',
+                            borderRadius: 10,
+                            background: 'linear-gradient(180deg, #4f7df3 0%, #3552c6 100%)',
+                            boxShadow: '0 10px 18px rgba(53,82,198,0.28)'
+                          }}
+                        />
                       </div>
-                    ))}
-                    {!summary.admissions.month.length && <p className="graph-note">No data</p>}
-                  </div>
-                </div>
+                      <small style={{ color: '#5e688f', textAlign: 'center', lineHeight: 1.2 }}>
+                        {String(item.label).length > 11 ? `${String(item.label).slice(0, 11)}…` : item.label}
+                      </small>
+                      <strong style={{ color: '#1f2f75' }}>{item.count}</strong>
+                    </div>
+                  );
+                })}
+                {!admissionChartData.length && <p className="graph-note">No admission data available for this view.</p>}
               </div>
-              <div className="analytics-signal-card">
-                <small>Admissions by Week</small>
-                <div className="analytics-scroll-area analytics-scroll-area-inline">
-                  <div className="mini-chart-row">
-                    {summary.admissions.week.map((item) => (
-                      <div key={item.label} className="mini-bar">
-                        <div className="mini-track">
-                          <div className="mini-fill" style={{ height: `${Math.min(item.count * 15, 100)}%` }} />
-                        </div>
-                        <small>{item.label}</small>
-                        <strong>{item.count}</strong>
-                      </div>
-                    ))}
-                    {!summary.admissions.week.length && <p className="graph-note">No data</p>}
-                  </div>
-                </div>
-              </div>
-              <div className="analytics-signal-card">
-                <small>Admissions by Day</small>
-                <div className="analytics-scroll-area analytics-scroll-area-inline">
-                  <div className="mini-chart-row">
-                    {summary.admissions.day.map((item) => (
-                      <div key={item.label} className="mini-bar">
-                        <div className="mini-track">
-                          <div className="mini-fill" style={{ height: `${Math.min(item.count * 25, 100)}%` }} />
-                        </div>
-                        <small>{item.label.slice(5)}</small>
-                        <strong>{item.count}</strong>
-                      </div>
-                    ))}
-                    {!summary.admissions.day.length && <p className="graph-note">No data</p>}
-                  </div>
-                </div>
-              </div>
+            </div>
+            <div style={{ marginTop: 8, color: '#5e688f', fontSize: 12 }}>
+              Default view shows latest available period data.
             </div>
           </article>
 
-          <CheckinConfigCard />
+          {/* <CheckinConfigCard /> */}
           <article className="panel analytics-panel analytics-category-panel">
             <div className="panel-head">
               <h3>Fee Categories</h3>
               <VectorIcon name="money" size={18} />
             </div>
             <div className="analytics-category-list">
-              {feeCategorySummary.slice(0, 4).map((item) => (
+              {feeCategorySummary.map((item) => (
                 <div key={item.category} className="analytics-category-item">
                   <div>
                     <strong>{item.category}</strong>
-                    <small>{item.studentCount} students</small>
+                    <small>{item.studentCount} students • {item.pendingStudentCount || 0} pending</small>
                   </div>
                   <div>
-                    <strong>{formatMaskedCurrency(item.totalCollected, revenueMasked)}</strong>
-                    <small>Due {formatMaskedCurrency(item.totalDue, revenueMasked)}</small>
+                    <strong>Due {formatMaskedCurrency(item.totalDue, revenueMasked)}</strong>
+                    <small>Expected {formatMaskedCurrency(item.totalExpected, revenueMasked)}</small>
                   </div>
                 </div>
               ))}
@@ -800,7 +940,7 @@ if (currentModule === 'admission-options') {
         </SharedGrid>
       </>
     );
-  }, [activeModule, feeCategorySummary, feeReminderMessage, feesError, feesList, feesLoading, feesMeta.page, feesMeta.totalPages, loadingSummary, menuItems, redRangeFees, revenueMasked, revenuePass, routeModule, summary]);
+  }, [activeModule, admissionChartData, admissionView, admissionYear, admissionYearOptions, feeCategorySummary, feeReminderMessage, feesError, feesList, feesLoading, feesMeta.page, feesMeta.totalPages, loadingSummary, maxAdmissionCount, menuItems, redRangeFees, revenueMasked, revenuePass, routeModule, summary]);
 
   return (
     <div className="dashboard-shell container-fluid px-2 px-md-3 px-xl-4">

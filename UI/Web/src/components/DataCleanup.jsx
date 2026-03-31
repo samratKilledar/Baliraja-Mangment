@@ -62,6 +62,8 @@ export default function DataCleanup() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [pendingDeleteKeys, setPendingDeleteKeys] = useState([]);
+  const [actionBusyKey, setActionBusyKey] = useState('');
 
   const resource = useMemo(() => RESOURCES[resourceKey], [resourceKey]);
   const showIndex = rows.length > 10;
@@ -86,29 +88,48 @@ export default function DataCleanup() {
     load();
   }, [resourceKey]);
 
-  async function handleDelete(id, label) {
+  function rowKeyFor(id) {
+    return `${resourceKey}:${id}`;
+  }
+
+  function markDeletePending(id) {
+    const key = rowKeyFor(id);
+    setPendingDeleteKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  }
+
+  function restorePending(id) {
+    const key = rowKeyFor(id);
+    setPendingDeleteKeys((prev) => prev.filter((item) => item !== key));
+  }
+
+  async function handlePermanentDelete(id, label) {
     const ok = window.confirm(`Permanently delete ${label || 'this record'}? This cannot be undone.`);
     if (!ok) return;
+    const rowKey = rowKeyFor(id);
+    setActionBusyKey(rowKey);
     try {
       await api.delete(resource.deletePath(id));
       setRows((prev) => prev.filter((r) => (r._id || r.id) !== id));
+      setPendingDeleteKeys((prev) => prev.filter((item) => item !== rowKey));
     } catch (err) {
       const msg = err?.response?.data?.message || 'Delete failed';
       alert(msg);
+    } finally {
+      setActionBusyKey('');
     }
   }
 
   return (
     <div style={styles.card}>
       <div style={styles.head}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={styles.headInfo}>
           <VectorIcon name="trash" size={18} />
           <div>
             <h3 style={styles.title}>Data Cleanup</h3>
             <p style={styles.subtitle}>Review and permanently delete records to free storage.</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={styles.headActions}>
           <select
             value={resourceKey}
             onChange={(e) => setResourceKey(e.target.value)}
@@ -145,6 +166,9 @@ export default function DataCleanup() {
             <tbody>
               {rows.map((row, idx) => {
                 const id = row._id || row.id;
+                const rowKey = rowKeyFor(id);
+                const isPendingDelete = pendingDeleteKeys.includes(rowKey);
+                const isBusy = actionBusyKey === rowKey;
                 return (
                   <tr key={id}>
                     {showIndex ? <td style={styles.td}>{idx + 1}</td> : null}
@@ -152,12 +176,34 @@ export default function DataCleanup() {
                       <td key={c} style={styles.td}>{pick(row, c)}</td>
                     ))}
                     <td style={styles.td}>
-                      <button
-                        style={styles.deleteBtn}
-                        onClick={() => handleDelete(id, pick(row, resource.columns[0]))}
-                      >
-                        Delete
-                      </button>
+                      <div style={styles.actionRow}>
+                        {!isPendingDelete ? (
+                          <button
+                            style={styles.deleteBtn}
+                            onClick={() => markDeletePending(id)}
+                            disabled={isBusy}
+                          >
+                            Delete
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              style={styles.restoreBtn}
+                              onClick={() => restorePending(id)}
+                              disabled={isBusy}
+                            >
+                              Restore
+                            </button>
+                            <button
+                              style={styles.deleteNowBtn}
+                              onClick={() => handlePermanentDelete(id, pick(row, resource.columns[0]))}
+                              disabled={isBusy}
+                            >
+                              {isBusy ? 'Deleting...' : 'Delete Permanently'}
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -182,8 +228,23 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: 12,
     marginBottom: 12
+  },
+  headInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flex: '1 1 280px'
+  },
+  headActions: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    flex: '0 1 auto'
   },
   title: { margin: 0, fontSize: 18 },
   subtitle: { margin: 0, color: '#566074', fontSize: 13 },
@@ -191,7 +252,8 @@ const styles = {
     padding: '8px 10px',
     borderRadius: 8,
     border: '1px solid #d3d9e6',
-    background: '#f8f9fb'
+    background: '#f8f9fb',
+    minWidth: 140
   },
   refreshBtn: {
     padding: '8px 12px',
@@ -199,7 +261,13 @@ const styles = {
     border: '1px solid #d3d9e6',
     background: '#1f6feb',
     color: '#fff',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+    minWidth: 92,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0
   },
   table: {
     width: '100%',
@@ -227,6 +295,30 @@ const styles = {
     background: '#ffecef',
     color: '#d93025',
     cursor: 'pointer'
+  },
+  actionRow: {
+    display: 'flex',
+    gap: 8,
+    flexWrap: 'nowrap',
+    alignItems: 'center'
+  },
+  restoreBtn: {
+    padding: '6px 10px',
+    borderRadius: 6,
+    border: '1px solid #9ad8b0',
+    background: '#e8fbef',
+    color: '#166534',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap'
+  },
+  deleteNowBtn: {
+    padding: '6px 10px',
+    borderRadius: 6,
+    border: '1px solid #ffb3b8',
+    background: '#ffecef',
+    color: '#d93025',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap'
   },
   muted: { color: '#77819a', fontSize: 13 },
   error: { color: '#d93025', marginBottom: 8 }

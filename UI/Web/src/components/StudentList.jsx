@@ -57,8 +57,10 @@ export default function StudentList() {
 useEffect(() => {
   load(undefined, page);
 
-  if (user?.role === 'super_admin' || user?.role === 'admin') {
+  if (user?.role === 'admin') {
     loadComplaints();
+  }
+  if (user?.role === 'super_admin' || user?.role === 'admin') {
     loadLeaves();
   }
 }, [user, page]);
@@ -717,23 +719,23 @@ function startEdit(s) {
                             Open Master
                           </button>
                           <button className="ghost-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={()=>downloadPdf(student._id)}>PDF</button>
+                          {(user?.role === 'admin') && (
+                            <button
+                              className={`ghost-btn action-chip ${isSelectedAction(student._id, 'complaints') ? 'active' : ''}`}
+                              style={{ padding: '6px 10px', fontSize: 13 }}
+                              onClick={()=>toggleDetail(student._id,'complaints')}
+                            >
+                              Complaints
+                            </button>
+                          )}
                           {(user?.role === 'super_admin' || user?.role === 'admin') && (
-                            <>
-                              <button
-                                className={`ghost-btn action-chip ${isSelectedAction(student._id, 'complaints') ? 'active' : ''}`}
-                                style={{ padding: '6px 10px', fontSize: 13 }}
-                                onClick={()=>toggleDetail(student._id,'complaints')}
-                              >
-                                Complaints
-                              </button>
-                              <button
-                                className={`ghost-btn action-chip ${isSelectedAction(student._id, 'leaves') ? 'active' : ''}`}
-                                style={{ padding: '6px 10px', fontSize: 13 }}
-                                onClick={()=>toggleDetail(student._id,'leaves')}
-                              >
-                                Leave Requests
-                              </button>
-                            </>
+                            <button
+                              className={`ghost-btn action-chip ${isSelectedAction(student._id, 'leaves') ? 'active' : ''}`}
+                              style={{ padding: '6px 10px', fontSize: 13 }}
+                              onClick={()=>toggleDetail(student._id,'leaves')}
+                            >
+                              Leave Requests
+                            </button>
                           )}
                           <button className="danger-btn student-delete-btn" style={{ padding: '6px 10px', fontSize: 13 }} onClick={async ()=>{
                             if (!window.confirm('Delete this student and related fee records?')) return;
@@ -769,7 +771,7 @@ function startEdit(s) {
                         </td>
                       </tr>
                     )}
-                    {detailPanel.studentId === student._id && detailPanel.type === 'complaints' && (
+                    {user?.role === 'admin' && detailPanel.studentId === student._id && detailPanel.type === 'complaints' && (
                       <tr>
                         <td colSpan={columnCount}>
                           <div className="inline-edit student-expand-card" style={{ marginTop: 4 }}>

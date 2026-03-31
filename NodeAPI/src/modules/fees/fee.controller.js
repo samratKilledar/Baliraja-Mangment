@@ -361,12 +361,16 @@ async function feeCategorySummary(req, res, next) {
         acc[category] = {
           category,
           studentCount: 0,
+          pendingStudentCount: 0,
           totalExpected: 0,
           totalCollected: 0,
           totalDue: 0
         };
       }
       acc[category].studentCount += 1;
+      if ((Number(fee.dueAmount) || 0) > 0) {
+        acc[category].pendingStudentCount += 1;
+      }
       acc[category].totalExpected += Number(fee.totalAmount) || 0;
       acc[category].totalCollected += Number(fee.paidAmount) || 0;
       acc[category].totalDue += Number(fee.dueAmount) || 0;

@@ -11,7 +11,7 @@ import NoticeStrip from '../../components/NoticeStrip';
 import ComplaintCenter from '../../components/ComplaintCenter';
 import LeaveCenter from '../../components/LeaveCenter';
 import LectureList from '../../components/LectureList';
-import CheckinConfigCard from '../../components/CheckinConfigCard';
+// import CheckinConfigCard from '../../components/CheckinConfigCard';
 import SplashManager from '../../components/SplashManager';
 import SubjectManager from '../../components/SubjectManager';
 import AttendanceWorkspace from '../../components/AttendanceWorkspace';
@@ -141,6 +141,13 @@ export default function AdminDashboard() {
     if (location.pathname.startsWith('/admin/references')) return 'references';
     return 'overview';
   }, [location.pathname]);
+  const sortedNavItems = useMemo(
+    () =>
+      [...navItems].sort((a, b) =>
+        (a.label || '').localeCompare(b.label || '', 'en', { sensitivity: 'base' })
+      ),
+    []
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -437,7 +444,7 @@ export default function AdminDashboard() {
             </ul>
           </article>
 
-          <CheckinConfigCard />
+          {/* <CheckinConfigCard /> */}
         </SharedGrid>
       </>
     );
@@ -482,7 +489,7 @@ export default function AdminDashboard() {
             <small>{user?.email || 'no-email'}</small>
             {lastLoginLabel ? <small>Last login: {lastLoginLabel}</small> : null}
           </div>
-          {navItems.map((item) => (
+          {sortedNavItems.map((item) => (
             <button
               key={item.key}
               className={`nav-item ${routeKey === item.key ? 'active' : ''}`}

@@ -15,7 +15,7 @@ function getApiBase() {
   }
 }
 
-function resolveImage(url) {
+function resolveMedia(url) {
   if (!url) return '';
   let clean = url;
   if (clean.includes('/api/v1/uploads')) clean = clean.replace('/api/v1/uploads', '/uploads');
@@ -49,8 +49,17 @@ export default function NoticeStrip() {
     <div style={styles.strip}>
       {notices.map((n) => (
         <div key={n._id} style={styles.card}>
-          {n.imageUrl && <img crossOrigin="anonymous" src={resolveImage(n.imageUrl)} alt={n.title} style={styles.img} />}
-          {/* <p>{resolveImage(n.imageUrl)}</p> */}
+          {n.videoUrl ? (
+            <video
+              src={resolveMedia(n.videoUrl)}
+              style={styles.img}
+              controls
+              preload="metadata"
+              playsInline
+            />
+          ) : n.imageUrl ? (
+            <img src={resolveMedia(n.imageUrl)} alt={n.title} style={styles.img} />
+          ) : null}
           <div>
             <div style={styles.title}>{n.title}</div>
             <div style={styles.desc}>{n.description}</div>

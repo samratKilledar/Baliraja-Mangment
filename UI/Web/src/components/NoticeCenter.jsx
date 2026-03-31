@@ -30,6 +30,7 @@ export default function NoticeCenter() {
   const [file, setFile] = useState(null);
   const [notices, setNotices] = useState([]);
   const [error, setError] = useState('');
+  const [formErrors, setFormErrors] = useState({ title: '', file: '' });
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const showIndex = notices.length > 10;
@@ -61,7 +62,21 @@ export default function NoticeCenter() {
 
   async function createNotice(e) {
     e.preventDefault();
-    if (!title.trim()) return;
+    const nextErrors = { title: '', file: '' };
+    if (!title.trim()) {
+      nextErrors.title = 'Notice title is required.';
+    } else if (title.trim().length < 3) {
+      nextErrors.title = 'Notice title must be at least 3 characters.';
+    }
+    if (file && file.size > 10 * 1024 * 1024) {
+      nextErrors.file = 'File size must be 10MB or less.';
+    }
+    if (nextErrors.title || nextErrors.file) {
+      setFormErrors(nextErrors);
+      return;
+    }
+
+    setFormErrors({ title: '', file: '' });
     setLoading(true);
     setError('');
     try {
@@ -82,6 +97,7 @@ export default function NoticeCenter() {
       setAudience(['all']);
       setFile(null);
       setPreviewUrl('');
+      setFormErrors({ title: '', file: '' });
       loadNotices();
     } catch (err) {
       setError(err?.response?.data?.message || 'Unable to create notice');
@@ -103,7 +119,18 @@ export default function NoticeCenter() {
     <div className="notice-center">
       <form className="notice-form" onSubmit={createNotice} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <div style={{display:"grid",gap:10}}>
-          <label><span>Notice Title</span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter notice title" /></label>
+          <label>
+            <span>Notice Title</span>
+            <input
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (formErrors.title) setFormErrors((prev) => ({ ...prev, title: '' }));
+              }}
+              placeholder="Enter notice title"
+            />
+            {formErrors.title ? <small className="error">{formErrors.title}</small> : null}
+          </label>
           <label><span>Description</span><textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Details for the notice" rows={4} /></label>
           <label><span>Publish Date</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
           <div className="audience-group">
@@ -131,10 +158,18 @@ export default function NoticeCenter() {
               accept="image/*,video/*"
               onChange={(e) => {
                 const next = e.target.files?.[0] || null;
+                if (next && next.size > 10 * 1024 * 1024) {
+                  setFile(null);
+                  setPreviewUrl('');
+                  setFormErrors((prev) => ({ ...prev, file: 'File size must be 10MB or less.' }));
+                  return;
+                }
                 setFile(next);
                 setPreviewUrl(next ? URL.createObjectURL(next) : '');
+                if (formErrors.file) setFormErrors((prev) => ({ ...prev, file: '' }));
               }}
             />
+            {formErrors.file ? <small className="error">{formErrors.file}</small> : null}
           </label>
           {file && file.type.startsWith('video/') && previewUrl && (
             <video src={previewUrl} controls style={{width:"100%", maxHeight:220, borderRadius:10, border:"1px solid #e4e8f3"}} />
