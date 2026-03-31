@@ -45,9 +45,11 @@ function shapeStudentDetails(raw = {}) {
     gender: raw.gender
   };
   const education = {
+    admissionYear: raw.admissionYear,
+    registerNo: raw.registerNo,
+    uidNo: raw.uidNo,
+    sidNo: raw.sidNo,
     admissionType: raw.admissionType,
-    batchYear: raw.batchYear,
-    batchMonth: raw.batchMonth,
     previousSchool: raw.previousSchool,
     currentClass: raw.currentClass,
     division: raw.division,
@@ -266,6 +268,8 @@ async function createStudent(req, res, next) {
       status: req.body.status || 'inactive',
       age: calculateAgeFromDateOfBirth(req.body.dateOfBirth),
       enrollmentNo,
+      admissionTakenBy: req.user?.sub,
+      admissionTakenAt: new Date(),
       createdBy: req.user?.sub,
       createdByEmail: req.user?.email
     });
@@ -306,6 +310,7 @@ async function listStudents(req, res, next) {
     let students = await Student.find(filter)
       .populate('userId', 'fullName email phone passwordCipher')
       .populate('createdBy', 'fullName email')
+      .populate('admissionTakenBy', 'fullName email')
       .populate('currentCourseIds', 'name category')
       .populate('batchId', 'batchName')
       .sort({ createdAt: -1 });
@@ -344,6 +349,7 @@ async function getStudent(req, res, next) {
     const student = await Student.findById(studentId)
       .populate('userId', 'fullName email phone passwordCipher')
       .populate('createdBy', 'fullName email')
+      .populate('admissionTakenBy', 'fullName email')
       .populate('batchId', 'batchName')
       .lean();
     if (!student) return res.status(404).json({ message: 'Student not found' });
@@ -598,6 +604,7 @@ async function exportStudentPdf(req, res, next) {
     const rightX = doc.page.width - doc.page.margins.right;
     const details = student.details || {};
     const personal = details.personal || details;
+    const education = details.education || {};
     const total = fee?.totalAmount || 0;
     const paid = fee?.paidAmount || 0;
     const due = fee?.dueAmount || Math.max(total - paid, 0);
@@ -608,7 +615,7 @@ async function exportStudentPdf(req, res, next) {
         .sort((a, b) => new Date(a?.paidOn || 0) - new Date(b?.paidOn || 0))
       : [];
 
-    function setFont(size = 9, color = '#15213d') {
+    function setFont(size = 8.4, color = '#15213d') {
       if (pdfFontName) {
         doc.font(pdfFontName);
       }
@@ -616,7 +623,7 @@ async function exportStudentPdf(req, res, next) {
       return doc;
     }
 
-    function ensureSpace(requiredHeight = 22) {
+    function ensureSpace(requiredHeight = 18) {
       if (doc.y + requiredHeight > doc.page.height - doc.page.margins.bottom - 10) {
         doc.addPage();
         if (pdfFontName) doc.font(pdfFontName);
@@ -624,20 +631,20 @@ async function exportStudentPdf(req, res, next) {
     }
 
     function drawSectionTitle(titleEnglish) {
-      ensureSpace(15);
-      setFont(10.2, '#1f2f75').text(titleEnglish, leftX, doc.y);
+      ensureSpace(12);
+      setFont(9.3, '#1f2f75').text(titleEnglish, leftX, doc.y);
       doc
         .moveTo(leftX, doc.y + 1)
         .lineTo(rightX, doc.y + 1)
         .strokeColor('#d6dce8')
-        .lineWidth(0.8)
+        .lineWidth(0.7)
         .stroke();
-      doc.moveDown(0.05);
+      doc.moveDown(0.03);
     }
 
     function drawInfoTable(rows) {
       const cellGap = 10;
-      const basePadding = 4.2;
+      const basePadding = 3.2;
       const twoColWidth = (pageWidth - cellGap) / 2;
       rows.forEach((cells) => {
         const normalized = cells.length === 1
@@ -647,9 +654,9 @@ async function exportStudentPdf(req, res, next) {
           const textWidth = cell.width - 18;
           const labelHeight = doc.heightOfString(pdfValue(cell.label), { width: textWidth, align: 'left' });
           const valueHeight = doc.heightOfString(pdfValue(cell.value), { width: textWidth, align: 'left' });
-          return labelHeight + valueHeight + basePadding * 2 + 4;
+          return labelHeight + valueHeight + basePadding * 2 + 2;
         });
-        const rowHeight = Math.max(...heights, 24);
+        const rowHeight = Math.max(...heights, 19);
         ensureSpace(rowHeight + 2);
         const y = doc.y;
         let currentX = leftX;
@@ -659,16 +666,16 @@ async function exportStudentPdf(req, res, next) {
           doc
             .rect(x, y, cell.width, rowHeight)
             .fill(index % 2 === 0 ? '#f8faff' : '#ffffff');
-          setFont(8.1, '#4b5774').text(pdfValue(cell.label), x + 4, y + 3, { width: cell.width - 8 });
+          setFont(7.3, '#4b5774').text(pdfValue(cell.label), x + 4, y + 2, { width: cell.width - 8 });
           const labelBottom = doc.y;
-          setFont(9.2, '#15213d').text(pdfValue(cell.value), x + 4, labelBottom + 1, {
+          setFont(8.1, '#15213d').text(pdfValue(cell.value), x + 4, labelBottom, {
             width: cell.width - 8,
             align: 'left'
           });
           currentX += cell.width + (index < normalized.length - 1 ? cellGap : 0);
         });
 
-        doc.y = y + rowHeight + 3;
+        doc.y = y + rowHeight + 1.5;
       });
     }
 
@@ -678,7 +685,7 @@ async function exportStudentPdf(req, res, next) {
       return String(mode).charAt(0).toUpperCase() + String(mode).slice(1);
     }
 
-    function drawInstallmentsTable(list) {
+    function drawInstallmentsTable(list, maxRows = list.length) {
       if (!list.length) {
         drawInfoTable([[{ label: 'Installments', value: 'No installments recorded yet.', width: pageWidth }]]);
         return;
@@ -696,9 +703,10 @@ async function exportStudentPdf(req, res, next) {
       const gap = 6;
       const cellPaddingX = 4;
       const cellPaddingY = 3;
+      const visibleRows = list.slice(0, maxRows);
 
       function drawRow(values, isHeader = false, index = 0) {
-        const rowHeight = 20;
+        const rowHeight = 16;
         ensureSpace(rowHeight + 2);
         const y = doc.y;
         let x = leftX;
@@ -707,7 +715,7 @@ async function exportStudentPdf(req, res, next) {
           doc
             .rect(x, y, col.width, rowHeight)
             .fill(isHeader ? '#eaf0ff' : (index % 2 === 0 ? '#f8faff' : '#ffffff'));
-          setFont(isHeader ? 8.2 : 7.8, isHeader ? '#1f2f75' : '#15213d')
+          setFont(isHeader ? 7.5 : 7, isHeader ? '#1f2f75' : '#15213d')
             .text(pdfValue(values[colIndex]), x + cellPaddingX, y + cellPaddingY, {
               width: col.width - (cellPaddingX * 2),
               height: rowHeight - (cellPaddingY * 2),
@@ -719,7 +727,7 @@ async function exportStudentPdf(req, res, next) {
       }
 
       drawRow(headers, true);
-      list.forEach((tx, idx) => {
+      visibleRows.forEach((tx, idx) => {
         const row = [
           formatDate(tx?.paidOn),
           formatCurrency(tx?.amount || 0),
@@ -730,6 +738,15 @@ async function exportStudentPdf(req, res, next) {
         ];
         drawRow(row, false, idx);
       });
+
+      if (list.length > visibleRows.length) {
+        setFont(7.1, '#4b5774').text(
+          `+${list.length - visibleRows.length} more installment(s) not shown to keep this PDF on one A4 page.`,
+          leftX,
+          doc.y + 1
+        );
+        doc.moveDown(0.2);
+      }
     }
 
     function drawPageFrame() {
@@ -747,8 +764,8 @@ async function exportStudentPdf(req, res, next) {
       doc
         .rect(frameX + 1, frameY + 1, frameW - 2, 44)
         .fill('#ecf1ff');
-      setFont(16, '#1f2f75').text('Baliraja Academy', leftX, frameY + 12);
-      setFont(9.2, '#1f2f75').text('Student Information & Fees Report', leftX, frameY + 30);
+      setFont(14, '#1f2f75').text('Baliraja Academy', leftX, frameY + 11);
+      setFont(8.3, '#1f2f75').text('Student Information & Fees Report', leftX, frameY + 27);
       doc.y = frameY + 52;
     }
 
@@ -769,17 +786,18 @@ async function exportStudentPdf(req, res, next) {
         });
       }
     }
-    doc.moveDown(0.2);
-    setFont(7.6, '#4a4a4a').text(`Generated On: ${formatDateTime(new Date())}`, { align: 'left' });
-    setFont(7.6, '#4a4a4a').text(`Enrollment No: ${student.enrollmentNo || '—'}`, { align: 'left' });
-    doc.moveDown(0.15);
+    doc.moveDown(0.08);
+    setFont(7.1, '#4a4a4a').text(`Generated On: ${formatDateTime(new Date())}`, { align: 'left' });
+    setFont(7.1, '#4a4a4a').text(`Enrollment No: ${student.enrollmentNo || '—'}`, { align: 'left' });
+    setFont(7.1, '#4a4a4a').text(`Register No: ${education.registerNo || '—'}   UID No: ${education.uidNo || '—'}   SID No: ${education.sidNo || '—'}`, { align: 'left' });
+    doc.moveDown(0.08);
     doc
       .moveTo(leftX, doc.y)
       .lineTo(rightX, doc.y)
       .strokeColor('#d6dce8')
       .lineWidth(0.8)
       .stroke();
-    doc.moveDown(0.2);
+    doc.moveDown(0.1);
 
     drawSectionTitle('Student Information');
     drawInfoTable([
@@ -829,16 +847,24 @@ async function exportStudentPdf(req, res, next) {
     ]);
 
     drawSectionTitle('Payment Installments');
-    drawInstallmentsTable(installments);
+    const footerReserve = 62;
+    const installmentsHeaderHeight = 18;
+    const installmentsRowHeight = 18;
+    const availableInstallmentHeight = Math.max(
+      0,
+      (doc.page.height - doc.page.margins.bottom - footerReserve) - doc.y - installmentsHeaderHeight
+    );
+    const maxInstallmentRows = Math.max(0, Math.floor(availableInstallmentHeight / installmentsRowHeight));
+    drawInstallmentsTable(installments, maxInstallmentRows);
 
-    ensureSpace(46);
-    doc.moveDown(0.6);
-    setFont(7.2, '#4b5774').text('This document is a soft copy generated by the system.', leftX, doc.y, {
+    ensureSpace(40);
+    doc.moveDown(0.3);
+    setFont(6.8, '#4b5774').text('This document is a soft copy generated by the system.', leftX, doc.y, {
       width: pageWidth
     });
-    doc.moveDown(0.9);
-    setFont(8, '#15213d').text('______________________', rightX - 130, doc.y, { width: 130, align: 'center' });
-    setFont(8, '#15213d').text('Admin Signature', rightX - 130, doc.y + 2, { width: 130, align: 'center' });
+    doc.moveDown(0.5);
+    setFont(7.4, '#15213d').text('______________________', rightX - 130, doc.y, { width: 130, align: 'center' });
+    setFont(7.4, '#15213d').text('Admin Signature', rightX - 130, doc.y + 1, { width: 130, align: 'center' });
 
     doc.end();
   } catch (err) {

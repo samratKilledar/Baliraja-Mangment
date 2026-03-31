@@ -625,7 +625,12 @@ function startEdit(s) {
                         <div style={{ fontWeight: 700 }}>{student.userId?.fullName || 'N/A'}</div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>ID: {student.enrollmentNo}</div>
                         <div style={{ color: '#22335f', fontSize: 12 }}>Password: {student.userId?.passwordVisible || '123456'}</div>
-                        <div style={{ color: '#4b5774', fontSize: 12 }}>Added by: {student.createdBy?.fullName || '—'}</div>
+                        <div style={{ color: '#4b5774', fontSize: 12 }}>
+                          Admission Taken By: {student.admissionTakenBy?.fullName || student.createdBy?.fullName || '—'}
+                        </div>
+                        <div style={{ color: '#4b5774', fontSize: 12 }}>
+                          Admission Taken At: {student.admissionTakenAt ? new Date(student.admissionTakenAt).toLocaleString() : (student.createdAt ? new Date(student.createdAt).toLocaleString() : '—')}
+                        </div>
                         <div style={{ color: '#4b5774', fontSize: 12 }}>Admission: {student.admissionDate ? new Date(student.admissionDate).toLocaleDateString() : '—'}</div>
                       </td>
                       <td>

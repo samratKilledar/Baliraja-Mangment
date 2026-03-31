@@ -397,7 +397,7 @@ if (currentModule === 'student-form') {
       return (
         <article className="panel">
           <div className="panel-head">
-            <h3>Student Form Workspace</h3>
+            {/* <h3>Student Form Workspace</h3> */}
             <VectorIcon name="users" size={18} />
           </div>
           <StudentAdmissionForm />

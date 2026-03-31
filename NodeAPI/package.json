@@ -10,6 +10,7 @@
     "start:production": "NODE_ENV=production node src/server.js",
     "start": "node src/server.js",
     "reset:superadmin": "NODE_ENV=development node src/scripts/resetLocalSuperAdmin.js",
+    "cleanup:student-batch-fields": "NODE_ENV=development node src/scripts/removeStudentBatchYearMonth.js",
     "lint": "echo 'Add eslint config'"
   },
   "engines": {
