@@ -28,6 +28,7 @@ import {Role} from '../types';
 import {useLanguage} from '../context/LanguageContext';
 import {tx} from '../i18n/strings';
 import NoticeCarousel from './NoticeCarousel';
+import { syncStoredDeviceRegistration } from '../api/deviceToken';
 
 type DashboardScreenProps = {
   title: string;
@@ -154,6 +155,15 @@ export default function DashboardScreen({
           ],
     [language],
   );
+
+  async function handleDashboardRefresh() {
+    try {
+      await syncStoredDeviceRegistration(role);
+    } catch {
+      // keep refresh flow resilient even if token sync fails
+    }
+    await onRefresh?.();
+  }
 
   useEffect(() => {
     Animated.parallel([
@@ -323,7 +333,7 @@ export default function DashboardScreen({
         showsVerticalScrollIndicator={false}
         refreshControl={
           onRefresh ? (
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl refreshing={refreshing} onRefresh={handleDashboardRefresh} />
           ) : undefined
         }
         onScroll={onScroll}

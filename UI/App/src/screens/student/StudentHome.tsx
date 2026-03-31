@@ -481,21 +481,6 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
       setAttendanceVisible(attendanceList.length);
     }
   };
-  const attendanceHeader = (
-    <View style={styles.attHeaderBox}>
-      <View style={styles.attTopRow}>
-        <FastImage source={{ uri: profileImage }} style={styles.avatarSmall} />
-          <View style={{ }}>
-            <Text style={styles.studentName}>{studentName}</Text>
-            <Text style={styles.studentId}>ID: {studentEnrollment}</Text>
-          </View>
-        </View>
-      {/* <View style={{ width: 90, height: 90, marginTop: 8 }}>
-        <LottieView source={ATT_LOTTIE} autoPlay loop />
-      </View> */}
-    </View>
-  );
-
   return (
     <DashboardScreen
       title=""
@@ -509,7 +494,6 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
       filter={filter}
       filters={filters}
       onFilterChange={setFilter}
-      extraHeader={attendanceHeader}
       onScroll={handleScroll}
       scrollEventThrottle={16}
     >
@@ -624,7 +608,7 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
           >
             <TextInput
               placeholder="Write complaint"
-              placeholderTextColor="#888"
+              placeholderTextColor={COLORS.textMuted}
               value={complaint}
               onChangeText={setComplaint}
               style={styles.input}
@@ -832,7 +816,7 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
             <TextInput
               style={styles.input}
               placeholder="Time (e.g., Full Day, Half Day)"
-              placeholderTextColor="#888"
+              placeholderTextColor={COLORS.textMuted}
               onChangeText={setLeaveTime}
               value={leaveTime}
             />
@@ -861,7 +845,7 @@ export default function StudentHome({ menuOverride }: StudentHomeProps) {
             <TextInput
               style={styles.input}
               placeholder="Reason for leave"
-              placeholderTextColor="#888"
+              placeholderTextColor={COLORS.textMuted}
               onChangeText={setLeaveReason}
               value={leaveReason}
               multiline

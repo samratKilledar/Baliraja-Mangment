@@ -28,6 +28,13 @@ function normalizeUrl(url?: string) {
   return `${base}${clean.startsWith('/') ? clean : `/${clean}`}`;
 }
 
+function isVideoNotice(item: Notice) {
+  if (item.mediaType === 'video') return true;
+  if (item.videoUrl) return true;
+  const possible = item.imageUrl || '';
+  return /\.(mp4|mov|mkv|webm)$/i.test(possible);
+}
+
 export default function NoticeCarousel() {
   const [items, setItems] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(false);
@@ -68,8 +75,12 @@ export default function NoticeCarousel() {
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.strip}
         renderItem={({ item }) => {
-          const mediaUrl = item.videoUrl ? normalizeUrl(item.videoUrl) : item.imageUrl ? normalizeUrl(item.imageUrl) : '';
-          const isVideo = !!item.videoUrl;
+          const isVideo = isVideoNotice(item);
+          const mediaUrl = isVideo
+            ? normalizeUrl(item.videoUrl || item.imageUrl)
+            : item.imageUrl
+            ? normalizeUrl(item.imageUrl)
+            : '';
           return (
           <Pressable
             style={styles.card}
@@ -81,8 +92,10 @@ export default function NoticeCarousel() {
                 source={{ uri: mediaUrl }}
                 style={styles.img}
                 resizeMode="cover"
-                paused
+                paused={false}
+                repeat
                 muted
+                onError={(e) => console.warn('Notice preview video error', e)}
               />
             ) : mediaUrl ? (
               <FastImage
@@ -115,7 +128,11 @@ export default function NoticeCarousel() {
               style={styles.fullImg}
               resizeMode="contain"
               controls
+              paused={false}
               muted={false}
+              volume={1.0}
+              ignoreSilentSwitch="ignore"
+              onError={(e) => console.warn('Notice modal video error', e)}
             />
           )}
         </View>

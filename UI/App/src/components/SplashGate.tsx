@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, ImageBackground, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Animated, ImageBackground, Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import client from '../api/client';
 import Video from 'react-native-video';
 
 const FALLBACK = require('../assets/splash-default.png');
 const CACHE_KEY = 'ims_splash_image_url';
+const MAX_FETCH_WAIT_MS = 1200;
 
 function normalizeUrl(url?: string) {
   if (!url) return '';
@@ -22,17 +23,21 @@ type Props = {
   children: React.ReactNode;
 };
 
-export default function SplashGate({ appReady, minimumMs = 1200, children }: Props) {
+export default function SplashGate({ appReady, minimumMs = 1000, children }: Props) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [fetched, setFetched] = useState(false);
+  const [fetchWaitExpired, setFetchWaitExpired] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
   const fade = useRef(new Animated.Value(1)).current;
+  const bounce = useRef(new Animated.Value(0)).current;
   const startedAt = useRef(Date.now());
 
   useEffect(() => {
     restoreCached();
     fetchRemote();
+    const timer = setTimeout(() => setFetchWaitExpired(true), MAX_FETCH_WAIT_MS);
+    return () => clearTimeout(timer);
   }, []);
 
   async function restoreCached() {
@@ -76,26 +81,46 @@ export default function SplashGate({ appReady, minimumMs = 1200, children }: Pro
   useEffect(() => {
     if (hidden) return;
     const elapsed = Date.now() - startedAt.current;
-    const hasCustomImage = Boolean(imageUrl);
-    const requiredDuration = videoUrl ? 10000 : hasCustomImage ? 3000 : Math.max(minimumMs, 3000);
-    const hideNow = appReady && fetched && elapsed >= requiredDuration;
+    const requiredDuration = Math.min(Math.max(minimumMs, 0), 1000);
+    const readyToHide = fetched || fetchWaitExpired;
+    const hideNow = appReady && readyToHide && elapsed >= requiredDuration;
     if (hideNow) {
       Animated.timing(fade, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => setHidden(true));
       return;
     }
-    if (appReady && fetched) {
+    if (appReady && readyToHide) {
       const timer = setTimeout(() => {
         Animated.timing(fade, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => setHidden(true));
       }, Math.max(requiredDuration - elapsed, 0));
       return () => clearTimeout(timer);
     }
-  }, [appReady, fetched, hidden, fade, imageUrl, minimumMs, videoUrl]);
+  }, [appReady, fetched, fetchWaitExpired, hidden, fade, imageUrl, minimumMs, videoUrl]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android' || hidden) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounce, { toValue: 1, duration: 420, useNativeDriver: true }),
+        Animated.timing(bounce, { toValue: 0, duration: 420, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [bounce, hidden]);
 
   const source = useMemo(() => {
     if (videoUrl) return null;
     return imageUrl ? { uri: imageUrl } : FALLBACK;
   }, [imageUrl, videoUrl]);
   const showDefaultCaption = !imageUrl && !videoUrl;
+  const captionBounceStyle = Platform.OS === 'android'
+    ? {
+        transform: [
+          { translateY: bounce.interpolate({ inputRange: [0, 1], outputRange: [0, -6] }) },
+          { scale: bounce.interpolate({ inputRange: [0, 1], outputRange: [1, 1.02] }) },
+        ],
+      }
+    : undefined;
 
   return (
     <View style={{ flex: 1 }}>
@@ -113,19 +138,21 @@ export default function SplashGate({ appReady, minimumMs = 1200, children }: Pro
                 muted
                 paused={false}
               />
-              <View style={styles.scrim} />
             </View>
+          ) : imageUrl ? (
+            <ImageBackground source={source} style={StyleSheet.absoluteFill} resizeMode="cover" />
           ) : (
-            <ImageBackground source={source} style={StyleSheet.absoluteFill} resizeMode="cover">
-              <View style={styles.scrim} />
+            <View style={styles.defaultSplash}>
               {showDefaultCaption && (
-                <View style={styles.captionBox}>
-                  <Text style={styles.title}>Baliraja Academy</Text>
-                  <Text style={styles.subtitle}>Baliraja Academy Management App</Text>
-                  <Text style={styles.note}>Empowering students, teachers, and administrators together.</Text>
-                </View>
+                <Animated.View style={[styles.captionBox, captionBounceStyle]}>
+                  <View style={styles.captionContent}>
+                    <Text style={styles.title}>Baliraja Academy</Text>
+                    <Text style={styles.subtitle}>Baliraja Academy Management App</Text>
+                    <Text style={styles.note}>Empowering students, teachers, and administrators together.</Text>
+                  </View>
+                </Animated.View>
               )}
-            </ImageBackground>
+            </View>
           )}
         </Animated.View>
       )}
@@ -135,16 +162,28 @@ export default function SplashGate({ appReady, minimumMs = 1200, children }: Pro
 
 const styles = StyleSheet.create({
   overlay: { backgroundColor: '#dbeafe' },
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.08)' },
+  defaultSplash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#eef2ff',
+  },
   captionBox: {
     position: 'absolute',
     bottom: 80,
-    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d9e1f6',
     left: 0,
     right: 0,
-    alignItems: 'center'
   },
-  title: { color: '#f8fafc', fontSize: 24, fontWeight: '800', letterSpacing: 0.5, textAlign: 'center' },
-  subtitle: { color: '#dbeafe', marginTop: 8, fontSize: 15, fontWeight: '700', textAlign: 'center' },
-  note: { color: '#dbeafe', marginTop: 6, fontSize: 13, textAlign: 'center' }
+  captionContent: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  title: { color: '#1f2f75', fontSize: 24, fontWeight: '800', letterSpacing: 0.5, textAlign: 'center' },
+  subtitle: { color: '#2f3e68', marginTop: 8, fontSize: 15, fontWeight: '700', textAlign: 'center' },
+  note: { color: '#4a5a7a', marginTop: 6, fontSize: 13, textAlign: 'center' }
 });

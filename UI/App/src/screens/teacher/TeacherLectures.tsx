@@ -4,6 +4,7 @@ import DatePicker from 'react-native-date-picker';
 import DashboardScreen from '../../components/DashboardScreen';
 import { useAuth } from '../../context/AuthContext';
 import client from '../../api/client';
+import COLORS from '../../config/colors';
 
 export default function TeacherLectures() {
   const { user } = useAuth();
@@ -133,15 +134,15 @@ export default function TeacherLectures() {
       <View style={styles.box}>
         <Text style={styles.heading}>Add Lecture</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <TextInput placeholder="Subject" value={subject} onChangeText={setSubject} style={styles.input} />
-        <TextInput placeholder="Student count" keyboardType="number-pad" value={studentCount} onChangeText={setStudentCount} style={styles.input} />
+        <TextInput placeholder="Subject" placeholderTextColor={COLORS.textMuted} value={subject} onChangeText={setSubject} style={styles.input} />
+        <TextInput placeholder="Student count" placeholderTextColor={COLORS.textMuted} keyboardType="number-pad" value={studentCount} onChangeText={setStudentCount} style={styles.input} />
         <Pressable style={styles.input} onPress={() => setStartPicker(true)}>
           <Text style={{ color: startTime ? '#1f2f75' : '#888' }}>{startTime || 'Pick start time'}</Text>
         </Pressable>
         <Pressable style={styles.input} onPress={() => setEndPicker(true)}>
           <Text style={{ color: endTime ? '#1f2f75' : '#888' }}>{endTime || 'Pick end time'}</Text>
         </Pressable>
-        <TextInput placeholder="Note" value={note} onChangeText={setNote} style={styles.input} />
+        <TextInput placeholder="Note" placeholderTextColor={COLORS.textMuted} value={note} onChangeText={setNote} style={styles.input} />
         <Pressable style={styles.button} onPress={addLecture}>
           <Text style={styles.buttonText}>Save Lecture</Text>
         </Pressable>
@@ -216,7 +217,7 @@ const styles = StyleSheet.create({
   subtext: { marginTop: 4, color: '#5e688f' },
   rowItem: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#eef2fb' },
   error: { color: '#c0392b', marginBottom: 6 },
-  input: { marginTop: 8, borderWidth: 1, borderColor: '#dfe4f6', borderRadius: 10, padding: 10, backgroundColor: '#fff' },
+  input: { marginTop: 8, borderWidth: 1, borderColor: '#dfe4f6', borderRadius: 10, padding: 10, backgroundColor: '#fff', color: '#1f2f75' },
   button: {
     marginTop: 10,
     backgroundColor: '#1f3ca8',

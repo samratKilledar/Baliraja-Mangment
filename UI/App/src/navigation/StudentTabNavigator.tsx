@@ -65,17 +65,6 @@ export default function StudentTabNavigator() {
         {() => <StudentTabScreen menu="Fees" />}
       </Tab.Screen>
       <Tab.Screen
-        name="AttendanceTab"
-        options={{
-          title: 'Attendance',
-          tabBarIcon: ({ focused }) => (
-            <TabIcon source={require('../assets/animations/tab-leave.json')} focused={focused} />
-          )
-        }}
-      >
-        {() => <StudentTabScreen menu="Attendance" />}
-      </Tab.Screen>
-      <Tab.Screen
         name="ProfileTab"
         options={{
           title: 'Profile',

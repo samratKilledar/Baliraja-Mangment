@@ -94,6 +94,7 @@ export default function PasswordChangeCard({
 
       <TextInput
         placeholder="Current password"
+        placeholderTextColor={COLORS.textMuted}
         secureTextEntry
         value={currentPassword}
         onChangeText={setCurrentPassword}
@@ -101,6 +102,7 @@ export default function PasswordChangeCard({
       />
       <TextInput
         placeholder="New password"
+        placeholderTextColor={COLORS.textMuted}
         secureTextEntry
         value={newPassword}
         onChangeText={setNewPassword}
@@ -108,6 +110,7 @@ export default function PasswordChangeCard({
       />
       <TextInput
         placeholder="Confirm new password"
+        placeholderTextColor={COLORS.textMuted}
         secureTextEntry
         value={confirmPassword}
         onChangeText={setConfirmPassword}

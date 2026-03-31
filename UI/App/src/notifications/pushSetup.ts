@@ -1,6 +1,6 @@
 import PushNotification, { PushNotification as PN } from 'react-native-push-notification';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 import { registerDeviceToken } from '../api/deviceToken';
 
 let configured = false;
@@ -13,16 +13,35 @@ function roleToApp(role?: string): 'admin' | 'student' | 'parent' | 'teacher' {
   return 'student';
 }
 
+async function requestAndroidNotificationPermission() {
+  if (Platform.OS !== 'android') return;
+  if (typeof Platform.Version !== 'number' || Platform.Version < 33) return;
+  try {
+    await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+    );
+  } catch (err) {
+    console.warn('Android notification permission request failed', err);
+  }
+}
+
+async function syncStoredToken(role?: string) {
+  try {
+    const storedToken = await AsyncStorage.getItem('ims_fcm_token');
+    if (!storedToken) return;
+    await registerDeviceToken(storedToken, roleToApp(role));
+  } catch (err) {
+    console.warn('Stored token sync failed', err);
+  }
+}
+
 export function setupPushNotifications(role?: string) {
   if (configured && lastRole === role) return;
   lastRole = role || null;
 
   const senderId = process.env.FCM_SENDER_ID?.trim();
-  if (Platform.OS === 'android' && !senderId) {
-    console.warn('Skipping Android push setup because Firebase is not configured.');
-    configured = true;
-    return;
-  }
+  void requestAndroidNotificationPermission();
+  void syncStoredToken(role);
 
   PushNotification.configure({
     // (optional) Called when Token is generated (iOS and Android)
@@ -40,7 +59,7 @@ export function setupPushNotifications(role?: string) {
       console.warn('Push registration error', err?.message || err);
     },
     // Android FCM sender ID (optional if google-services.json handles it)
-    senderID: senderId,
+    senderID: senderId || undefined,
     popInitialNotification: false,
     requestPermissions: true
   });

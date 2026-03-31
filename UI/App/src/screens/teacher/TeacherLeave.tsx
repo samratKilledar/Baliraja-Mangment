@@ -4,6 +4,7 @@ import DatePicker from 'react-native-date-picker';
 import DashboardScreen from '../../components/DashboardScreen';
 import { useAuth } from '../../context/AuthContext';
 import client from '../../api/client';
+import COLORS from '../../config/colors';
 
 type LeaveItem = {
   _id: string;
@@ -127,6 +128,7 @@ export default function TeacherLeave() {
         </Pressable>
         <TextInput
           placeholder="Leave type (full_day / half_day)"
+          placeholderTextColor={COLORS.textMuted}
           value={type}
           onChangeText={setType}
           style={styles.input}
@@ -134,6 +136,7 @@ export default function TeacherLeave() {
         />
         <TextInput
           placeholder="Reason"
+          placeholderTextColor={COLORS.textMuted}
           value={reason}
           onChangeText={setReason}
           style={[styles.input, { height: 70 }]}
@@ -196,7 +199,7 @@ const styles = StyleSheet.create({
   heading: { color: '#1f2f75', fontWeight: '800' },
   subtext: { marginTop: 4, color: '#5e688f' },
   error: { color: '#c0392b', marginTop: 6 },
-  input: { marginTop: 8, borderWidth: 1, borderColor: '#dfe4f6', borderRadius: 10, padding: 10, backgroundColor: '#fff' },
+  input: { marginTop: 8, borderWidth: 1, borderColor: '#dfe4f6', borderRadius: 10, padding: 10, backgroundColor: '#fff', color: '#1f2f75' },
   inputText: { color: '#1f2f75' },
   button: {
     marginTop: 10,
