@@ -220,7 +220,7 @@ textarea::placeholder {
 }
 
 .login-demo-frame {
-  width: min(980px, 96vw);
+  width: min(860px, 94vw);
   border: 1px solid #dad9e6;
   border-radius: 16px;
   background: #f7f7fb;
@@ -230,13 +230,13 @@ textarea::placeholder {
 
 .login-demo-card {
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1fr 0.95fr;
   gap: 16px;
   border: 1px solid #e0deed;
   border-radius: 12px;
   background: #ffffff;
   padding: 16px;
-  min-height: 380px;
+  min-height: 340px;
 }
 
 .login-illustration-pane {
@@ -250,7 +250,7 @@ textarea::placeholder {
 }
 
 .login-illustration-art {
-  height: 230px;
+  height: 200px;
   border-radius: 10px;
   border: 1px solid #cad8f0;
   background-color: #ffffff;
@@ -310,7 +310,7 @@ textarea::placeholder {
   border-radius: 10px;
   border: 1px solid #ebe9f3;
   background: #fcfbff;
-  padding: 16px;
+  padding: 14px;
   display: grid;
   align-content: start;
   gap: 2px;

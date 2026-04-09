@@ -131,6 +131,9 @@ export default function LoginPage() {
 
   return (
     <div className="auth-shell">
+      <div className="login-corner-logo">
+        <img src="/assets/baliraja-logo.webp" alt="Baliraja logo" />
+      </div>
       <div className="login-demo-frame fade-up">
         <div className="login-demo-card">
           <section className="login-illustration-pane">
@@ -151,8 +154,8 @@ export default function LoginPage() {
               <p className="login-image-label">Academy Training Session</p>
             </div>
             <div className="login-illustration-copy">
-              <h1 className="brand-heading">Baliraja Academy</h1>
-              <p className="auth-subtitle">Management Portal</p>
+              <h1 className="brand-heading">बळीराजा आंतरराष्ट्रीय शाळा आणि ज्युनियर कॉलेज</h1>
+              <p className="auth-subtitle">बळीराजा करिअर ॲकॅडमी, गंगापूर, कोल्हापूर</p>
               <p className="future-line" key={futureIndex}>{FUTURE_LINES[futureIndex]}</p>
             </div>
           </section>
@@ -168,6 +171,7 @@ export default function LoginPage() {
               <input
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="Enter username"
               />
             </label>
 
@@ -177,6 +181,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
               />
             </label>
 
