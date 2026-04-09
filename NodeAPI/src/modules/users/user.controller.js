@@ -6,6 +6,7 @@ const Worker = require('../workers/worker.model');
 const Fee = require('../fees/fee.model');
 const { ROLES } = require('../../utils/constants');
 const { encryptPassword, decryptPassword } = require('../../utils/passwordVault');
+const { getMailerTransporter } = require('../../utils/mailer');
 const { normalizePagination, buildPaginationMeta } = require('../../utils/pagination');
 const {
   createUserSchema,
@@ -526,7 +527,42 @@ async function updateMyPassword(req, res, next) {
     user.passwordChangedAt = new Date();
     await user.save();
 
-    res.json({ message: 'Password updated successfully', user: serializeUser(user) });
+    let emailWarning = '';
+    try {
+      const mailer = getMailerTransporter();
+      if (mailer?.transport && user.email) {
+        const subject = 'Your password was changed';
+        const text = [
+          'Your account password has been updated successfully.',
+          `Login email: ${user.email}`,
+          `New password: ${payload.newPassword}`,
+          `Time: ${new Date().toISOString()}`,
+          'If you did not make this change, please contact support immediately.'
+        ].join('\n');
+        await mailer.transport.sendMail({
+          from: mailer.from,
+          to: user.email,
+          subject,
+          text
+        });
+      } else if (!mailer) {
+        emailWarning = 'Email service is not configured.';
+      }
+    } catch (mailErr) {
+      console.error('Password change email failed', {
+        message: mailErr?.message,
+        code: mailErr?.code,
+        command: mailErr?.command,
+        response: mailErr?.response
+      });
+      emailWarning = 'Password updated, but email delivery failed.';
+    }
+
+    res.json({
+      message: 'Password updated successfully',
+      user: serializeUser(user),
+      emailWarning: emailWarning || undefined
+    });
   } catch (error) {
     next(error);
   }

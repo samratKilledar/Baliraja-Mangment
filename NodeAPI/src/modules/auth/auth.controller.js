@@ -1,79 +1,21 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
 const User = require('../users/user.model');
 const { registerSchema, loginSchema, forgotSuperAdminPasswordSchema } = require('./auth.validation');
 const { ROLES } = require('../../utils/constants');
 const { encryptPassword } = require('../../utils/passwordVault');
+const { getMailerTransporter } = require('../../utils/mailer');
 const { seedSuperAdmin } = require('../../config/seedSuperAdmin');
-
-let cachedTransporter = null;
 
 function signToken(user, extraClaims = {}) {
   return jwt.sign(
     { sub: user._id.toString(), role: user.role, email: user.email, ...extraClaims },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '3m' }
   );
 }
 
-function getMailerConfig() {
-  const user = process.env.RESET_EMAIL_USER || process.env.SMTP_USER;
-  const pass = process.env.RESET_EMAIL_APP_PASSWORD || process.env.SMTP_PASS;
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 0) || undefined;
-  const smtpNoAuth = String(process.env.SMTP_NO_AUTH || '').toLowerCase() === 'true';
-  const from = process.env.RESET_EMAIL_FROM || user || process.env.SUPER_ADMIN_EMAIL || 'no-reply@localhost';
-
-  if (host && user && pass) {
-    return {
-      host,
-      port: port || 587,
-      secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
-      auth: { user, pass },
-      from
-    };
-  }
-
-  if (host && smtpNoAuth) {
-    return {
-      host,
-      port: port || 25,
-      secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
-      noAuth: true,
-      from
-    };
-  }
-
-  if (user && pass) {
-    return {
-      service: 'gmail',
-      auth: { user, pass },
-      from
-    };
-  }
-
-  return null;
-}
-
-function getMailerTransporter() {
-  if (cachedTransporter) return cachedTransporter;
-  const config = getMailerConfig();
-  if (!config) return null;
-  const transport = nodemailer.createTransport(
-    config.service
-      ? { service: config.service, auth: config.auth }
-      : {
-          host: config.host,
-          port: config.port,
-          secure: config.secure,
-          auth: config.noAuth ? undefined : config.auth
-        }
-  );
-  cachedTransporter = { transport, from: config.from };
-  return cachedTransporter;
-}
 
 function generateNumericPassword(length = 6) {
   let next = '';

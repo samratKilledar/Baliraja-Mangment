@@ -17,16 +17,15 @@ const FUTURE_LINES = [
   'Every login is a step toward a brighter future.'
 ];
 
-const SUPER_ADMIN_EMAIL = import.meta.env.VITE_SUPER_EMAIL || 'superadmin@cognitix.tech';
-const SUPER_ADMIN_DEFAULT_PASSWORD = import.meta.env.VITE_SUPER_PASSWORD || '123456';
+const SUPER_ADMIN_EMAIL = 'superadmin@cognitix.tech';
 const SUPER_ADMIN_RECOVERY_EMAIL = 'hrinfocognitix@gmail.com';
 const SMTP_CONFIG_ERROR_TEXT =
   'Email service is not configured. Set RESET_EMAIL_USER and RESET_EMAIL_APP_PASSWORD, or SMTP_HOST with SMTP_USER/SMTP_PASS, or SMTP_HOST with SMTP_NO_AUTH=true.';
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [identifier, setIdentifier] = useState(SUPER_ADMIN_EMAIL);
-  const [password, setPassword] = useState(SUPER_ADMIN_DEFAULT_PASSWORD);
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [resetPreviewPassword, setResetPreviewPassword] = useState('');
@@ -167,7 +166,6 @@ export default function LoginPage() {
             <label className="field">
               <span><VectorIcon name="mail" size={16} /> Mobile / Email</span>
               <input
-                placeholder="Enter mobile number or email"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
               />
@@ -176,7 +174,6 @@ export default function LoginPage() {
             <label className="field">
               <span><VectorIcon name="lock" size={16} /> Password</span>
               <input
-                placeholder="Password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

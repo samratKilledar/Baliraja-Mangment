@@ -508,7 +508,6 @@ if (currentModule === 'admission-options') {
           ) : null}
           <div className="analytics-password-box">
             <input
-              placeholder="Enter revenue password"
               type="password"
               value={revenuePass}
               onChange={(e) => setRevenuePass(e.target.value)}
@@ -519,7 +518,6 @@ if (currentModule === 'admission-options') {
           </div>
           <div className="analytics-password-box">
             <input
-              placeholder="Custom reminder message (optional)"
               value={feeReminderMessage}
               onChange={(e) => setFeeReminderMessage(e.target.value)}
             />
@@ -578,7 +576,6 @@ if (currentModule === 'admission-options') {
               <input
                 value={feeSearch}
                 onChange={(e) => setFeeSearch(e.target.value)}
-                placeholder="Search by student name or enrollment ID"
                 style={{
                   width: '100%',
                   maxWidth: 420,
@@ -818,7 +815,6 @@ if (currentModule === 'admission-options') {
             </div>
             <div className="analytics-password-box">
               <input
-                placeholder="Enter revenue password"
                 type="password"
                 value={revenuePass}
                 onChange={(e) => setRevenuePass(e.target.value)}
