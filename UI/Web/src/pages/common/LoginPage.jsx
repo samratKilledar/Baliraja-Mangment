@@ -131,40 +131,22 @@ export default function LoginPage() {
 
   return (
     <div className="auth-shell">
-      <div className="login-corner-logo">
-        <img src="/assets/baliraja-logo.webp" alt="Baliraja logo" />
-      </div>
-      <div className="login-demo-frame fade-up">
-        <div className="login-demo-card">
-          <section className="login-illustration-pane">
-            <div
-              className="login-illustration-art"
-              style={{ backgroundImage: `url(${TRAINING_IMAGES[imageIndex]})` }}
-            >
-              <div className="login-illustration-overlay" />
-              <div className="login-lottie-logo-wrap">
-                <dotlottie-player
-                  src="/assets/login-lottie.json"
-                  background="transparent"
-                  speed="1"
-                  loop
-                  autoplay
-                ></dotlottie-player>
-              </div>
-              <p className="login-image-label">Academy Training Session</p>
-            </div>
-            <div className="login-illustration-copy">
-              <h1 className="brand-heading">बळीराजा आंतरराष्ट्रीय शाळा आणि ज्युनियर कॉलेज</h1>
-              <p className="auth-subtitle">बळीराजा करिअर ॲकॅडमी, गंगापूर, कोल्हापूर</p>
-              <p className="future-line" key={futureIndex}>{FUTURE_LINES[futureIndex]}</p>
-            </div>
-          </section>
-
-          <form className="login-form-pane" onSubmit={onSubmit}>
-            <div className="login-form-head">
-              <VectorIcon name="shield" size={18} />
-              <strong>Login</strong>
-            </div>
+      {/* <div className="login-corner-logo">
+        <img src="/assets/baliraja-logo.png" alt="Baliraja logo" />
+      </div> */}
+      {/* <div className="login-demo-frame fade-up"> */}
+        <form className="login-form-pane" onSubmit={onSubmit}>
+          <div className="login-form-logo">
+            <img src="/assets/baliraja-logo.png" alt="Baliraja logo" />
+          </div>
+          <div className="login-form-title">
+            <div className="brand-heading">बळीराजा आंतरराष्ट्रीय शाळा आणि ज्युनियर कॉलेज</div>
+            <div className="auth-subtitle">बळीराजा करिअर ॲकॅडमी, गंगापूर, कोल्हापूर</div>
+          </div>
+          <div className="login-form-head">
+            <VectorIcon name="shield" size={18} />
+            <strong>Login</strong>
+          </div>
 
             <label className="field">
               <span><VectorIcon name="mail" size={16} /> Mobile / Email</span>
@@ -207,9 +189,8 @@ export default function LoginPage() {
             ) : (
               <p className="login-help-line">Contact admin support if you forgot credentials.</p>
             )}
-          </form>
-        </div>
-      </div>
+        </form>
+      {/* </div> */}
     </div>
   );
 }
