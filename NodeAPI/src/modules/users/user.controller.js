@@ -4,7 +4,9 @@ const Student = require('../students/student.model');
 const Teacher = require('../teachers/teacher.model');
 const Worker = require('../workers/worker.model');
 const Fee = require('../fees/fee.model');
+const DeviceToken = require('../notifications/deviceToken.model');
 const { ROLES } = require('../../utils/constants');
+const { sendPush } = require('../../utils/push.service');
 const { encryptPassword, decryptPassword } = require('../../utils/passwordVault');
 const { getMailerTransporter } = require('../../utils/mailer');
 const { normalizePagination, buildPaginationMeta } = require('../../utils/pagination');
@@ -346,6 +348,8 @@ async function createUser(req, res, next) {
       passwordChangedAt: payload.role === ROLES.TEACHER ? undefined : new Date()
     });
 
+    let createdStudent = null;
+
     // Attach role specific profile if provided
     if (payload.role === ROLES.STUDENT) {
       const age = calculateAgeFromDateOfBirth(payload.dateOfBirth);
@@ -366,6 +370,7 @@ async function createUser(req, res, next) {
         createdBy: req.user?.sub,
         createdByEmail: req.user?.email
       });
+      createdStudent = student;
 
       user.profileRef = student._id;
       user.roleRefModel = 'Student';
@@ -414,6 +419,35 @@ async function createUser(req, res, next) {
       user.profileRef = worker._id;
       user.roleRefModel = 'Worker';
       await user.save();
+    }
+
+    if (createdStudent) {
+      try {
+        const superAdmins = await User.find({ role: ROLES.SUPER_ADMIN }).select('_id').lean();
+        const superAdminIds = superAdmins.map((row) => row._id);
+        if (superAdminIds.length) {
+          const tokens = await DeviceToken.find({
+            userId: { $in: superAdminIds },
+            app: 'admin'
+          })
+            .select('token')
+            .lean();
+          const tokenList = tokens.map((t) => t.token).filter(Boolean);
+          if (tokenList.length) {
+            const createdByLabel = req.user?.email || req.user?.fullName || 'admin';
+            const title = 'New Student Added';
+            const body = `Student ${user.fullName || 'Student'} added by ${createdByLabel}.`;
+            await sendPush(tokenList, title, body, {
+              type: 'student_added',
+              studentId: String(createdStudent._id),
+              studentName: user.fullName || '',
+              createdBy: String(req.user?.sub || '')
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Super admin push notify failed', err?.message || err);
+      }
     }
 
     res.status(201).json({
