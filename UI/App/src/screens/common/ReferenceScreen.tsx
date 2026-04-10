@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import client from '../../api/client';
 import COLORS from '../../config/colors';
+import ScreenBackground from '../../components/ScreenBackground';
 
 type ReferenceMode = 'create' | 'list';
 
@@ -111,7 +111,7 @@ export default function ReferenceScreen({ mode = 'create' as ReferenceMode }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <ScreenBackground>
       <ScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -190,12 +190,11 @@ export default function ReferenceScreen({ mode = 'create' as ReferenceMode }) {
           {success ? <Text style={styles.success}>{success}</Text> : null}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.background },
   content: { padding: 16 },
   card: {
     borderRadius: 16,

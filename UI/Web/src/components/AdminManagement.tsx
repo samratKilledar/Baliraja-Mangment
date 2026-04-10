@@ -305,7 +305,11 @@ export default function AdminManagement(): JSX.Element {
     setLoading(true);
     if (!silent) setError("");
     try {
-      const { data } = await api.post<{ token: string }>("/auth/login", { identifier, password });
+      const { data } = await api.post<{ token: string }>("/auth/login", {
+        identifier,
+        password,
+        clientType: 'web',
+      });
       localStorage.setItem("ims_token", data.token);
       api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
       setToken(data.token);

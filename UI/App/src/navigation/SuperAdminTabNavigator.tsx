@@ -1,6 +1,7 @@
 import React from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {StyleSheet, Text, View} from 'react-native';
+import {Image, StyleSheet, Text, View} from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import SuperAdminHome from '../screens/superAdmin/SuperAdminHome';
 import SuperAdminNoticePublisher from '../screens/superAdmin/SuperAdminNoticePublisher';
 import SuperAdminStudentList from '../screens/superAdmin/SuperAdminStudentList';
@@ -10,6 +11,15 @@ import ReferenceScreen from '../screens/common/ReferenceScreen';
 import COLORS from '../config/colors';
 
 const Tab = createBottomTabNavigator();
+const TAB_LOGO = require('../assets/splash-default.png');
+const TAB_ICONS: Record<string, string> = {
+  Status: 'chart-box',
+  Notice: 'bell-badge',
+  Students: 'account-group',
+  Income: 'cash-multiple',
+  Placed: 'briefcase-check',
+  References: 'account-box-multiple',
+};
 
 const TAB_META: Record<string, {label: string; color: string; short: string}> =
   {
@@ -23,6 +33,7 @@ const TAB_META: Record<string, {label: string; color: string; short: string}> =
 
 function TabIcon({routeName, focused}: {routeName: string; focused: boolean}) {
   const meta = TAB_META[routeName];
+  const iconName = TAB_ICONS[routeName] || 'circle';
   return (
     <View style={styles.iconWrap}>
       <View
@@ -33,9 +44,11 @@ function TabIcon({routeName, focused}: {routeName: string; focused: boolean}) {
             borderColor: meta.color,
           },
         ]}>
-        <Text style={[styles.iconText, focused && styles.iconTextFocused]}>
-          {meta.short}
-        </Text>
+        <MaterialCommunityIcons
+          name={iconName}
+          size={18}
+          color={focused ? '#FFFFFF' : meta.color}
+        />
       </View>
     </View>
   );
@@ -78,6 +91,11 @@ export default function SuperAdminTabNavigator() {
         tabBarInactiveTintColor: COLORS.textGray,
         tabBarActiveBackgroundColor: COLORS.info,
         tabBarInactiveBackgroundColor: COLORS.white,
+        tabBarBackground: () => (
+          <View style={styles.tabBarBg} pointerEvents="none">
+            <Image source={TAB_LOGO} style={styles.tabBarLogo} />
+          </View>
+        ),
       }}>
       <Tab.Screen
         name="Status"
@@ -132,6 +150,16 @@ const styles = StyleSheet.create({
     marginTop: 2,
     minHeight: 48,
   },
+  tabBarBg: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabBarLogo: {
+    width: 28,
+    height: 28,
+    opacity: 0.25,
+  },
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -144,13 +172,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconText: {
-    color: COLORS.textGray,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  iconTextFocused: {
-    color: COLORS.white,
+    gap: 2,
   },
 });

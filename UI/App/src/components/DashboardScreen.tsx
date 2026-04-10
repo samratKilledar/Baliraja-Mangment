@@ -11,7 +11,6 @@ import {
   Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   Share,
   StyleSheet,
@@ -29,6 +28,7 @@ import {useLanguage} from '../context/LanguageContext';
 import {tx} from '../i18n/strings';
 import NoticeCarousel from './NoticeCarousel';
 import { syncStoredDeviceRegistration } from '../api/deviceToken';
+import ScreenBackground from './ScreenBackground';
 
 type DashboardScreenProps = {
   title: string;
@@ -253,7 +253,8 @@ export default function DashboardScreen({
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenBackground>
+      <View style={styles.container}>
       <View
         style={[
           styles.fixedHeader,
@@ -451,14 +452,15 @@ export default function DashboardScreen({
       />
 
       <LoadingOverlay visible={loading} label={loadingLabel} />
-    </SafeAreaView>
+      </View>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
   fixedHeader: {
     width: '100%',

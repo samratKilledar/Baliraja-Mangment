@@ -2,13 +2,13 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import client from '../../api/client';
+import ScreenBackground from '../../components/ScreenBackground';
 
 type PlacedStudentRow = {
   _id: string;
@@ -48,7 +48,7 @@ export default function PlacedStudentsListScreen({title = 'Placed Students'}: Pr
   }, [loadPlaced]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <ScreenBackground>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -80,13 +80,12 @@ export default function PlacedStudentsListScreen({title = 'Placed Students'}: Pr
           </View>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {flex: 1, backgroundColor: '#F8FAFC'},
-  container: {flex: 1, backgroundColor: '#F8FAFC'},
+  container: {flex: 1, backgroundColor: 'transparent'},
   content: {padding: 16, paddingBottom: 24},
   title: {marginTop: 14, fontSize: 24, fontWeight: '800', color: '#111827'},
   subtitle: {marginTop: 6, color: '#6B7280', fontSize: 14},

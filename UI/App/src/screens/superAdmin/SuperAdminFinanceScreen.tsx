@@ -2,7 +2,6 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +10,7 @@ import {
 import client from '../../api/client';
 import MovingSchoolBanner from '../../components/MovingSchoolBanner';
 import SuperAdminTopBar from '../../components/SuperAdminTopBar';
+import ScreenBackground from '../../components/ScreenBackground';
 
 type Summary = {
   fees: {
@@ -62,7 +62,7 @@ export default function SuperAdminFinanceScreen() {
   }, [loadSummary]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <ScreenBackground>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -106,7 +106,7 @@ export default function SuperAdminFinanceScreen() {
           />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
@@ -128,13 +128,9 @@ function InfoLine({
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'transparent',
   },
   content: {
     padding: 16,

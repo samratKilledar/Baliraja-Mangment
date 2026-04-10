@@ -2,9 +2,9 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
+  StatusBar,
   Text,
   View,
 } from 'react-native';
@@ -12,6 +12,7 @@ import client from '../../api/client';
 import COLORS from '../../config/colors';
 import MovingSchoolBanner from '../../components/MovingSchoolBanner';
 import SuperAdminTopBar from '../../components/SuperAdminTopBar';
+import ScreenBackground from '../../components/ScreenBackground';
 
 type Summary = {
   totalUsers: number;
@@ -73,7 +74,8 @@ export default function SuperAdminHome() {
   }, [loadSummary]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <ScreenBackground>
+      <StatusBar barStyle="light-content" backgroundColor="#4C1D95" />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -86,10 +88,8 @@ export default function SuperAdminHome() {
         <View style={styles.headerCard}>
           <SuperAdminTopBar />
           <MovingSchoolBanner />
-          <Text style={styles.title}>Status</Text>
-          <Text style={styles.subtitle}>
-            Live counts and finance summary from the database.
-          </Text>
+          {/* <Text style={styles.title}>Status</Text> */}
+          
         </View>
 
         {loading ? (
@@ -99,8 +99,6 @@ export default function SuperAdminHome() {
             style={styles.loader}
           />
         ) : null}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
         <View style={styles.statsGrid}>
           <StatCard
             label="Total Users"
@@ -146,9 +144,16 @@ export default function SuperAdminHome() {
               textColor="#B91C1C"
             />
           </View>
+          <View style={styles.progressBlock}>
+            <Text style={styles.progressLabel}>Fees Collection Progress</Text>
+            <ProgressBar
+              value={summary.fees.totalCollected}
+              total={summary.fees.totalExpected}
+            />
+          </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
@@ -190,14 +195,24 @@ function FinanceCard({
   );
 }
 
+function ProgressBar({value, total}: {value: number; total: number}) {
+  const safeTotal = total > 0 ? total : 1;
+  const ratio = Math.min(value / safeTotal, 1);
+  const percentLabel = Math.round(ratio * 100);
+  return (
+    <View>
+      <View style={styles.progressTrack}>
+        <View style={[styles.progressFill, {width: `${percentLabel}%`}]} />
+      </View>
+      <Text style={styles.progressMeta}>{percentLabel}% collected</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'transparent',
   },
   content: {
     padding: 16,
@@ -291,6 +306,31 @@ const styles = StyleSheet.create({
   financeRow: {
     marginTop: 14,
     gap: 10,
+  },
+  progressBlock: {
+    marginTop: 16,
+    gap: 8,
+  },
+  progressLabel: {
+    color: '#5B21B6',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  progressTrack: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(124, 58, 237, 0.18)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#6D28D9',
+  },
+  progressMeta: {
+    color: '#5B21B6',
+    fontSize: 12,
+    fontWeight: '600',
   },
   financeCard: {
     borderRadius: 16,

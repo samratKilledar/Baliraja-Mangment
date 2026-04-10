@@ -28,10 +28,12 @@ export default function SplashGate({ appReady, minimumMs = 1000, children }: Pro
   const [fetched, setFetched] = useState(false);
   const [fetchWaitExpired, setFetchWaitExpired] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoReady, setVideoReady] = useState(false);
   const [hidden, setHidden] = useState(false);
   const fade = useRef(new Animated.Value(1)).current;
   const bounce = useRef(new Animated.Value(0)).current;
   const startedAt = useRef(Date.now());
+  const mediaStartedAt = useRef<number | null>(null);
 
   useEffect(() => {
     restoreCached();
@@ -79,22 +81,36 @@ export default function SplashGate({ appReady, minimumMs = 1000, children }: Pro
   }
 
   useEffect(() => {
+    if (videoUrl) {
+      setVideoReady(false);
+      mediaStartedAt.current = null;
+      return;
+    }
+    mediaStartedAt.current = Date.now();
+  }, [videoUrl, imageUrl]);
+
+  useEffect(() => {
     if (hidden) return;
-    const elapsed = Date.now() - startedAt.current;
-    const requiredDuration = Math.min(Math.max(minimumMs, 0), 1000);
+    const startAt = mediaStartedAt.current ?? startedAt.current;
+    const elapsed = Date.now() - startAt;
+    const requiredDuration = Math.max(
+      videoUrl ? 6000 : imageUrl ? 2000 : minimumMs,
+      0
+    );
     const readyToHide = fetched || fetchWaitExpired;
-    const hideNow = appReady && readyToHide && elapsed >= requiredDuration;
+    const mediaReady = videoUrl ? videoReady : true;
+    const hideNow = appReady && readyToHide && mediaReady && elapsed >= requiredDuration;
     if (hideNow) {
       Animated.timing(fade, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => setHidden(true));
       return;
     }
-    if (appReady && readyToHide) {
+    if (appReady && readyToHide && mediaReady) {
       const timer = setTimeout(() => {
         Animated.timing(fade, { toValue: 0, duration: 280, useNativeDriver: true }).start(() => setHidden(true));
       }, Math.max(requiredDuration - elapsed, 0));
       return () => clearTimeout(timer);
     }
-  }, [appReady, fetched, fetchWaitExpired, hidden, fade, imageUrl, minimumMs, videoUrl]);
+  }, [appReady, fetched, fetchWaitExpired, hidden, fade, imageUrl, minimumMs, videoReady, videoUrl]);
 
   useEffect(() => {
     if (Platform.OS !== 'android' || hidden) return;
@@ -137,6 +153,10 @@ export default function SplashGate({ appReady, minimumMs = 1000, children }: Pro
                 repeat
                 muted
                 paused={false}
+                onLoad={() => {
+                  setVideoReady(true);
+                  if (!mediaStartedAt.current) mediaStartedAt.current = Date.now();
+                }}
               />
             </View>
           ) : imageUrl ? (

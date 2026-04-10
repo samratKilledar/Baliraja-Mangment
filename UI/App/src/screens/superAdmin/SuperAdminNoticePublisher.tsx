@@ -6,7 +6,6 @@ import {
   Image,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,6 +17,7 @@ import client from '../../api/client';
 import NoticeCarousel from '../../components/NoticeCarousel';
 import MovingSchoolBanner from '../../components/MovingSchoolBanner';
 import SuperAdminTopBar from '../../components/SuperAdminTopBar';
+import ScreenBackground from '../../components/ScreenBackground';
 
 type Notice = {
   _id: string;
@@ -145,7 +145,7 @@ export default function SuperAdminNoticePublisher() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <ScreenBackground>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -269,18 +269,14 @@ export default function SuperAdminNoticePublisher() {
           </View>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: 'transparent',
   },
   content: {
     padding: 16,

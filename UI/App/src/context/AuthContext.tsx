@@ -69,6 +69,9 @@ export function AuthProvider({children}: {children: ReactNode}) {
         );
       },
       clearSession: () => {
+        if (user?.role === 'super_admin') {
+          return;
+        }
         setToken(null);
         setUser(null);
         AsyncStorage.multiRemove(['ims_token', 'ims_user']).catch(() => {});

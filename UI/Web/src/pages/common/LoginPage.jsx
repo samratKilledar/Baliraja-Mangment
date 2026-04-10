@@ -87,7 +87,8 @@ export default function LoginPage() {
       setLoading(true);
       const { data } = await api.post('/auth/login', {
         identifier: identifier.trim(),
-        password
+        password,
+        clientType: 'web'
       });
 
       login({

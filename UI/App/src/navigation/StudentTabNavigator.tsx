@@ -1,28 +1,22 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View } from 'react-native';
-import LottieView from 'lottie-react-native';
+import { Image, View } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import StudentHome, { StudentMenu } from '../screens/student/StudentHome';
 import COLORS from '../config/colors';
-
-type TabIconProps = {
-  source: any;
-  focused: boolean;
-};
-
-function TabIcon({ source, focused }: TabIconProps) {
-  return (
-    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <LottieView source={source} autoPlay loop style={{ width: 34, height: 34, opacity: focused ? 1 : 0.72 }} />
-    </View>
-  );
-}
 
 function StudentTabScreen({ menu }: { menu: StudentMenu }) {
   return <StudentHome menuOverride={menu} />;
 }
 
 const Tab = createBottomTabNavigator();
+const TAB_LOGO = require('../assets/splash-default.png');
+const TAB_ICONS: Record<string, string> = {
+  FeesTab: 'cash-multiple',
+  ProfileTab: 'account-circle',
+  ComplaintTab: 'message-alert',
+  LeaveTab: 'calendar-clock',
+};
 
 export default function StudentTabNavigator() {
   return (
@@ -50,7 +44,12 @@ export default function StudentTabNavigator() {
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textGray,
         tabBarActiveBackgroundColor: COLORS.info,
-        tabBarInactiveBackgroundColor: COLORS.white
+        tabBarInactiveBackgroundColor: COLORS.white,
+        tabBarBackground: () => (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
+            <Image source={TAB_LOGO} style={{ width: 28, height: 28, opacity: 0.25 }} />
+          </View>
+        )
       }}
     >
       <Tab.Screen
@@ -58,8 +57,12 @@ export default function StudentTabNavigator() {
         options={{
           title: 'Fees',
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={require('../assets/animations/tab-fees.json')} focused={focused} />
-          )
+            <MaterialCommunityIcons
+              name={TAB_ICONS.FeesTab}
+              size={20}
+              color={focused ? COLORS.primary : COLORS.textGray}
+            />
+          ),
         }}
       >
         {() => <StudentTabScreen menu="Fees" />}
@@ -69,8 +72,12 @@ export default function StudentTabNavigator() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={require('../assets/animations/tab-profile.json')} focused={focused} />
-          )
+            <MaterialCommunityIcons
+              name={TAB_ICONS.ProfileTab}
+              size={20}
+              color={focused ? COLORS.primary : COLORS.textGray}
+            />
+          ),
         }}
       >
         {() => <StudentTabScreen menu="Profile" />}
@@ -80,8 +87,12 @@ export default function StudentTabNavigator() {
         options={{
           title: 'Complaint',
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={require('../assets/animations/tab-complaint.json')} focused={focused} />
-          )
+            <MaterialCommunityIcons
+              name={TAB_ICONS.ComplaintTab}
+              size={20}
+              color={focused ? COLORS.primary : COLORS.textGray}
+            />
+          ),
         }}
       >
         {() => <StudentTabScreen menu="Complaint" />}
@@ -91,8 +102,12 @@ export default function StudentTabNavigator() {
         options={{
           title: 'Leave',
           tabBarIcon: ({ focused }) => (
-            <TabIcon source={require('../assets/animations/tab-leave.json')} focused={focused} />
-          )
+            <MaterialCommunityIcons
+              name={TAB_ICONS.LeaveTab}
+              size={20}
+              color={focused ? COLORS.primary : COLORS.textGray}
+            />
+          ),
         }}
       >
         {() => <StudentTabScreen menu="Leave" />}
