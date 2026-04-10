@@ -15,7 +15,7 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: JWT_EXPIRES_IN
-        value: 1d
+        value: 25m
       - key: FCM_SERVER_KEY
         sync: false
       - key: SUPER_ADMIN_EMAIL

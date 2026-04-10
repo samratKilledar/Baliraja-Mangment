@@ -25,6 +25,10 @@ import LoadingOverlay from '../../components/LoadingOverlay';
 import {tx} from '../../i18n/strings';
 import client from '../../api/client';
 
+const REMEMBER_ME_KEY = 'ims_remember_me';
+const SAVED_IDENTIFIER_KEY = 'ims_saved_identifier';
+const SAVED_PASSWORD_KEY = 'ims_saved_password';
+
 const TRAINING_IMAGES = [
   'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1400&q=80',
   'https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&w=1400&q=80',
@@ -58,6 +62,7 @@ export default function LoginScreen() {
   const [loginError, setLoginError] = useState('');
   const [imageIndex, setImageIndex] = useState(0);
   const [futureIndex, setFutureIndex] = useState(0);
+  const [rememberMe, setRememberMe] = useState(false);
   const fadeIn = useRef(new Animated.Value(0)).current;
   const liftIn = useRef(new Animated.Value(20)).current;
   const trimmedIdentifier = identifier.trim();
@@ -103,6 +108,26 @@ export default function LoginScreen() {
     return () => clearInterval(futureTimer);
   }, [futureTextList.length]);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const [rememberFlag, savedIdentifier, savedPassword] =
+          await Promise.all([
+            AsyncStorage.getItem(REMEMBER_ME_KEY),
+            AsyncStorage.getItem(SAVED_IDENTIFIER_KEY),
+            AsyncStorage.getItem(SAVED_PASSWORD_KEY),
+          ]);
+        if (rememberFlag === 'true') {
+          setRememberMe(true);
+          if (savedIdentifier) setIdentifier(savedIdentifier);
+          if (savedPassword) setPassword(savedPassword);
+        }
+      } catch (err) {
+        // ignore saved credential load errors
+      }
+    })();
+  }, []);
+
   async function handleLogin() {
     if (!isEmailLogin && mobileDigits.length !== 10) {
       Alert.alert(
@@ -127,6 +152,19 @@ export default function LoginScreen() {
         'ims_bound_mobile',
         isEmailLogin ? data.user?.phone || '' : mobileDigits,
       );
+      if (rememberMe) {
+        await AsyncStorage.multiSet([
+          [REMEMBER_ME_KEY, 'true'],
+          [SAVED_IDENTIFIER_KEY, trimmedIdentifier],
+          [SAVED_PASSWORD_KEY, password],
+        ]);
+      } else {
+        await AsyncStorage.multiRemove([
+          REMEMBER_ME_KEY,
+          SAVED_IDENTIFIER_KEY,
+          SAVED_PASSWORD_KEY,
+        ]);
+      }
     } catch (err: any) {
       setLoginError(
         err?.response?.data?.message ||
@@ -236,6 +274,21 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   style={styles.input}
                 />
+                <Pressable
+                  onPress={() => setRememberMe(prev => !prev)}
+                  style={styles.rememberRow}
+                  android_ripple={{color: TYPOGRAPHY.motion.rippleColor}}>
+                  <View
+                    style={[
+                      styles.checkbox,
+                      rememberMe && styles.checkboxChecked,
+                    ]}>
+                    {rememberMe ? (
+                      <View style={styles.checkboxInner} />
+                    ) : null}
+                  </View>
+                  <Text style={styles.rememberText}>Store credentials</Text>
+                </Pressable>
                 {loginError ? (
                   <Text style={styles.errorText}>{loginError}</Text>
                 ) : null}
@@ -414,6 +467,36 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
     fontSize: TYPOGRAPHY.android.body,
     lineHeight: TYPOGRAPHY.lineHeight.body,
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary,
+  },
+  checkboxInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 3,
+    backgroundColor: COLORS.white,
+  },
+  rememberText: {
+    color: COLORS.textGray,
+    fontWeight: '600',
+    fontSize: TYPOGRAPHY.android.support,
   },
   button: {
     marginTop: 4,

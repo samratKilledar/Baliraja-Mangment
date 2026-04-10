@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {notifySessionExpired} from '../utils/sessionEvents';
 
 const PRODUCTION_API_URL = 'https://baliraja-mangment.onrender.com/api/v1';
 
@@ -25,5 +26,16 @@ client.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+client.interceptors.response.use(
+  response => response,
+  async error => {
+    const status = error?.response?.status;
+    if (status === 401) {
+      notifySessionExpired('expired');
+    }
+    return Promise.reject(error);
+  },
+);
 
 export default client;

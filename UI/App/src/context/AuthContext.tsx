@@ -1,14 +1,17 @@
 import React, {
   createContext,
   ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
 } from 'react';
+import {Alert} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AuthUser} from '../types';
 import {setupPushNotifications} from '../notifications/pushSetup';
+import {registerSessionListener} from '../utils/sessionEvents';
 
 type AuthContextType = {
   token: string | null;
@@ -26,6 +29,7 @@ export function AuthProvider({children}: {children: ReactNode}) {
   const [user, setUser] = useState<AuthUser | null>(null);
   // ensures we don't block rendering while rehydrating but lets consumers know
   const [hydrated, setHydrated] = useState(false);
+  const [logoutPromptVisible, setLogoutPromptVisible] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -48,36 +52,62 @@ export function AuthProvider({children}: {children: ReactNode}) {
     })();
   }, []);
 
+  const setSession = useCallback((nextToken: string, nextUser: AuthUser) => {
+    setToken(nextToken);
+    setUser(nextUser);
+    AsyncStorage.setItem('ims_token', nextToken).catch(() => {});
+    AsyncStorage.setItem('ims_user', JSON.stringify(nextUser)).catch(() => {});
+    setupPushNotifications(nextUser.role);
+  }, []);
+
+  const updateUser = useCallback((nextUser: AuthUser) => {
+    setUser(nextUser);
+    AsyncStorage.setItem('ims_user', JSON.stringify(nextUser)).catch(() => {});
+  }, []);
+
+  const clearSession = useCallback(() => {
+    if (user?.role === 'super_admin') {
+      return;
+    }
+    setToken(null);
+    setUser(null);
+    AsyncStorage.multiRemove(['ims_token', 'ims_user']).catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    const unsubscribe = registerSessionListener(() => {
+      if (logoutPromptVisible) {
+        return;
+      }
+      setLogoutPromptVisible(true);
+      Alert.alert(
+        'Session expired',
+        'Your session has expired. Please login again.',
+        [
+          {
+            text: 'Logout',
+            onPress: () => {
+              setLogoutPromptVisible(false);
+              clearSession();
+            },
+          },
+        ],
+        {cancelable: false},
+      );
+    });
+    return unsubscribe;
+  }, [clearSession, logoutPromptVisible]);
+
   const value = useMemo(
     () => ({
       token,
       user,
       hydrated,
-      setSession: (nextToken: string, nextUser: AuthUser) => {
-        setToken(nextToken);
-        setUser(nextUser);
-        AsyncStorage.setItem('ims_token', nextToken).catch(() => {});
-        AsyncStorage.setItem('ims_user', JSON.stringify(nextUser)).catch(
-          () => {},
-        );
-        setupPushNotifications(nextUser.role);
-      },
-      updateUser: (nextUser: AuthUser) => {
-        setUser(nextUser);
-        AsyncStorage.setItem('ims_user', JSON.stringify(nextUser)).catch(
-          () => {},
-        );
-      },
-      clearSession: () => {
-        if (user?.role === 'super_admin') {
-          return;
-        }
-        setToken(null);
-        setUser(null);
-        AsyncStorage.multiRemove(['ims_token', 'ims_user']).catch(() => {});
-      },
+      setSession,
+      updateUser,
+      clearSession,
     }),
-    [token, user, hydrated],
+    [token, user, hydrated, setSession, updateUser, clearSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

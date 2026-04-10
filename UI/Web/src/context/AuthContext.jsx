@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const AuthContext = createContext(null);
-const INACTIVITY_LIMIT_MS = 10 * 60 * 1000;
+const INACTIVITY_LIMIT_MS = 25 * 60 * 1000;
 const IDLE_DEADLINE_KEY = 'ims_idle_deadline';
 
 export function AuthProvider({ children }) {
