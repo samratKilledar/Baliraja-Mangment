@@ -157,6 +157,11 @@ export default function SplashGate({ appReady, minimumMs = 1000, children }: Pro
                   setVideoReady(true);
                   if (!mediaStartedAt.current) mediaStartedAt.current = Date.now();
                 }}
+                onError={() => {
+                  // If the splash video fails to load, fall back so the app can proceed.
+                  setVideoReady(true);
+                  setVideoUrl(null);
+                }}
               />
             </View>
           ) : imageUrl ? (

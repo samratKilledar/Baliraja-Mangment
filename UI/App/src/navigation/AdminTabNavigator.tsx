@@ -1,52 +1,24 @@
 import React, {useCallback, useState} from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Image, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {Image, Text, StyleSheet, ScrollView, RefreshControl, View} from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import AdminHome from '../screens/admin/AdminHome';
+import AdminStudentList from '../screens/admin/AdminStudentList';
+import AdminTeacherList from '../screens/admin/AdminTeacherList';
+import SuperAdminTopBar from '../components/SuperAdminTopBar';
 import NoticeCarousel from '../components/NoticeCarousel';
-import PlacedStudentsListScreen from '../screens/common/PlacedStudentsListScreen';
-import ReferenceScreen from '../screens/common/ReferenceScreen';
 import COLORS from '../config/colors';
 import ScreenBackground from '../components/ScreenBackground';
 
 const Tab = createBottomTabNavigator();
 const TAB_LOGO = require('../assets/splash-default.png');
 const TAB_ICONS: Record<string, string> = {
-  Analytics: 'chart-box',
-  Students: 'account-group',
   Notices: 'bell-badge',
-  Placed: 'briefcase-check',
-  Reference: 'account-box-multiple',
+  Students: 'account-group',
+  Teachers: 'account-tie',
 };
 
-function Placeholder({ title, description }: { title: string; description: string }) {
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 500);
-  }, []);
-
-  return (
-    <ScreenBackground>
-      <ScrollView
-        contentContainerStyle={styles.placeholder}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.desc}>{description}</Text>
-      </ScrollView>
-    </ScreenBackground>
-  );
-}
-
 function StudentsScreen() {
-  return (
-    <Placeholder
-      title="Student List"
-      description="Mobile student list is under construction. Use the web dashboard for full access."
-    />
-  );
+  return <AdminStudentList />;
 }
 
 function NoticesScreen() {
@@ -77,7 +49,12 @@ export default function AdminTabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        header: () => (
+          <View style={styles.headerBar}>
+            <SuperAdminTopBar />
+          </View>
+        ),
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: styles.tabItem,
@@ -92,12 +69,12 @@ export default function AdminTabNavigator() {
         ),
       }}>
       <Tab.Screen
-        name="Analytics"
-        component={AdminHome}
+        name="Notices"
+        component={NoticesScreen}
         options={{
           tabBarIcon: ({focused}) => (
             <MaterialCommunityIcons
-              name={TAB_ICONS.Analytics}
+              name={TAB_ICONS.Notices}
               size={20}
               color={focused ? COLORS.primary : COLORS.textGray}
             />
@@ -118,38 +95,12 @@ export default function AdminTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Notices"
-        component={NoticesScreen}
+        name="Teachers"
+        component={AdminTeacherList}
         options={{
           tabBarIcon: ({focused}) => (
             <MaterialCommunityIcons
-              name={TAB_ICONS.Notices}
-              size={20}
-              color={focused ? COLORS.primary : COLORS.textGray}
-            />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Placed"
-        children={() => <PlacedStudentsListScreen title="Placed Students" />}
-        options={{
-          tabBarIcon: ({focused}) => (
-            <MaterialCommunityIcons
-              name={TAB_ICONS.Placed}
-              size={20}
-              color={focused ? COLORS.primary : COLORS.textGray}
-            />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Reference"
-        children={() => <ReferenceScreen mode="create" />}
-        options={{
-          tabBarIcon: ({focused}) => (
-            <MaterialCommunityIcons
-              name={TAB_ICONS.Reference}
+              name={TAB_ICONS.Teachers}
               size={20}
               color={focused ? COLORS.primary : COLORS.textGray}
             />
@@ -161,16 +112,17 @@ export default function AdminTabNavigator() {
 }
 
 const styles = StyleSheet.create({
-  placeholder: {
-    flexGrow: 1,
-    padding: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent'
-  },
   title: { fontSize: 20, fontWeight: '800', color: COLORS.textDark, textAlign: 'center' },
   desc: { marginTop: 10, fontSize: 14, color: COLORS.textGray, textAlign: 'center' },
   noticeWrap: { flexGrow: 1, padding: 16, backgroundColor: 'transparent' },
+  headerBar: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
   tabBar: {
     height: 76,
     paddingTop: 4,

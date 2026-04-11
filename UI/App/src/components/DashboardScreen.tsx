@@ -27,8 +27,9 @@ import {Role} from '../types';
 import {useLanguage} from '../context/LanguageContext';
 import {tx} from '../i18n/strings';
 import NoticeCarousel from './NoticeCarousel';
-import { syncStoredDeviceRegistration } from '../api/deviceToken';
+import {syncStoredDeviceRegistration} from '../api/deviceToken';
 import ScreenBackground from './ScreenBackground';
+import SuperAdminTopBar from './SuperAdminTopBar';
 
 type DashboardScreenProps = {
   title: string;
@@ -66,6 +67,7 @@ const roleTitle: Record<Role, {en: string; mr: string}> = {
   teacher: {en: 'Teacher Dashboard', mr: 'शिक्षक डॅशबोर्ड'},
   student: {en: 'Student Dashboard', mr: 'विद्यार्थी डॅशबोर्ड'},
   parent: {en: 'Parent Dashboard', mr: 'पालक डॅशबोर्ड'},
+  worker: {en: 'Worker Dashboard', mr: 'वर्कर डॅशबोर्ड'},
 };
 
 export default function DashboardScreen({
@@ -118,6 +120,7 @@ export default function DashboardScreen({
     () => slides.map(slide => ({uri: slide.uri})),
     [slides],
   );
+  const headerSlot = extraHeader ?? <SuperAdminTopBar />;
 
   const menuItems = useMemo(() => {
     const base =
@@ -322,7 +325,7 @@ export default function DashboardScreen({
           {headerMeta ? (
             <Text style={styles.headerMeta}>{headerMeta}</Text>
           ) : null}
-          {extraHeader}
+          {headerSlot}
         </View>
       </View>
 

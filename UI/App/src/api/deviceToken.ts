@@ -25,6 +25,7 @@ export async function registerDeviceToken(token: string, app: 'admin' | 'student
 
 function roleToApp(role?: Role | string): 'admin' | 'student' | 'parent' | 'teacher' {
   if (role === 'super_admin' || role === 'admin') return 'admin';
+  if (role === 'worker') return 'admin';
   if (role === 'teacher') return 'teacher';
   if (role === 'parent') return 'parent';
   return 'student';

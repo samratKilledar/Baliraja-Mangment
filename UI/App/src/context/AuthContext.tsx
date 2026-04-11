@@ -19,6 +19,7 @@ type AuthContextType = {
   setSession: (token: string, user: AuthUser) => void;
   updateUser: (nextUser: AuthUser) => void;
   clearSession: () => void;
+  logout: () => void;
   hydrated: boolean;
 };
 
@@ -74,6 +75,12 @@ export function AuthProvider({children}: {children: ReactNode}) {
     AsyncStorage.multiRemove(['ims_token', 'ims_user']).catch(() => {});
   }, [user]);
 
+  const forceClearSession = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    AsyncStorage.multiRemove(['ims_token', 'ims_user']).catch(() => {});
+  }, []);
+
   useEffect(() => {
     const unsubscribe = registerSessionListener(() => {
       if (logoutPromptVisible) {
@@ -88,15 +95,21 @@ export function AuthProvider({children}: {children: ReactNode}) {
             text: 'Logout',
             onPress: () => {
               setLogoutPromptVisible(false);
-              clearSession();
+              forceClearSession();
             },
           },
         ],
-        {cancelable: false},
+        {
+          cancelable: true,
+          onDismiss: () => {
+            setLogoutPromptVisible(false);
+            forceClearSession();
+          },
+        },
       );
     });
     return unsubscribe;
-  }, [clearSession, logoutPromptVisible]);
+  }, [forceClearSession, logoutPromptVisible]);
 
   const value = useMemo(
     () => ({
@@ -106,8 +119,9 @@ export function AuthProvider({children}: {children: ReactNode}) {
       setSession,
       updateUser,
       clearSession,
+      logout: forceClearSession,
     }),
-    [token, user, hydrated, setSession, updateUser, clearSession],
+    [token, user, hydrated, setSession, updateUser, clearSession, forceClearSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

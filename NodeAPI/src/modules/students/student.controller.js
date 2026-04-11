@@ -273,16 +273,19 @@ async function createStudent(req, res, next) {
       createdBy: req.user?.sub,
       createdByEmail: req.user?.email
     });
-    // Push notify admins on new admission
-    const adminTokens = await DeviceToken.find({ app: 'admin' }).select('token');
-    const tokenList = adminTokens.map((t) => t.token);
-    if (tokenList.length) {
-      await sendPush(
-        tokenList,
-        'New Admission',
-        `Student ${student.enrollmentNo || ''} added`,
-        { type: 'admission', studentId: student._id.toString() }
-      );
+    // Push notify only the configured super admin account
+    const superAdmin = await User.findOne({ email: 'superadmin@cognitix.tech' }).select('_id');
+    if (superAdmin?._id) {
+      const adminTokens = await DeviceToken.find({ userId: superAdmin._id }).select('token');
+      const tokenList = adminTokens.map((t) => t.token).filter(Boolean);
+      if (tokenList.length) {
+        await sendPush(
+          tokenList,
+          'New Admission',
+          `Student ${student.enrollmentNo || ''} added`,
+          { type: 'admission', studentId: student._id.toString() }
+        );
+      }
     }
     res.status(201).json(student);
   } catch (err) {
